@@ -7,15 +7,10 @@
   `n` times basic operations with structuring element, or `...*B2*B1` to apply
   with `B1` then with `B2`, etc.
 
-
 * Detect zero-width region which are a no-op.
 
 * Define regions as `OffsetArray` (see
   https://github.com/alsam/OffsetArrays.jl).
-
-* Write generic code (as in the pseudo-code), test whether it is as fast.
-
-* Provide default structuring element.
 
 * Extend this to other types of *kernels* (convolution, median, *etc.*).
 
@@ -24,3 +19,8 @@
 * Implement bound types.
 
 * Use `StaticArray` for small kernels.
+
+* Implement convolution without normalisation and with normalisation (~ local
+  averaging).
+
+* Implement morphological gradient operators.

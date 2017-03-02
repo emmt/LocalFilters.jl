@@ -16,6 +16,31 @@ defined relatively to a given position by an instance of a type derived from
 `Neighborhood`.  For mathematical morphology operations, a *neighborhood* is
 called a *structuring element*.
 
+Available filters (`A` is the source array and `B` is the neighborhood or the
+kernel, by default `B` is a centered box of size 3 along every dimension):
+
+* `erode(A, B=3)` performs an erosion (local minimum);
+
+* `dilate(A, B=3)` performs a dilation (local maximum);
+
+* `localextrema(A, B=3)` yields the erosion and the dilation of `A` by `B`;
+
+* `opening(A, B=3)` performs an erosion followed by a dilation;
+
+* `closing(A, B=3)` performs a dilation followed by an erosion;
+
+* `top_hat(A, B)` performs a summit detection (an optional third argument `S`
+  may be supplied to pre-smooth `A` by `S`);
+
+* `bottom_hat(A, B)` performs a valley detection (an optional third argument
+  `S` may be supplied to pre-smooth `A` by `S`);
+
+* `localmean(A, B=3)` performs a local averaging;
+
+and many more to come...
+
+## Implementation
+
 The pseudo-code for a local filtering operation `C = filter(A, B)` writes:
 
     for i ∈ Sup(A)
