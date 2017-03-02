@@ -58,7 +58,7 @@ CartesianRange{N}(B::Neighborhood{N}) =
 # Provide code and documentation for other operations.
 
 @doc """
-Basic operations of mathemathical morphology are:
+Basic operations of mathematical morphology are:
 
     erode(A, B) -> Amin
     dilate(A, B) -> Amax
