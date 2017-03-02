@@ -5,8 +5,8 @@ import Base: CartesianRange, size, length, ndims, first, last, tail,
 
 export localfilter!,
     localmean, localmean!,
-    erode, erode!, slow_erode!,
-    dilate, dilate!, slow_dilate!,
+    erode, erode!,
+    dilate, dilate!,
     closing, closing!,
     opening, opening!,
     top_hat,
@@ -147,75 +147,6 @@ end
 include("centeredboxes.jl")
 include("cartesianboxes.jl")
 include("kernels.jl")
-
-# The following `slow_*` versions are to test the efficiency of Julia compiler.
-
-slow_mean!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N}, B=3) =
-    localfilter!(dst, A, B,
-                 ()      -> (zero(T),0),
-                 (v,a,b) -> (v[1] + a, v[2] + 1),
-                 (v)     -> v[1]/v[2])
-
-slow_erode!{T,N}(dst, A::AbstractArray{T,N}, B=3) =
-    slow_erode!(dst, A::AbstractArray{T,N}, convert(Neighborhood{N}, B))
-
-slow_dilate!{T,N}(dst, A::AbstractArray{T,N}, B=3) =
-    slow_dilate!(dst, A::AbstractArray{T,N}, convert(Neighborhood{N}, B))
-
-# A Window has all its coefficients virtually equal to 1.
-typealias Window{N} Union{CenteredBox{N},CartesianBox{N}}
-
-function slow_erode!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                          B::Window{N})
-    localfilter!(dst, A, B,
-                 ()      -> typemax(T),
-                 (v,a,b) -> min(v,a),
-                 (v)     -> v)
-end
-
-function slow_dilate!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                           B::Window{N})
-    localfilter!(dst, A, B,
-                 ()      -> typemin(T),
-                 (v,a,b) -> max(v,a),
-                 (v)     -> v)
-end
-
-function slow_erode!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                          B::Kernel{Bool,N})
-    localfilter!(dst, A, B,
-                 ()      -> typemax(T),
-                 (v,a,b) -> b && a < v ? a : v,
-                 (v)     -> v)
-end
-
-function slow_dilate!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                           B::Kernel{Bool,N})
-    localfilter!(dst, A, B,
-                 ()      -> typemin(T),
-                 (v,a,b) -> b && a > v ? a : v,
-                 (v)     -> v)
-end
-
-function slow_erode!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                          B::Kernel{T,N})
-    localfilter!(dst, A, B,
-                 ()      -> typemax(T),
-                 (v,a,b) -> min(v, a - b),
-                 (v)     -> v)
-end
-
-function slow_dilate!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                           B::Kernel{T,N})
-    localfilter!(dst, A, B,
-                 ()      -> typemin(T),
-                 (v,a,b) -> max(v, a + b),
-                 (v)     -> v)
-end
-
-slow_mean(a, b) = slow_mean!(similar(a), a, b)
-slow_erode(a, b) = slow_erode!(similar(a), a, b)
-slow_dilate(a, b) = slow_dilate!(similar(a), a, b)
 
 #------------------------------------------------------------------------------
 

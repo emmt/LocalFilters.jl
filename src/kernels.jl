@@ -167,72 +167,28 @@ function localfilter!{T1,T2,T3,N}(dst::AbstractArray{T1,N},
     return dst
 end
 
-function localmean!{T,N}(dst::AbstractArray{T,N},
-                         A::AbstractArray{T,N},
+function localmean!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                          B::Kernel{Bool,N})
-    @assert size(dst) == size(A)
-    R = CartesianRange(size(A))
-    imin, imax = limits(R)
-    kmin, kmax = limits(B)
-    ker, off = coefs(B), anchor(B)
-    @inbounds for i in R
-        n, s = 0, zero(T)
-        k = i + off
-        for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
-            if ker[k-j]
-                n += 1
-                s += A[j]
-            end
-        end
-        dst[i] = s/n
-    end
-    return dst
+    localfilter!(dst, A, B,
+                 ()      -> (zero(T), 0),
+                 (v,a,b) -> b ? (v[1] + a, v[2] + 1) : v,
+                 (v)     -> v[1]/v[2])
 end
 
-function erode!{T,N}(Amin::AbstractArray{T,N},
-                     A::AbstractArray{T,N},
+function erode!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                      B::Kernel{Bool,N})
-    @assert size(Amin) == size(A)
-    R = CartesianRange(size(A))
-    imin, imax = limits(R)
-    kmin, kmax = limits(B)
-    ker, off = coefs(B), anchor(B)
-    tmax = typemax(T)
-    @inbounds for i in R
-        vmin = tmax
-        k = i + off
-        for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
-            #if ker[k-j] && A[j] < vmin
-            #    vmin = A[j]
-            #end
-            vmin = ker[k-j] && A[j] < vmin ? A[j] : vmin
-        end
-        Amin[i] = vmin
-    end
-    return Amin
+    localfilter!(dst, A, B,
+                 ()      -> typemax(T),
+                 (v,a,b) -> b && a < v ? a : v,
+                 (v)     -> v)
 end
 
-function dilate!{T,N}(Amax::AbstractArray{T,N},
-                      A::AbstractArray{T,N},
+function dilate!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                       B::Kernel{Bool,N})
-    @assert size(Amax) == size(A)
-    R = CartesianRange(size(A))
-    imin, imax = limits(R)
-    kmin, kmax = limits(B)
-    ker, off = coefs(B), anchor(B)
-    tmin = typemin(T)
-    @inbounds for i in R
-        vmax = tmin
-        k = i + off
-        for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
-            #if ker[k-j] && A[j] > vmax
-            #    vmax = A[j]
-            #end
-            vmax = ker[k-j] && A[j] > vmax ? A[j] : vmax
-        end
-        Amax[i] = vmax
-    end
-    return Amax
+    localfilter!(dst, A, B,
+                 ()      -> typemin(T),
+                 (v,a,b) -> b && a > v ? a : v,
+                 (v)     -> v)
 end
 
 function localextrema!{T,N}(Amin::AbstractArray{T,N},
@@ -261,48 +217,31 @@ function localextrema!{T,N}(Amin::AbstractArray{T,N},
     return Amin, Amax
 end
 
-
 # Erosion and dilation with a shaped structuring element
 # (FIXME: for integers satured addition/subtraction would be needed)
 
-function erode!{T<:AbstractFloat,N}(Amin::AbstractArray{T,N},
-                                    A::AbstractArray{T,N},
-                                    B::Kernel{T,N})
-    @assert size(Amin) == size(A)
-    R = CartesianRange(size(A))
-    imin, imax = limits(R)
-    kmin, kmax = limits(B)
-    ker, off = coefs(B), anchor(B)
-    tmax = typemax(T)
-    @inbounds for i in R
-        vmin = tmax
-        k = i + off
-        for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
-            vmin = min(vmin, A[j] - ker[k-j])
-        end
-        Amin[i] = vmin
-    end
-    return Amin
+function localmean!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
+                         B::Kernel{T,N})
+    localfilter!(dst, A, B,
+                 ()      -> (zero(T), zero(T)),
+                 (v,a,b) -> (v[1] + a*b, v[2] + b),
+                 (v)     -> v[1]/v[2])
 end
 
-function dilate!{T<:AbstractFloat,N}(Amax::AbstractArray{T,N},
-                                     A::AbstractArray{T,N},
-                                     B::Kernel{T,N})
-    @assert size(Amax) == size(A)
-    R = CartesianRange(size(A))
-    imin, imax = limits(R)
-    kmin, kmax = limits(B)
-    ker, off = coefs(B), anchor(B)
-    tmin = typemin(T)
-    @inbounds for i in R
-        vmax = tmin
-        k = i + off
-        for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
-            vmax = max(vmax, A[j] + ker[k-j])
-        end
-        Amax[i] = vmax
-    end
-    return Amax
+function erode!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
+                     B::Kernel{T,N})
+    localfilter!(dst, A, B,
+                 ()      -> typemax(T),
+                 (v,a,b) -> min(v, a - b),
+                 (v)     -> v)
+end
+
+function dilate!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
+                      B::Kernel{T,N})
+    localfilter!(dst, A, B,
+                 ()      -> typemin(T),
+                 (v,a,b) -> max(v, a + b),
+                 (v)     -> v)
 end
 
 function localextrema!{T<:AbstractFloat,N}(Amin::AbstractArray{T,N},

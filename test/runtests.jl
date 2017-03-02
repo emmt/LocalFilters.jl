@@ -4,7 +4,7 @@ const DEBUG = false
 
 using LocalFilters, Base.Test
 import LocalFilters: Neighborhood, CenteredBox, CartesianBox, Kernel,
-    anchor, slow_erode, slow_dilate
+    anchor
 import Base.CartesianRange
 
 replicate(a, n::Integer) = ntuple(i->a, n)
@@ -21,18 +21,10 @@ if DEBUG
     println("erode 1 -> ", samevalues(erode(a, rbox), result))
     println("erode 2 -> ", samevalues(erode(a, mask), result))
     println("erode 3 -> ", samevalues(erode(a, kern), result))
-    println("erode 4 -> ", samevalues(slow_erode(a, cbox), result))
-    println("erode 5 -> ", samevalues(slow_erode(a, rbox), result))
-    println("erode 6 -> ", samevalues(slow_erode(a, mask), result))
-    println("erode 7 -> ", samevalues(slow_erode(a, kern), result))
     result = dilate(a, cbox)
     println("dilate 1 -> ", samevalues(dilate(a, rbox), result))
     println("dilate 2 -> ", samevalues(dilate(a, mask), result))
     println("dilate 3 -> ", samevalues(dilate(a, kern), result))
-    println("dilate 4 -> ", samevalues(slow_dilate(a, cbox), result))
-    println("dilate 5 -> ", samevalues(slow_dilate(a, rbox), result))
-    println("dilate 6 -> ", samevalues(slow_dilate(a, mask), result))
-    println("dilate 7 -> ", samevalues(slow_dilate(a, kern), result))
 end
 
 @testset "LocalFilters" begin
@@ -58,18 +50,6 @@ end
                 @test samevalues(dilate(a, mask), result)
                 @test samevalues(dilate(a, kern), result)
             end
-            @testset "    slow-erode" begin
-                result = erode(a, cbox)
-                @test samevalues(slow_erode(a, rbox), result)
-                @test samevalues(slow_erode(a, mask), result)
-                @test samevalues(slow_erode(a, kern), result)
-            end
-            @testset "    slow-dilate" begin
-                result = dilate(a, cbox)
-                @test samevalues(slow_dilate(a, rbox), result)
-                @test samevalues(slow_dilate(a, mask), result)
-                @test samevalues(slow_dilate(a, kern), result)
-            end
         end
     end
 
@@ -85,14 +65,10 @@ end
         @testset "  erode" begin
             result = erode(a, mask)
             @test samevalues(erode(a, kern), result)
-            @test samevalues(slow_erode(a, mask), result)
-            @test samevalues(slow_erode(a, kern), result)
         end
         @testset "  dilate" begin
             result = dilate(a, mask)
             @test samevalues(dilate(a, kern), result)
-            @test samevalues(slow_dilate(a, mask), result)
-            @test samevalues(slow_dilate(a, kern), result)
         end
     end
 

@@ -52,58 +52,29 @@ function localfilter!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
     return dst
 end
 
-function localmean!{T,N}(dst::AbstractArray{T,N},
-                         A::AbstractArray{T,N},
+function localmean!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                          B::CenteredBox{N})
-    @assert size(dst) == size(A)
-    R = CartesianRange(size(A))
-    imin, imax = limits(R)
-    off = last(B)
-    @inbounds for i in R
-        n, s = 0, zero(T)
-        for j in CartesianRange(max(imin, i - off), min(imax, i + off))
-            s += A[j]
-            n += 1
-        end
-        dst[i] = s/n
-    end
-    return dst
+    localfilter!(dst, A, B,
+                 ()      -> (zero(T), 0),
+                 (v,a,b) -> (v[1] + a, v[2] + 1),
+                 (v)     -> v[1]/v[2])
 end
 
-function erode!{T,N}(Amin::AbstractArray{T,N},
-                     A::AbstractArray{T,N},
+function erode!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                      B::CenteredBox{N})
-    @assert size(Amin) == size(A)
-    R = CartesianRange(size(A))
-    imin, imax = limits(R)
-    tmax = typemax(T)
-    off = last(B)
-    @inbounds for i in R
-        vmin = tmax
-        for j in CartesianRange(max(imin, i - off), min(imax, i + off))
-            vmin = min(vmin, A[j])
-        end
-        Amin[i] = vmin
-    end
-    return Amin
+    localfilter!(dst, A, B,
+                 ()      -> typemax(T),
+                 (v,a,b) -> min(v, a),
+                 (v)     -> v)
 end
 
-function dilate!{T,N}(Amax::AbstractArray{T,N},
+function dilate!{T,N}(dst::AbstractArray{T,N},
                       A::AbstractArray{T,N},
                       B::CenteredBox{N})
-    @assert size(Amax) == size(A)
-    R = CartesianRange(size(A))
-    imin, imax = limits(R)
-    tmin = typemin(T)
-    off = last(B)
-    @inbounds for i in R
-        vmax = tmin
-        for j in CartesianRange(max(imin, i - off), min(imax, i + off))
-            vmax = max(vmax, A[j])
-        end
-        Amax[i] = vmax
-    end
-    return Amax
+    localfilter!(dst, A, B,
+                 ()      -> typemin(T),
+                 (v,a,b) -> max(v, a),
+                 (v)     -> v)
 end
 
 function localextrema!{T,N}(Amin::AbstractArray{T,N},
