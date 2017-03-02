@@ -55,9 +55,8 @@ limits(B::Neighborhood) = first(B), last(B)
 CartesianRange{N}(B::Neighborhood{N}) =
     CartesianRange{CartesianIndex{N}}(first(B), last(B))
 
-# Provide code and documentation for other operations.
 
-@doc """
+"""
 Basic operations of mathematical morphology are:
 
     erode(A, B) -> Amin
@@ -84,7 +83,25 @@ result in the provided arrays `amin` and/or `amax`.
 ## See also:
 localmean, opening, closing, top_hat, bottom_hat
 
-""" erode
+"""
+erode(A::AbstractArray, B=3) = erode!(similar(A), A, B)
+
+erode!{T,N}(dst, src::AbstractArray{T,N}, B=3) =
+    erode!(dst, src, convert(Neighborhood{N}, B))
+
+dilate(A::AbstractArray, B=3) = dilate!(similar(A), A, B)
+
+dilate!{T,N}(dst, src::AbstractArray{T,N}, B=3) =
+    dilate!(dst, src, convert(Neighborhood{N}, B))
+
+localextrema(A::AbstractArray, B=3) =
+    localextrema!(similar(A), similar(A), A, B)
+
+function localextrema!{T,N}(Amin::AbstractArray{T,N},
+                            Amax::AbstractArray{T,N},
+                            A::AbstractArray{T,N}, B=3)
+    localextrema!(Amin, Amax, A, convert(Neighborhood{N}, B))
+end
 
 @doc @doc(erode) erode!
 @doc @doc(erode) dilate
@@ -92,7 +109,7 @@ localmean, opening, closing, top_hat, bottom_hat
 @doc @doc(erode) localextrema
 @doc @doc(erode) localextrema!
 
-@doc """
+"""
 
     localmean(A, B)
 
@@ -103,8 +120,11 @@ The in-place version is:
 
     localmean!(dst, A, B) -> dst
 
-""" localmean
+"""
+localmean(A::AbstractArray, B=3) = localmean!(similar(A), A, B)
 
+localmean!{T,N}(dst, src::AbstractArray{T,N}, B=3) =
+    localmean!(dst, src, convert(Neighborhood{N}, B))
 @doc @doc(localmean) localmean!
 
 """
@@ -150,9 +170,9 @@ include("kernels.jl")
 
 #------------------------------------------------------------------------------
 
-# To implement variants and out-of-place versions, we first define conversion
-# rules to convert various types of arguments into a neighborhood suitable with
-# the source (e.g., of given rank `N`).
+# To implement variants and out-of-place versions, we define conversion rules
+# to convert various types of arguments into a neighborhood suitable with the
+# source (e.g., of given rank `N`).
 
 convert{N}(::Type{Neighborhood{N}}, dim::Integer) =
     CenteredBox(ntuple(i->dim, N))
@@ -168,29 +188,6 @@ function  convert{N,T<:Integer}(::Type{Neighborhood{N}},
                                 inds::NTuple{N,AbstractUnitRange{T}})
     CartesianBox(inds)
 end
-
-for func in (:localmean, :erode, :dilate)
-    local inplace = Symbol(func,"!")
-    @eval begin
-
-        function $inplace{T,N}(dst::AbstractArray{T,N},
-                               src::AbstractArray{T,N}, B=3)
-            $inplace(dst, src, convert(Neighborhood{N}, B))
-        end
-
-        $func(A::AbstractArray, B=3) = $inplace(similar(A), A, B)
-
-    end
-end
-
-function localextrema!{T,N}(Amin::AbstractArray{T,N},
-                            Amax::AbstractArray{T,N},
-                            A::AbstractArray{T,N}, B=3)
-    localextrema!(Amin, Amax, A, convert(Neighborhood{N}, B))
-end
-
-localextrema(A::AbstractArray, B=3) =
-    localextrema!(similar(A), similar(A), A, B)
 
 #------------------------------------------------------------------------------
 # Higher level operators.
@@ -218,10 +215,26 @@ the same array as `src` or `dst`.  The destination `dst` is returned.
 See `erode` or `dilate` for the meaning of the arguments.
 
 """
+closing(A::AbstractArray, B=3) = closing!(similar(A), similar(A), A, B)
+
+function closing!{T,N}(dst::AbstractArray{T,N},
+                       wrk::AbstractArray{T,N},
+                       src::AbstractArray{T,N}, B=3)
+    closing!(dst, wrk, src, convert(Neighborhood{N}, B))
+end
+
 function closing!{T,N}(dst::AbstractArray{T,N},
                        wrk::AbstractArray{T,N},
                        src::AbstractArray{T,N}, B::Neighborhood{N})
     erode!(dst, dilate!(wrk, src, B), B)
+end
+
+opening(A::AbstractArray, B=3) = opening!(similar(A), similar(A), A, B)
+
+function opening!{T,N}(dst::AbstractArray{T,N},
+                       wrk::AbstractArray{T,N},
+                       src::AbstractArray{T,N}, B=3)
+    opening!(dst, wrk, src, convert(Neighborhood{N}, B))
 end
 
 function opening!{T,N}(dst::AbstractArray{T,N},
@@ -230,25 +243,10 @@ function opening!{T,N}(dst::AbstractArray{T,N},
     dilate!(dst, erode!(wrk, src, B), B)
 end
 
-for func in (:opening, :closing)
-    local inplace = Symbol(func,"!")
-    @eval begin
 
-        function $inplace{T,N}(dst::AbstractArray{T,N},
-                               wrk::AbstractArray{T,N},
-                               src::AbstractArray{T,N}, B=3)
-            $inplace(dst, wrk, src, convert(Neighborhood{N}, B))
-        end
-
-        $func(A::AbstractArray, B=3) =
-            $inplace(similar(A), similar(A), A, B)
-
-    end
-end
-
-@doc @doc(closing!) closing
-@doc @doc(closing!) opening
-@doc @doc(closing!) opening!
+@doc @doc(closing) closing!
+@doc @doc(closing) opening
+@doc @doc(closing) opening!
 
 # Out-of-place top hat filter requires 2 allocations without a
 # pre-filtering, 3 allocations with a pre-filtering.
@@ -285,16 +283,9 @@ See also: dilate, closing, morph_enhance.
 """
 top_hat(a, r=3) = top_hat!(similar(a), similar(a), a, r)
 
-bottom_hat(a, r=3) = bottom_hat!(similar(a), similar(a), a, r)
-
 function top_hat(a, r, s)
     wrk = similar(a)
     top_hat!(similar(a), wrk, closing!(similar(a), wrk, a, s), r)
-end
-
-function bottom_hat(a, r, s)
-    wrk = similar(a)
-    bottom_hat!(similar(a), wrk, opening!(similar(a), wrk, a, s), r)
 end
 
 function top_hat!{T,N}(dst::AbstractArray{T,N},
@@ -305,6 +296,13 @@ function top_hat!{T,N}(dst::AbstractArray{T,N},
         dst[i] = src[i] - dst[i]
     end
     return dst
+end
+
+bottom_hat(a, r=3) = bottom_hat!(similar(a), similar(a), a, r)
+
+function bottom_hat(a, r, s)
+    wrk = similar(a)
+    bottom_hat!(similar(a), wrk, opening!(similar(a), wrk, a, s), r)
 end
 
 function bottom_hat!{T,N}(dst::AbstractArray{T,N},
