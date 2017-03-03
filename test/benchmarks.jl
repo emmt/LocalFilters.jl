@@ -132,6 +132,25 @@ function fastdilate!{T,N}(Amax::AbstractArray{T,N},
     return Amax
 end
 
+function fatsconvolve!{T<:AbstractFloat,N}(dst::AbstractArray{T,N},
+                                           A::AbstractArray{T,N},
+                                           B::Kernel{T,N})
+    @assert size(dst) == size(A)
+    R = CartesianRange(size(A))
+    imin, imax = limits(R)
+    kmin, kmax = limits(B)
+    ker, off = coefs(B), anchor(B)
+    @inbounds for i in R
+        v = zero(T)
+        k = i + off
+        for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
+            v += A[j]*ker[k-j]
+        end
+        dst[i] = v
+    end
+    return dst
+end
+
 #------------------------------------------------------------------------------
 # "Fast" versions for kernels of booleans.
 

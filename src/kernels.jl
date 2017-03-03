@@ -200,6 +200,7 @@ function localextrema!{T,N}(Amin::AbstractArray{T,N},
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     tmin, tmax = limits(T)
+    ker, off = coefs(B), anchor(B)
     @inbounds for i in R
         vmin, vmax = tmax, tmin
         k = i + off
@@ -266,21 +267,18 @@ function localextrema!{T<:AbstractFloat,N}(Amin::AbstractArray{T,N},
     return Amin, Amax
 end
 
-function convolve!{T<:AbstractFloat,N}(dst::AbstractArray{T,N},
-                                       A::AbstractArray{T,N},
-                                       B::Kernel{T,N})
-    @assert size(dst) == size(A)
-    R = CartesianRange(size(A))
-    imin, imax = limits(R)
-    kmin, kmax = limits(B)
-    ker, off = coefs(B), anchor(B)
-    @inbounds for i in R
-        v = zero(T)
-        k = i + off
-        for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
-            v += A[j]*ker[k-j]
-        end
-        dst[i] = v
-    end
-    return dst
+function convolve!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
+                        B::Kernel{Bool,N})
+    localfilter!(dst, A, B,
+                 ()      -> zero(T),
+                 (v,a,b) -> b ? v + a : v,
+                 (v)     -> v)
+end
+
+function convolve!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
+                        B::Kernel{T,N})
+    localfilter!(dst, A, B,
+                 ()      -> zero(T),
+                 (v,a,b) -> v + a*b,
+                 (v)     -> v)
 end

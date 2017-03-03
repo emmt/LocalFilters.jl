@@ -29,13 +29,16 @@ kernel, by default `B` is a centered box of size 3 along every dimension):
 
 * `closing(A, B=3)` performs a dilation followed by an erosion;
 
-* `top_hat(A, B)` performs a summit detection (an optional third argument `S`
+* `top_hat(A, B=3)` performs a summit detection (an optional third argument `S`
   may be supplied to pre-smooth `A` by `S`);
 
-* `bottom_hat(A, B)` performs a valley detection (an optional third argument
+* `bottom_hat(A, B=3)` performs a valley detection (an optional third argument
   `S` may be supplied to pre-smooth `A` by `S`);
 
 * `localmean(A, B=3)` performs a local averaging;
+
+* `convolve(A, B=3)` performs a convolution by the kernel `B` or by the support
+  of `B` is `eltype(B)` is `Bool`;
 
 and many more to come...
 
@@ -45,7 +48,7 @@ The pseudo-code for a local filtering operation `C = filter(A, B)` writes:
 
     for i ∈ Sup(A)
         v = initial()
-        for j ∈ S(i) and i-j ∈ Sup(B)
+        for j ∈ Sup(A) and i-j ∈ Sup(B)
             v = update(v, A[j], B[i-j])
         end
         C[i] = final(v)

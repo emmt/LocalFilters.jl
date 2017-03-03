@@ -97,3 +97,11 @@ function localextrema!{T,N}(Amin::AbstractArray{T,N},
     end
     return Amin, Amax
 end
+
+function convolve!{S,T,N}(dst::AbstractArray{S,N}, A::AbstractArray{T,N},
+                          B::CenteredBox{N})
+    localfilter!(dst, A, B,
+                 ()      -> zero(S),
+                 (v,a,b) -> v + S(a),
+                 (v)     -> v)
+end

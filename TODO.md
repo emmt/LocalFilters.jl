@@ -20,7 +20,4 @@
 
 * Use `StaticArray` for small kernels.
 
-* Implement convolution without normalisation and with normalisation (~ local
-  averaging).
-
 * Implement morphological gradient operators.

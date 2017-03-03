@@ -5,6 +5,7 @@ import Base: CartesianRange, size, length, ndims, first, last, tail,
 
 export localfilter!,
     localmean, localmean!,
+    convolve, convolve!,
     erode, erode!,
     dilate, dilate!,
     closing, closing!,
@@ -62,8 +63,8 @@ Basic operations of mathematical morphology are:
     erode(A, B) -> Amin
     dilate(A, B) -> Amax
 
-which return the local minimum `Amin` and the local maximum `Amax` of argument
-`A` for a neighborhood defined by `B`.  The returned result is similar to `A`
+which return the local minima `Amin` and the local maxima `Amax` of argument
+`A` in a neighborhood defined by `B`.  The returned result is similar to `A`
 (same size and type).
 
 The two operations can be combined in one call:
@@ -76,8 +77,8 @@ The in-place versions:
     dilate!(Amax, A, B) -> Amax
     localextrema!(Amin, Amax, A, B) -> Amin, Amax
 
-apply the operation to `a` with structuring element `b` and store the
-result in the provided arrays `amin` and/or `amax`.
+apply the operation to `A` with structuring element `B` and store the
+result in the provided arrays `Amin` and/or `Amax`.
 
 
 ## See also:
@@ -113,7 +114,7 @@ end
 
     localmean(A, B)
 
-yields the local mean of `A` for a neighborhood defined by `B`.  The result is
+yields the local mean of `A` in a neighborhood defined by `B`.  The result is
 an array similar to `A`.
 
 The in-place version is:
@@ -126,6 +127,25 @@ localmean(A::AbstractArray, B=3) = localmean!(similar(A), A, B)
 localmean!{T,N}(dst, src::AbstractArray{T,N}, B=3) =
     localmean!(dst, src, convert(Neighborhood{N}, B))
 @doc @doc(localmean) localmean!
+
+"""
+
+    convolve(A, B)
+
+yields the convolution of `A` by the support of the neighborhood defined by
+`B` of by the kernel `B` if it is an instance of `LocalFilters.Kernel`
+with numerical coefficients.  The result is an array similar to `A`.
+
+The in-place version is:
+
+    convolve!(dst, A, B) -> dst
+
+"""
+convolve(A::AbstractArray, B=3) = convolve!(similar(A), A, B)
+
+convolve!{T,N}(dst, src::AbstractArray{T,N}, B=3) =
+    convolve!(dst, src, convert(Neighborhood{N}, B))
+@doc @doc(convolve) convolve!
 
 """
 A local filtering operation can be performed by calling:
