@@ -21,8 +21,9 @@ end
 #
 # thus `first = 1 - anchor` and `last = dim - anchor`.
 
+eltype{T,N}(B::Kernel{T,N}) = T
 length(B::Kernel) = length(coefs(B))
-size{N}(B::Kernel{N}) = size(coefs(B))
+size(B::Kernel) = size(coefs(B))
 size(B::Kernel, i) = size(coefs(B), i)
 first(B::Kernel) = (I = anchor(B); one(I) - I)
 last(B::Kernel) = CartesianIndex(size(coefs(B))) - anchor(B)

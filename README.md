@@ -117,6 +117,7 @@ There are many possible types of neighborhood:
 
 The following methods make sense on a neighborhood `B`:
 
+    eltype(B) -> element type of B
     ndims(B)  -> number of dimensions of B
     length(B) -> number of elements in the bounding-box of B
     size(B)   -> size of the bounding-box of B along all dimensions
@@ -128,7 +129,10 @@ The following methods make sense on a neighborhood `B`:
     B[i]      -> yields the kernel value of `B` at index `i`
 
 Note that the index `i` in `B[i]` is assumed to be between `first(B)` and
-`last(B)`, for efficiency reasons this is not checked.
+`last(B)`, for efficiency reasons this is not checked.  The type returned by
+`eltype(B)` is `Bool` for a neighborhood which is just defined by its support
+(*e.g.* a `LocalFilters.CenteredBox`), the element type of its kernel
+otherwise.
 
     CartesianRange(B)
 

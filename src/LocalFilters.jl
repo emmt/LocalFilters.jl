@@ -1,6 +1,6 @@
 module LocalFilters
 
-import Base: CartesianRange, size, length, ndims, first, last, tail,
+import Base: CartesianRange, eltype, ndims, size, length, first, last, tail,
     getindex, setindex!, convert
 
 export localfilter!,

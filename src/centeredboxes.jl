@@ -29,6 +29,7 @@ CenteredBox(siz::Vector{Integer}) =
 CenteredBox{N}(siz::NTuple{N,Integer}) =
     CenteredBox{N}(CartesianIndex(ntuple(i -> halfdim(siz[i]), N)))
 
+eltype(B::CenteredBox) = Bool
 size(B::CenteredBox, i) = 2*last(B)[i] + 1
 first(B::CenteredBox) = -last(B)
 last(B::CenteredBox) = B.last

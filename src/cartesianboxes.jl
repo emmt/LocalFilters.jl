@@ -31,6 +31,7 @@ CartesianBox{N,T<:Integer}(inds::NTuple{N,AbstractUnitRange{T}}) =
     CartesianBox(CartesianIndex(map(first, inds)),
                  CartesianIndex(map(last, inds)))
 
+eltype(B::CartesianBox) = Bool
 size(B::CartesianBox, i) = max(last(B)[i] - first(B)[i] + 1, 0)
 first(B::CartesianBox) = first(B.bounds)
 last(B::CartesianBox) = last(B.bounds)
