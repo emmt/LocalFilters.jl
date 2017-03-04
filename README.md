@@ -51,24 +51,24 @@ The pseudo-code for a local filtering operation `C = filter(A, B)` writes:
         for j ∈ Sup(A) and i-j ∈ Sup(B)
             v = update(v, A[j], B[i-j])
         end
-        C[i] = final(v)
+        store(C, i, v)
     end
 
 where `A` is the source of the operation, `B` is the neighborhood, `C` is the
 result of the operation.  Here `Sup(A)` denotes the support of `A` (that is the
-set of indices in `A`).  The methods `initial`,`update` and `final` are
+set of indices in `A`).  The methods `initial`,`update` and `store` are
 specific to the considered operation.  For instance, to compute a local maximum
 (*i.e.* a **dilation** in terms of mathematical morphology):
 
     initial() = -Inf
     update(v,a,b) = (b && v < a ? a : v)
-    final(v) = v
+    store(c,i,v) = c[i] = v
 
 to compute a local average (`T` being the type of the elements of `A`):
 
     initial() = (0, zero(T))
     update(v,a,b) = v[1] + 1, v[2] + (b ? a : zero(T))
-    final(v) = v[2]/v[1]
+    store(c,i,v) = c[i] = v[2]/v[1]
 
 The same mechanism can be used to implement other operations such as
 convolution, median filtering, *etc.*

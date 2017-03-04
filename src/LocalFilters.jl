@@ -150,10 +150,10 @@ convolve!{T,N}(dst, src::AbstractArray{T,N}, B=3) =
 """
 A local filtering operation can be performed by calling:
 
-    localfilter!(dst, A, B, initial, update, final) -> dst
+    localfilter!(dst, A, B, initial, update, store) -> dst
 
 where `dst` is the destination, `A` is the source, `B` defines the
-neighborhood, `initial`, `update` and `final` are three functions whose
+neighborhood, `initial`, `update` and `store` are three functions whose
 purposes are explained by the following pseudo-code to implement the local
 operation:
 
@@ -162,7 +162,7 @@ operation:
         for j ∈ Sup(A) and i - j ∈ Sup(B)
             v = update(v, A[j], B[i-j])
         end
-        dst[i] = final(v)
+        store(dst, i, v)
     end
 
 where `A` `Sup(A)` yields the support of `A` (that is the set of indices in
@@ -170,16 +170,23 @@ where `A` `Sup(A)` yields the support of `A` (that is the set of indices in
 
 For instance, to compute a local minimum (that is an erosion):
 
-    localfilter!(dst, A, B, ()->typemax(T), (v,a,b)->min(v,a), (v)->v)
+    localfilter!(dst, A, B,
+                 ()      -> typemax(T),
+                 (v,a,b) -> min(v,a),
+                 (d,i,v) -> d[i] = v)
+
+**Important:** For efficiency reasons, the loop(s) in `localfilter!` are
+perfomed without bound checking and it is the caller's responsability to insure
+that the arguments have the correct sizes.
 
 """
 function localfilter!{T,N}(dst, A::AbstractArray{T,N}, B, initial::Function,
-                           update::Function, final::Function)
+                           update::Function, store::Function)
     # Notes: The signature of this method is intentionally as little
     #        specialized as possible to avoid confusing the dispatcher.  The
     #        prupose of this method is just to convert `B ` into a neighborhood
     #        suitable for `A`.
-    localfilter!(dst, A, convert(Neighborhood{N}, B), initial, update, final)
+    localfilter!(dst, A, convert(Neighborhood{N}, B), initial, update, store)
 end
 
 # Include code for basic operations with specific structuring element

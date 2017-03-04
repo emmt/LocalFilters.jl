@@ -36,10 +36,9 @@ last(B::CenteredBox) = B.last
 getindex(B::CenteredBox, i::CartesianIndex) = true
 getindex(B::CenteredBox, i::Integer...) = true
 
-function localfilter!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
+function localfilter!{T,N}(dst, A::AbstractArray{T,N},
                            B::CenteredBox{N}, initial::Function,
-                           update::Function, final::Function)
-    @assert size(dst) == size(A)
+                           update::Function, store::Function)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
     off = last(B)
@@ -48,34 +47,37 @@ function localfilter!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
         for j in CartesianRange(max(imin, i - off), min(imax, i + off))
             v = update(v, A[j], true)
         end
-        dst[i] = final(v)
+        store(dst, i, v)
     end
     return dst
 end
 
 function localmean!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                          B::CenteredBox{N})
+    @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> (zero(T), 0),
                  (v,a,b) -> (v[1] + a, v[2] + 1),
-                 (v)     -> v[1]/v[2])
+                 (d,i,v) -> d[i] = v[1]/v[2])
 end
 
 function erode!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                      B::CenteredBox{N})
+    @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> typemax(T),
                  (v,a,b) -> min(v, a),
-                 (v)     -> v)
+                 (d,i,v) -> d[i] = v)
 end
 
 function dilate!{T,N}(dst::AbstractArray{T,N},
                       A::AbstractArray{T,N},
                       B::CenteredBox{N})
+    @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> typemin(T),
                  (v,a,b) -> max(v, a),
-                 (v)     -> v)
+                 (d,i,v) -> d[i] = v)
 end
 
 function localextrema!{T,N}(Amin::AbstractArray{T,N},
@@ -101,8 +103,9 @@ end
 
 function convolve!{S,T,N}(dst::AbstractArray{S,N}, A::AbstractArray{T,N},
                           B::CenteredBox{N})
+    @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> zero(S),
                  (v,a,b) -> v + S(a),
-                 (v)     -> v)
+                 (d,i,v) -> d[i] = v)
 end
