@@ -4,7 +4,8 @@ This package implements multi-dimensional local filters for Julia (convolution,
 mathematical morphology, etc.).
 
 **Cavehats:** This is a first implementation to define the API.  It is is
-reasonably fast but optimization will come later notably for separable kernels.
+reasonably fast but optimizations will come later notably for separable
+kernels.
 
 
 ## Summary
@@ -13,15 +14,16 @@ reasonably fast but optimization will come later notably for separable kernels.
 of an array in a neighborhood of each elements of the array (and possibly the
 values of a kernel associated with the neighborhood).  The neighborhood is
 defined relatively to a given position by an instance of a type derived from
-`Neighborhood`.  For mathematical morphology operations, a *neighborhood* is
+`Neighborhood`.  For mathematical morphology operations, a neighborhood is
 called a *structuring element*.
 
-Available filters (`A` is the source array and `B` is the neighborhood or the
-kernel, by default `B` is a centered box of size 3 along every dimension):
+Denoting `A` the source array and `B` the neighborhood or the kernel (by
+default `B` is a centered box of size 3 along every dimension), the available
+filters are:
 
-* `erode(A, B=3)` performs an erosion (local minimum);
+* `erode(A, B=3)` performs an erosion (local minimum) of `A` by `B`;
 
-* `dilate(A, B=3)` performs a dilation (local maximum);
+* `dilate(A, B=3)` performs a dilation (local maximum) of `A` by `B`;
 
 * `localextrema(A, B=3)` yields the erosion and the dilation of `A` by `B`;
 
@@ -59,13 +61,13 @@ where `A` is the source of the operation, `B` is the neighborhood, `C` is the
 result of the operation.  Here `Sup(A)` denotes the support of `A` (that is the
 set of indices in `A`).  The methods `initial`,`update` and `store` are
 specific to the considered operation.  For instance, to compute a local maximum
-(*i.e.* a **dilation** in terms of mathematical morphology):
+(*i.e.* a **dilation** in mathematical morphology terms):
 
-    initial() = -Inf
+    initial() = typemin(T)
     update(v,a,b) = (b && v < a ? a : v)
     store(c,i,v) = c[i] = v
 
-to compute a local average (`T` being the type of the elements of `A`):
+with `T` the type of the elements of `A`.  To compute a local average:
 
     initial() = (0, zero(T))
     update(v,a,b) = v[1] + 1, v[2] + (b ? a : zero(T))
@@ -79,24 +81,23 @@ convolution, median filtering, *etc.* via the `localfilter!` driver.
 
 There are many possible types of neighborhood:
 
-* The *default neighborhood* is a centered box of width 3 in each of its
-  dimension.
+* The *default neighborhood* is a `LocalFilters.CenteredBox` of width 3 in each
+  of its dimension.
 
-* A *scalar* integer `w` yields a centered square box of size `w` along all
-  dimensions.  `w` must be an odd integer at least equal to 1.
+* A *scalar* integer `w` yields a `LocalFilters.CenteredBox` of size `w` along
+  all dimensions.  `w` must be an odd integer at least equal to 1.
 
-* A *tuple* `t` of integers yields a centered rectangular box, the box size is
+* A *tuple* `t` of integers yields a `LocalFilters.CenteredBox` whose size is
   `t[i]` along the `i`-th dimension.  All values of `t` must an odd integers
-  larger or equal to 1.  Remember that you can use `v...` to convert a *vector*
-  `v` into a tuple.
+  larger or equal to 1.  Tip: Remember that you can use `v...` to convert a
+  *vector* `v` into a tuple.
 
-* An *array* `A` yields a kernel (instance of `LocalFilters.Kernel`) whose
-  coefficients are the values of `A` and whose neighborhood is the centered
-  bounding-box of `A`.
+* An *array* `A` yields a `LocalFilters.Kernel` whose coefficients are the
+  values of `A` and whose neighborhood is the centered bounding-box of `A`.
 
 * A *Cartesian range* `R` (an instance of `Base.CartesianRange`) yields a
-  rectangular neighborhood whose support contains all relative positions within
-  `first(R)` and `last(R)`.
+  `LocalFilters.CartesianBox` which is a rectangular neighborhood whose support
+  contains all relative positions within `first(R)` and `last(R)`.
 
 * A centered rectangular box created with `LocalFilters.CenteredBox(dims)`
   with `dims` a tuple of odd integers (all ≥ 1).
@@ -132,8 +133,8 @@ The following methods make sense on a neighborhood `B`:
 Note that the index `i` in `B[i]` is assumed to be between `first(B)` and
 `last(B)`, for efficiency reasons this is not checked.  The type returned by
 `eltype(B)` is `Bool` for a neighborhood which is just defined by its support
-(*e.g.* a `LocalFilters.CenteredBox`), the element type of its kernel
-otherwise.
+(*e.g.* a `LocalFilters.CenteredBox` or a `LocalFilters.CartesianBox`), the
+element type of its kernel otherwise.
 
     CartesianRange(B)
 
