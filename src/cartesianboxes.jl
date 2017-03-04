@@ -123,20 +123,12 @@ function localextrema!{T,N}(Amin::AbstractArray{T,N},
                             A::AbstractArray{T,N},
                             B::CartesianBox{N})
     @assert size(Amin) == size(Amax) == size(A)
-    R = CartesianRange(size(A))
-    imin, imax = limits(R)
-    kmin, kmax = limits(B)
-    tmin, tmax = limits(T)
-    @inbounds for i in R
-        vmin, vmax = tmax, tmin
-        for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
-                vmin = min(vmin, A[j])
-            vmax = max(vmax, A[j])
-        end
-        Amin[i] = vmin
-        Amax[i] = vmax
-    end
-    return Amin, Amax
+    localfilter!((Amin, Amax), A, B,
+                 ()      -> (typemax(T),
+                             typemin(T)),
+                 (v,a,b) -> (min(v[1], a),
+                             max(v[2], a)),
+                 (d,i,v) -> (Amin[i], Amax[i]) = v)
 end
 
 function convolve!{S,T,N}(dst::AbstractArray{S,N}, A::AbstractArray{T,N},

@@ -42,6 +42,7 @@ kernel, by default `B` is a centered box of size 3 along every dimension):
 
 and many more to come...
 
+
 ## Implementation
 
 The pseudo-code for a local filtering operation `C = filter(A, B)` writes:
@@ -71,7 +72,7 @@ to compute a local average (`T` being the type of the elements of `A`):
     store(c,i,v) = c[i] = v[2]/v[1]
 
 The same mechanism can be used to implement other operations such as
-convolution, median filtering, *etc.*
+convolution, median filtering, *etc.* via the `localfilter!` driver.
 
 
 ## Types of Neighborhoods

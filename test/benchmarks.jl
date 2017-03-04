@@ -75,6 +75,27 @@ function fastdilate!{T,N}(Amax::AbstractArray{T,N},
     return Amax
 end
 
+function fastlocalextrema!{T,N}(Amin::AbstractArray{T,N},
+                                Amax::AbstractArray{T,N},
+                                A::AbstractArray{T,N},
+                                B::CenteredBox{N})
+    @assert size(Amin) == size(Amax) == size(A)
+    R = CartesianRange(size(A))
+    imin, imax = limits(R)
+    tmin, tmax = limits(T)
+    off = last(B)
+    @inbounds for i in R
+        vmin, vmax = tmax, tmin
+        for j in CartesianRange(max(imin, i - off), min(imax, i + off))
+            vmin = min(vmin, A[j])
+            vmax = max(vmax, A[j])
+        end
+        Amin[i] = vmin
+        Amax[i] = vmax
+    end
+    return Amin, Amax
+end
+
 #------------------------------------------------------------------------------
 # "Fast" versions for Cartesian boxes.
 
@@ -132,7 +153,7 @@ function fastdilate!{T,N}(Amax::AbstractArray{T,N},
     return Amax
 end
 
-function fatsconvolve!{T<:AbstractFloat,N}(dst::AbstractArray{T,N},
+function fastconvolve!{T<:AbstractFloat,N}(dst::AbstractArray{T,N},
                                            A::AbstractArray{T,N},
                                            B::Kernel{T,N})
     @assert size(dst) == size(A)
@@ -149,6 +170,27 @@ function fatsconvolve!{T<:AbstractFloat,N}(dst::AbstractArray{T,N},
         dst[i] = v
     end
     return dst
+end
+
+function fastlocalextrema!{T,N}(Amin::AbstractArray{T,N},
+                                Amax::AbstractArray{T,N},
+                                A::AbstractArray{T,N},
+                                B::CartesianBox{N})
+    @assert size(Amin) == size(Amax) == size(A)
+    R = CartesianRange(size(A))
+    imin, imax = limits(R)
+    kmin, kmax = limits(B)
+    tmin, tmax = limits(T)
+    @inbounds for i in R
+        vmin, vmax = tmax, tmin
+        for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
+                vmin = min(vmin, A[j])
+            vmax = max(vmax, A[j])
+        end
+        Amin[i] = vmin
+        Amax[i] = vmax
+    end
+    return Amin, Amax
 end
 
 #------------------------------------------------------------------------------
@@ -220,6 +262,33 @@ function fastdilate!{T,N}(Amax::AbstractArray{T,N},
         Amax[i] = vmax
     end
     return Amax
+end
+
+function fastlocalextrema!{T,N}(Amin::AbstractArray{T,N},
+                                Amax::AbstractArray{T,N},
+                                A::AbstractArray{T,N},
+                                B::Kernel{Bool,N})
+    @assert size(Amin) == size(Amax) == size(A)
+    R = CartesianRange(size(A))
+    imin, imax = limits(R)
+    kmin, kmax = limits(B)
+    tmin, tmax = limits(T)
+    ker, off = coefs(B), anchor(B)
+    @inbounds for i in R
+        vmin, vmax = tmax, tmin
+        k = i + off
+        for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
+            #if ker[k-j]
+            #    vmin = min(vmin, A[j])
+            #    vmax = max(vmax, A[j])
+            #end
+            vmin = ker[k-j] && A[j] < vmin ? A[j] : vmin
+            vmax = ker[k-j] && A[j] > vmax ? A[j] : vmax
+        end
+        Amin[i] = vmin
+        Amax[i] = vmax
+    end
+    return Amin, Amax
 end
 
 #------------------------------------------------------------------------------
@@ -305,6 +374,29 @@ function fastconvolve!{T<:AbstractFloat,N}(dst::AbstractArray{T,N},
     return dst
 end
 
+function fastlocalextrema!{T<:AbstractFloat,N}(Amin::AbstractArray{T,N},
+                                               Amax::AbstractArray{T,N},
+                                               A::AbstractArray{T,N},
+                                               B::Kernel{T,N})
+    @assert size(Amin) == size(Amax) == size(A)
+    R = CartesianRange(size(A))
+    imin, imax = limits(R)
+    kmin, kmax = limits(B)
+    tmin, tmax = limits(T)
+    ker, off = coefs(B), anchor(B)
+    @inbounds for i in R
+        vmin, vmax = tmax, tmin
+        k = i + off
+        for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
+            vmin = min(vmin, A[j] - ker[k-j])
+            vmax = max(vmax, A[j] + ker[k-j])
+        end
+        Amin[i] = vmin
+        Amax[i] = vmax
+    end
+    return Amin, Amax
+end
+
 #------------------------------------------------------------------------------
 
 function checkresult(txt, tst)
@@ -328,6 +420,7 @@ if AUTORUN
     a2 = similar(a)
     a3 = similar(a)
     a4 = similar(a)
+    a5 = similar(a)
 
     println("\nErosion on a CenteredBox:")
     erode!(a0, a, cbox)
@@ -345,7 +438,18 @@ if AUTORUN
     print("    driver: "); @time for i in 1:n; dilate!(a0, a, cbox); end
     print("      fast: "); @time for i in 1:n; fastdilate!(a1, a, cbox); end
 
-    println("\nErosion on a CartesianBox:")
+    println("\nErosion and dilation on a CenteredBox:")
+    erode!(a0, a, cbox)
+    dilate!(a1, a, cbox)
+    localextrema!(a2, a3, a, cbox)
+    fastlocalextrema!(a4, a5, a, cbox)
+    checkresult(" - same result: ", samevalues(a0, a2) && samevalues(a1, a3))
+    checkresult(" - same result: ", samevalues(a0, a4) && samevalues(a1, a5))
+    println(" - timings ($n iterations):")
+    print("    driver: "); @time for i in 1:n; localextrema!(a2, a3, a, cbox); end
+    print("      fast: "); @time for i in 1:n; fastlocalextrema!(a4, a5, a, cbox); end
+
+    println("\n\nErosion on a CartesianBox:")
     erode!(a0, a, rbox)
     fasterode!(a1, a, rbox)
     checkresult(" - same result: ", samevalues(a1, a0))
@@ -361,7 +465,18 @@ if AUTORUN
     print("    driver: "); @time for i in 1:n; dilate!(a0, a, rbox); end
     print("      fast: "); @time for i in 1:n; fastdilate!(a1, a, rbox); end
 
-    println("\nErosion on a boolean kernel:")
+    println("\nErosion and dilation on a CartesianBox:")
+    erode!(a0, a, rbox)
+    dilate!(a1, a, rbox)
+    localextrema!(a2, a3, a, rbox)
+    fastlocalextrema!(a4, a5, a, rbox)
+    checkresult(" - same result: ", samevalues(a0, a2) && samevalues(a1, a3))
+    checkresult(" - same result: ", samevalues(a0, a4) && samevalues(a1, a5))
+    println(" - timings ($n iterations):")
+    print("    driver: "); @time for i in 1:n; localextrema!(a2, a3, a, rbox); end
+    print("      fast: "); @time for i in 1:n; fastlocalextrema!(a4, a5, a, rbox); end
+
+    println("\n\nErosion on a boolean kernel:")
     erode!(a0, a, mask)
     fasterode!(a1, a, mask)
     checkresult(" - same result: ", samevalues(a1, a0))
@@ -377,7 +492,18 @@ if AUTORUN
     print("    driver: "); @time for i in 1:n; dilate!(a0, a, mask); end
     print("      fast: "); @time for i in 1:n; fastdilate!(a1, a, mask); end
 
-    println("\nErosion on a non-boolean kernel:")
+    println("\nErosion and dilation on a boolean Kernel:")
+    erode!(a0, a, mask)
+    dilate!(a1, a, mask)
+    localextrema!(a2, a3, a, mask)
+    fastlocalextrema!(a4, a5, a, mask)
+    checkresult(" - same result: ", samevalues(a0, a2) && samevalues(a1, a3))
+    checkresult(" - same result: ", samevalues(a0, a4) && samevalues(a1, a5))
+    println(" - timings ($n iterations):")
+    print("    driver: "); @time for i in 1:n; localextrema!(a2, a3, a, mask); end
+    print("      fast: "); @time for i in 1:n; fastlocalextrema!(a4, a5, a, mask); end
+
+    println("\n\nErosion on a non-boolean kernel:")
     erode!(a0, a, kern)
     fasterode!(a1, a, kern)
     checkresult(" - same result: ", samevalues(a1, a0))
@@ -392,6 +518,17 @@ if AUTORUN
     println(" - timings ($n iterations):")
     print("    driver: "); @time for i in 1:n; dilate!(a0, a, kern); end
     print("      fast: "); @time for i in 1:n; fastdilate!(a1, a, kern); end
+
+    println("\nErosion and dilation on a non-boolean Kernel:")
+    erode!(a0, a, kern)
+    dilate!(a1, a, kern)
+    localextrema!(a2, a3, a, kern)
+    fastlocalextrema!(a4, a5, a, kern)
+    checkresult(" - same result: ", samevalues(a0, a2) && samevalues(a1, a3))
+    checkresult(" - same result: ", samevalues(a0, a4) && samevalues(a1, a5))
+    println(" - timings ($n iterations):")
+    print("    driver: "); @time for i in 1:n; localextrema!(a2, a3, a, kern); end
+    print("      fast: "); @time for i in 1:n; fastlocalextrema!(a4, a5, a, kern); end
 
 end
 

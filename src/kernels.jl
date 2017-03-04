@@ -198,26 +198,12 @@ function localextrema!{T,N}(Amin::AbstractArray{T,N},
                             A::AbstractArray{T,N},
                             B::Kernel{Bool,N})
     @assert size(Amin) == size(Amax) == size(A)
-    R = CartesianRange(size(A))
-    imin, imax = limits(R)
-    kmin, kmax = limits(B)
-    tmin, tmax = limits(T)
-    ker, off = coefs(B), anchor(B)
-    @inbounds for i in R
-        vmin, vmax = tmax, tmin
-        k = i + off
-        for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
-            #if ker[k-j]
-            #    vmin = min(vmin, A[j])
-            #    vmax = max(vmax, A[j])
-            #end
-            vmin = ker[k-j] && A[j] < vmin ? A[j] : vmin
-            vmax = ker[k-j] && A[j] > vmax ? A[j] : vmax
-        end
-        Amin[i] = vmin
-        Amax[i] = vmax
-    end
-    return Amin, Amax
+    localfilter!((Amin, Amax), A, B,
+                 ()      -> (typemax(T),
+                             typemin(T)),
+                 (v,a,b) -> (b && a < v[1] ? a : v[1],
+                             b && a > v[2] ? a : v[2]),
+                 (d,i,v) -> (Amin[i], Amax[i]) = v)
 end
 
 # Erosion and dilation with a shaped structuring element
@@ -254,21 +240,12 @@ function localextrema!{T<:AbstractFloat,N}(Amin::AbstractArray{T,N},
                                            A::AbstractArray{T,N},
                                            B::Kernel{T,N})
     @assert size(Amin) == size(Amax) == size(A)
-    R = CartesianRange(size(A))
-    imin, imax = limits(R)
-    kmin, kmax = limits(B)
-    tmin, tmax = limits(T)
-    @inbounds for i in R
-        vmin, vmax = tmax, tmin
-        k = i + off
-        for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
-            vmin = min(vmin, A[j] - ker[k-j])
-            vmax = max(vmax, A[j] + ker[k-j])
-        end
-        Amin[i] = vmin
-        Amax[i] = vmax
-    end
-    return Amin, Amax
+    localfilter!((Amin, Amax), A, B,
+                 ()      -> (typemax(T),
+                             typemin(T)),
+                 (v,a,b) -> (min(v[1], a - b),
+                             max(v[2], a + b)),
+                 (d,i,v) -> (Amin[i], Amax[i]) = v)
 end
 
 function convolve!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},

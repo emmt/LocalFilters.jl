@@ -50,6 +50,17 @@ end
                 @test samevalues(dilate(a, mask), result)
                 @test samevalues(dilate(a, kern), result)
             end
+            @testset "    localextreme" begin
+                e0, d0 = erode(a, cbox), dilate(a, cbox)
+                e1, d1 = localextrema(a, cbox)
+                @test samevalues(e0, e1) && samevalues(d0, d1)
+                e1, d1 = localextrema(a, rbox)
+                @test samevalues(e0, e1) && samevalues(d0, d1)
+                e1, d1 = localextrema(a, mask)
+                @test samevalues(e0, e1) && samevalues(d0, d1)
+                e1, d1 = localextrema(a, kern)
+                @test samevalues(e0, e1) && samevalues(d0, d1)
+            end
         end
     end
 
