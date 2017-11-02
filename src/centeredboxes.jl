@@ -1,7 +1,16 @@
+#
 # centeredboxes.jl --
 #
 # Implementation of basic local operations on a neighborhood defined by a
 # centered rectangular box.
+#
+#------------------------------------------------------------------------------
+#
+# This file is part of the `LocalFilters.jl` package licensed under the MIT
+# "Expat" License.
+#
+# Copyright (C) 2017, Éric Thiébaut.
+#
 
 """
 A centered box is a rectangular neighborhood which is defined by the offsets of

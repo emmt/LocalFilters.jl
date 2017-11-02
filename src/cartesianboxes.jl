@@ -1,7 +1,16 @@
+#
 # cartesianboxes.jl --
 #
 # Implementation of basic local on a neighborhood defined by a rectangular box,
 # possibly off-centered.
+#
+#------------------------------------------------------------------------------
+#
+# This file is part of the `LocalFilters.jl` package licensed under the MIT
+# "Expat" License.
+#
+# Copyright (C) 2017, Éric Thiébaut.
+#
 
 """
 A rectangular (cartesian) box is defined by the bounds of the neighborhood

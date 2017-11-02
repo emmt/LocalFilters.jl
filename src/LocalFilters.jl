@@ -1,3 +1,16 @@
+#
+# LocalFilters.jl --
+#
+# Local filters for Julia arrays.
+#
+#------------------------------------------------------------------------------
+#
+# This file is part of the `LocalFilters.jl` package licensed under the MIT
+# "Expat" License.
+#
+# Copyright (C) 2017, Éric Thiébaut.
+#
+
 module LocalFilters
 
 import Base: CartesianRange, eltype, ndims, size, length, first, last, tail,

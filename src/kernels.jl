@@ -1,8 +1,17 @@
+#
 # kernels.jl --
 #
 # Implementation of local operations with a general purpose kernel which
 # is a rectangular array of coefficients over a, possibly off-centered,
 # rectangular neighborhood.
+#
+#------------------------------------------------------------------------------
+#
+# This file is part of the `LocalFilters.jl` package licensed under the MIT
+# "Expat" License.
+#
+# Copyright (C) 2017, Éric Thiébaut.
+#
 
 """
 A kernel can be used to define a versatile type of structuring elements.
