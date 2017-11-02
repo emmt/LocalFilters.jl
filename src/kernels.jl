@@ -19,8 +19,6 @@ A kernel can be used to define a versatile type of structuring elements.
 struct Kernel{T,N} <: Neighborhood{N}
     coefs::Array{T,N}
     anchor::CartesianIndex{N}
-    Kernel(coefs::Array{T,N}, anchor::CartesianIndex{N}) where {T,N} =
-        new{T,N}(coefs, anchor)
 end
 
 # The index in the array of kernel coefficients is `k + anchor` hence:
