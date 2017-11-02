@@ -7,11 +7,11 @@
 """
 A kernel can be used to define a versatile type of structuring elements.
 """
-immutable Kernel{T,N} <: Neighborhood{N}
+struct Kernel{T,N} <: Neighborhood{N}
     coefs::Array{T,N}
     anchor::CartesianIndex{N}
-    Kernel{T,N}(coefs::Array{T,N}, anchor::CartesianIndex{N}) =
-        new(coefs, anchor)
+    Kernel(coefs::Array{T,N}, anchor::CartesianIndex{N}) where {T,N} =
+        new{T,N}(coefs, anchor)
 end
 
 # The index in the array of kernel coefficients is `k + anchor` hence:
@@ -21,7 +21,7 @@ end
 #
 # thus `first = 1 - anchor` and `last = dim - anchor`.
 
-eltype{T,N}(B::Kernel{T,N}) = T
+eltype(B::Kernel{T,N}) where {T,N} = T
 length(B::Kernel) = length(coefs(B))
 size(B::Kernel) = size(coefs(B))
 size(B::Kernel, i) = size(coefs(B), i)
@@ -37,25 +37,23 @@ Kernel(B::CartesianBox) = Kernel(ones(Bool, size(B)), anchor(B))
 Kernel(B::CenteredBox) = Kernel(ones(Bool, size(B)))
 
 # Wrap an array into a kernel (call copy if you do not want to share).
-function Kernel{T,N}(arr::Array{T,N},
-                     off::CartesianIndex{N}=anchor(arr))
-    Kernel{T,N}(arr, off)
-end
+Kernel(arr::Array{T,N}) where {T,N} =
+    Kernel{T,N}(arr, anchor(arr))
 
-function Kernel{T,N}(arr::AbstractArray{T,N},
-                     off::CartesianIndex{N}=anchor(arr))
+function Kernel(arr::AbstractArray{T,N},
+                off::CartesianIndex{N}=anchor(arr)) where {T,N}
     Kernel{T,N}(copy!(Array(T, size(arr)), arr), off)
 end
 
-function Kernel{T,N}(::Type{T},
-                     arr::AbstractArray{T,N},
-                     off::CartesianIndex{N}=anchor(arr))
+function Kernel(::Type{T},
+                arr::AbstractArray{T,N},
+                off::CartesianIndex{N}=anchor(arr)) where {T,N}
     Kernel(arr, off)
 end
 
-function Kernel{T,N}(tup::Tuple{T,T},
-                     msk::AbstractArray{Bool,N},
-                     off::CartesianIndex{N}=anchor(msk))
+function Kernel(tup::Tuple{T,T},
+                msk::AbstractArray{Bool,N},
+                off::CartesianIndex{N}=anchor(msk)) where {T,N}
     arr = Array(T, size(msk))
     vtrue, vfalse = tup[1], tup[2]
     @inbounds for i in eachindex(arr, msk)
@@ -64,31 +62,31 @@ function Kernel{T,N}(tup::Tuple{T,T},
     Kernel{T,N}(arr, off)
 end
 
-Kernel{T,N}(tup::Tuple{T,T}, B::Kernel{Bool,N}) =
+Kernel(tup::Tuple{T,T}, B::Kernel{Bool,N}) where {T,N} =
     Kernel(tup, coefs(B), anchor(B))
 
 # Make a flat structuring element from a boolean kernel.
-function Kernel{T<:AbstractFloat,N}(::Type{T},
-                                    msk::AbstractArray{Bool,N},
-                                    off::CartesianIndex{N}=anchor(msk))
+function Kernel(::Type{T},
+                msk::AbstractArray{Bool,N},
+                off::CartesianIndex{N}=anchor(msk)) where {T<:AbstractFloat,N}
     Kernel((zero(T), -T(Inf)), msk, off)
 end
 
-Kernel{T,N}(::Type{T}, B::Kernel{Bool,N}) =
+Kernel(::Type{T}, B::Kernel{Bool,N}) where {T,N} =
     Kernel(T, coefs(B), anchor(B))
 
 
-Kernel{T<:AbstractFloat,N}(::Type{T}, B::Kernel{Bool,N}) =
+Kernel(::Type{T}, B::Kernel{Bool,N}) where {T<:AbstractFloat,N} =
     Kernel(T, coefs(B), anchor(B))
 
-Kernel{T1,T2,N}(::Type{T1}, msk::AbstractArray{T2,N}) =
+Kernel(::Type{T1}, msk::AbstractArray{T2,N}) where {T1,T2,N} =
     Kernel(T1, msk, anchor(msk))
 
 Kernel(B::Kernel) = B
 
-Kernel{N}(::Type{Bool}, B::Kernel{Bool,N}) = B
+Kernel(::Type{Bool}, B::Kernel{Bool,N}) where {N} = B
 
-function strictfloor{T}(::Type{T}, x)
+function strictfloor(::Type{T}, x) where {T}
     n = floor(T, x)
     (n < x ? n : n - one(T)) :: T
 end
@@ -116,10 +114,10 @@ end
     end
 end
 
-@inline function _ball!{N}(arr::AbstractArray{Bool,N},
-                           q::Int, qmax::Int, r::Int,
-                           range::UnitRange{Int},
-                           ::Tuple{}, I::Int...)
+@inline function _ball!(arr::AbstractArray{Bool,N},
+                        q::Int, qmax::Int, r::Int,
+                        range::UnitRange{Int},
+                        ::Tuple{}, I::Int...) where {N}
     x = -r
     for i in range
         arr[I...,i] = (q + x*x ≤ qmax)
@@ -148,9 +146,12 @@ end
 #    max(imin, i - kmax) ≤ j ≤ min(imax, i - kmin)
 #
 
-function localfilter!{T,K,N}(dst, A::AbstractArray{T,N}, B::Kernel{K,N},
-                             initial::Function, update::Function,
-                             store::Function)
+function localfilter!(dst,
+                      A::AbstractArray{T,N},
+                      B::Kernel{K,N},
+                      initial::Function,
+                      update::Function,
+                      store::Function) where {T,K,N}
     R = CartesianRange(size(A))
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -166,8 +167,9 @@ function localfilter!{T,K,N}(dst, A::AbstractArray{T,N}, B::Kernel{K,N},
     return dst
 end
 
-function localmean!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                         B::Kernel{Bool,N})
+function localmean!(dst::AbstractArray{T,N},
+                    A::AbstractArray{T,N},
+                    B::Kernel{Bool,N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> (zero(T), 0),
@@ -175,8 +177,9 @@ function localmean!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                  (d,i,v) -> d[i] = v[1]/v[2])
 end
 
-function erode!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                     B::Kernel{Bool,N})
+function erode!(dst::AbstractArray{T,N},
+                A::AbstractArray{T,N},
+                B::Kernel{Bool,N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> typemax(T),
@@ -184,8 +187,9 @@ function erode!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                  (d,i,v) -> d[i] = v)
 end
 
-function dilate!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                      B::Kernel{Bool,N})
+function dilate!(dst::AbstractArray{T,N},
+                 A::AbstractArray{T,N},
+                 B::Kernel{Bool,N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> typemin(T),
@@ -193,10 +197,10 @@ function dilate!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                  (d,i,v) -> d[i] = v)
 end
 
-function localextrema!{T,N}(Amin::AbstractArray{T,N},
-                            Amax::AbstractArray{T,N},
-                            A::AbstractArray{T,N},
-                            B::Kernel{Bool,N})
+function localextrema!(Amin::AbstractArray{T,N},
+                       Amax::AbstractArray{T,N},
+                       A::AbstractArray{T,N},
+                       B::Kernel{Bool,N}) where {T,N}
     @assert size(Amin) == size(Amax) == size(A)
     localfilter!((Amin, Amax), A, B,
                  ()      -> (typemax(T),
@@ -209,8 +213,9 @@ end
 # Erosion and dilation with a shaped structuring element
 # (FIXME: for integers satured addition/subtraction would be needed)
 
-function localmean!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                         B::Kernel{T,N})
+function localmean!(dst::AbstractArray{T,N},
+                    A::AbstractArray{T,N},
+                    B::Kernel{T,N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> (zero(T), zero(T)),
@@ -218,16 +223,18 @@ function localmean!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                  (d,i,v) -> d[i] = v[1]/v[2])
 end
 
-function erode!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                     B::Kernel{T,N})
+function erode!(dst::AbstractArray{T,N},
+                A::AbstractArray{T,N},
+                B::Kernel{T,N}) where {T,N}
     localfilter!(dst, A, B,
                  ()      -> typemax(T),
                  (v,a,b) -> min(v, a - b),
                  (d,i,v) -> d[i] = v)
 end
 
-function dilate!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                      B::Kernel{T,N})
+function dilate!(dst::AbstractArray{T,N},
+                 A::AbstractArray{T,N},
+                 B::Kernel{T,N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> typemin(T),
@@ -235,10 +242,10 @@ function dilate!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                  (d,i,v) -> d[i] = v)
 end
 
-function localextrema!{T<:AbstractFloat,N}(Amin::AbstractArray{T,N},
-                                           Amax::AbstractArray{T,N},
-                                           A::AbstractArray{T,N},
-                                           B::Kernel{T,N})
+function localextrema!(Amin::AbstractArray{T,N},
+                       Amax::AbstractArray{T,N},
+                       A::AbstractArray{T,N},
+                       B::Kernel{T,N}) where {T,N}
     @assert size(Amin) == size(Amax) == size(A)
     localfilter!((Amin, Amax), A, B,
                  ()      -> (typemax(T),
@@ -248,8 +255,9 @@ function localextrema!{T<:AbstractFloat,N}(Amin::AbstractArray{T,N},
                  (d,i,v) -> (Amin[i], Amax[i]) = v)
 end
 
-function convolve!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                        B::Kernel{Bool,N})
+function convolve!(dst::AbstractArray{T,N},
+                   A::AbstractArray{T,N},
+                   B::Kernel{Bool,N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> zero(T),
@@ -257,8 +265,9 @@ function convolve!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                  (d,i,v) -> d[i] = v)
 end
 
-function convolve!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                        B::Kernel{T,N})
+function convolve!(dst::AbstractArray{T,N},
+                   A::AbstractArray{T,N},
+                   B::Kernel{T,N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> zero(T),

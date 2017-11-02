@@ -7,7 +7,7 @@
 A centered box is a rectangular neighborhood which is defined by the offsets of
 the last element of the neighborhood with respect to the center of the box.
 """
-immutable CenteredBox{N} <: Neighborhood{N}
+struct CenteredBox{N} <: Neighborhood{N}
     last::CartesianIndex{N}
 end
 
@@ -26,7 +26,7 @@ CenteredBox(siz::Vector{Integer}) =
     (N = length(siz);
      CenteredBox{N}(CartesianIndex(ntuple(i -> halfdim(siz[i]), N))))
 
-CenteredBox{N}(siz::NTuple{N,Integer}) =
+CenteredBox(siz::NTuple{N,Integer}) where {N} =
     CenteredBox{N}(CartesianIndex(ntuple(i -> halfdim(siz[i]), N)))
 
 eltype(B::CenteredBox) = Bool
@@ -36,9 +36,12 @@ last(B::CenteredBox) = B.last
 getindex(B::CenteredBox, i::CartesianIndex) = true
 getindex(B::CenteredBox, i::Integer...) = true
 
-function localfilter!{T,N}(dst, A::AbstractArray{T,N},
-                           B::CenteredBox{N}, initial::Function,
-                           update::Function, store::Function)
+function localfilter!(dst,
+                      A::AbstractArray{T,N},
+                      B::CenteredBox{N},
+                      initial::Function,
+                      update::Function,
+                      store::Function) where {T,N}
     R = CartesianRange(size(A))
     imin, imax = limits(R)
     off = last(B)
@@ -52,8 +55,9 @@ function localfilter!{T,N}(dst, A::AbstractArray{T,N},
     return dst
 end
 
-function localmean!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                         B::CenteredBox{N})
+function localmean!(dst::AbstractArray{T,N},
+                    A::AbstractArray{T,N},
+                    B::CenteredBox{N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> (zero(T), 0),
@@ -61,8 +65,9 @@ function localmean!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                  (d,i,v) -> d[i] = v[1]/v[2])
 end
 
-function erode!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                     B::CenteredBox{N})
+function erode!(dst::AbstractArray{T,N},
+                A::AbstractArray{T,N},
+                B::CenteredBox{N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> typemax(T),
@@ -70,9 +75,9 @@ function erode!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                  (d,i,v) -> d[i] = v)
 end
 
-function dilate!{T,N}(dst::AbstractArray{T,N},
-                      A::AbstractArray{T,N},
-                      B::CenteredBox{N})
+function dilate!(dst::AbstractArray{T,N},
+                 A::AbstractArray{T,N},
+                 B::CenteredBox{N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> typemin(T),
@@ -80,10 +85,10 @@ function dilate!{T,N}(dst::AbstractArray{T,N},
                  (d,i,v) -> d[i] = v)
 end
 
-function localextrema!{T,N}(Amin::AbstractArray{T,N},
-                            Amax::AbstractArray{T,N},
-                            A::AbstractArray{T,N},
-                            B::CenteredBox{N})
+function localextrema!(Amin::AbstractArray{T,N},
+                       Amax::AbstractArray{T,N},
+                       A::AbstractArray{T,N},
+                       B::CenteredBox{N}) where {T,N}
     @assert size(Amin) == size(Amax) == size(A)
     localfilter!((Amin, Amax), A, B,
                  ()      -> (typemax(T),
@@ -93,8 +98,8 @@ function localextrema!{T,N}(Amin::AbstractArray{T,N},
                  (d,i,v) -> (Amin[i], Amax[i]) = v)
 end
 
-function convolve!{S,T,N}(dst::AbstractArray{S,N}, A::AbstractArray{T,N},
-                          B::CenteredBox{N})
+function convolve!(dst::AbstractArray{S,N}, A::AbstractArray{T,N},
+                   B::CenteredBox{N}) where {S,T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> zero(S),

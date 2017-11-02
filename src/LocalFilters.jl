@@ -17,12 +17,12 @@ export localfilter!,
 """
 All neighborhoods are instances of a type derived from `Neighborhood`.
 """
-abstract Neighborhood{N}
+abstract type Neighborhood{N}; end
 
 # Default implementation of common methods.
-ndims{N}(::Neighborhood{N}) = N
+ndims(::Neighborhood{N}) where N = N
 length(B::Neighborhood) = prod(size(B))
-size{N}(B::Neighborhood{N}) = ntuple(i -> size(B, i), N)
+size(B::Neighborhood{N}) where N = ntuple(i -> size(B, i), N)
 
 """
 
@@ -34,7 +34,7 @@ is the number of dimensions.  Argument can also be `K` or `size(K)` to get the
 default anchor for kernel `K` (an array).
 
 """
-anchor{N}(dims::NTuple{N,Integer}) =
+anchor(dims::NTuple{N,Integer}) where {N} =
     CartesianIndex(ntuple(d -> (Int(dims[d]) >> 1) + 1, N))
 anchor(B::Neighborhood) = (I = first(B); one(I) - I)
 anchor(A::AbstractArray) = anchor(size(A))
@@ -49,11 +49,11 @@ infium and supremum of a type `T`:
 
 """
 limits(R::CartesianRange) = first(R), last(R)
-limits{T}(::Type{T}) = typemin(T), typemax(T)
+limits(::Type{T}) where {T} = typemin(T), typemax(T)
 limits(A::AbstractArray) = limits(CartesianRange(size(A)))
 limits(B::Neighborhood) = first(B), last(B)
 
-CartesianRange{N}(B::Neighborhood{N}) =
+CartesianRange(B::Neighborhood{N}) where {N} =
     CartesianRange{CartesianIndex{N}}(first(B), last(B))
 
 
@@ -85,22 +85,22 @@ result in the provided arrays `Amin` and/or `Amax`.
 localmean, opening, closing, top_hat, bottom_hat
 
 """
-erode(A::AbstractArray, B=3) = erode!(similar(A), A, B)
+erode(A::AbstractArray, args...) = erode!(similar(A), A, args...)
 
-erode!{T,N}(dst, src::AbstractArray{T,N}, B=3) =
+erode!(dst, src::AbstractArray{T,N}, B=3) where {T,N} =
     erode!(dst, src, convert(Neighborhood{N}, B))
 
-dilate(A::AbstractArray, B=3) = dilate!(similar(A), A, B)
+dilate(A::AbstractArray, args...) = dilate!(similar(A), A, args...)
 
-dilate!{T,N}(dst, src::AbstractArray{T,N}, B=3) =
+dilate!(dst, src::AbstractArray{T,N}, B=3) where {T,N} =
     dilate!(dst, src, convert(Neighborhood{N}, B))
 
-localextrema(A::AbstractArray, B=3) =
-    localextrema!(similar(A), similar(A), A, B)
+localextrema(A::AbstractArray, args...) =
+    localextrema!(similar(A), similar(A), A, args...)
 
-function localextrema!{T,N}(Amin::AbstractArray{T,N},
-                            Amax::AbstractArray{T,N},
-                            A::AbstractArray{T,N}, B=3)
+function localextrema!(Amin::AbstractArray{T,N},
+                       Amax::AbstractArray{T,N},
+                       A::AbstractArray{T,N}, B=3) where {T,N}
     localextrema!(Amin, Amax, A, convert(Neighborhood{N}, B))
 end
 
@@ -122,9 +122,9 @@ The in-place version is:
     localmean!(dst, A, B) -> dst
 
 """
-localmean(A::AbstractArray, B=3) = localmean!(similar(A), A, B)
+localmean(A::AbstractArray, args...) = localmean!(similar(A), A, args...)
 
-localmean!{T,N}(dst, src::AbstractArray{T,N}, B=3) =
+localmean!(dst, src::AbstractArray{T,N}, B=3) where {T,N} =
     localmean!(dst, src, convert(Neighborhood{N}, B))
 @doc @doc(localmean) localmean!
 
@@ -141,9 +141,9 @@ The in-place version is:
     convolve!(dst, A, B) -> dst
 
 """
-convolve(A::AbstractArray, B=3) = convolve!(similar(A), A, B)
+convolve(A::AbstractArray, args...) = convolve!(similar(A), A, args...)
 
-convolve!{T,N}(dst, src::AbstractArray{T,N}, B=3) =
+convolve!(dst, src::AbstractArray{T,N}, B=3) where {T,N} =
     convolve!(dst, src, convert(Neighborhood{N}, B))
 @doc @doc(convolve) convolve!
 
@@ -180,8 +180,8 @@ perfomed without bound checking and it is the caller's responsability to insure
 that the arguments have the correct sizes.
 
 """
-function localfilter!{T,N}(dst, A::AbstractArray{T,N}, B, initial::Function,
-                           update::Function, store::Function)
+function localfilter!(dst, A::AbstractArray{T,N}, B, initial::Function,
+                      update::Function, store::Function) where {T,N}
     # Notes: The signature of this method is intentionally as little
     #        specialized as possible to avoid confusing the dispatcher.  The
     #        prupose of this method is just to convert `B ` into a neighborhood
@@ -201,18 +201,22 @@ include("kernels.jl")
 # to convert various types of arguments into a neighborhood suitable with the
 # source (e.g., of given rank `N`).
 
-convert{N}(::Type{Neighborhood{N}}, dim::Integer) =
+convert(::Type{Neighborhood{N}}, dim::Integer) where {N} =
     CenteredBox(ntuple(i->dim, N))
 
-convert{N,T<:Integer}(::Type{Neighborhood{N}}, dims::Vector{T}) =
+convert(::Type{Neighborhood{N}}, dims::Vector{T}) where {N,T<:Integer} =
     (@assert length(dims) == N; CenteredBox(dims...))
 
-convert{T,N}(::Type{Neighborhood{N}}, A::AbstractArray{T,N}) = Kernel(A)
-convert{N}(::Type{Neighborhood{N}}, R::CartesianRange{CartesianIndex{N}}) =
-    CartesianBox(R)
+convert(::Type{Neighborhood{N}}, A::AbstractArray{T,N}) where {T,N} =
+    Kernel(A)
 
-function  convert{N,T<:Integer}(::Type{Neighborhood{N}},
-                                inds::NTuple{N,AbstractUnitRange{T}})
+function convert(::Type{Neighborhood{N}},
+                 R::CartesianRange{CartesianIndex{N}}) where {N}
+    CartesianBox(R)
+end
+
+function convert(::Type{Neighborhood{N}},
+                 inds::NTuple{N,AbstractUnitRange{T}}) where {N,T<:Integer}
     CartesianBox(inds)
 end
 
@@ -242,31 +246,35 @@ the same array as `src` or `dst`.  The destination `dst` is returned.
 See `erode` or `dilate` for the meaning of the arguments.
 
 """
-closing(A::AbstractArray, B=3) = closing!(similar(A), similar(A), A, B)
+closing(A::AbstractArray, args...) =
+    closing!(similar(A), similar(A), A, args...)
 
-function closing!{T,N}(dst::AbstractArray{T,N},
-                       wrk::AbstractArray{T,N},
-                       src::AbstractArray{T,N}, B=3)
+function closing!(dst::AbstractArray{T,N},
+                  wrk::AbstractArray{T,N},
+                  src::AbstractArray{T,N}, B=3) where {T,N}
     closing!(dst, wrk, src, convert(Neighborhood{N}, B))
 end
 
-function closing!{T,N}(dst::AbstractArray{T,N},
-                       wrk::AbstractArray{T,N},
-                       src::AbstractArray{T,N}, B::Neighborhood{N})
+function closing!(dst::AbstractArray{T,N},
+                  wrk::AbstractArray{T,N},
+                  src::AbstractArray{T,N},
+                  B::Neighborhood{N}) where {T,N}
     erode!(dst, dilate!(wrk, src, B), B)
 end
 
-opening(A::AbstractArray, B=3) = opening!(similar(A), similar(A), A, B)
+opening(A::AbstractArray, args...) =
+    opening!(similar(A), similar(A), A, args...)
 
-function opening!{T,N}(dst::AbstractArray{T,N},
-                       wrk::AbstractArray{T,N},
-                       src::AbstractArray{T,N}, B=3)
+function opening!(dst::AbstractArray{T,N},
+                  wrk::AbstractArray{T,N},
+                  src::AbstractArray{T,N}, B=3) where {T,N}
     opening!(dst, wrk, src, convert(Neighborhood{N}, B))
 end
 
-function opening!{T,N}(dst::AbstractArray{T,N},
-                       wrk::AbstractArray{T,N},
-                       src::AbstractArray{T,N}, B::Neighborhood{N})
+function opening!(dst::AbstractArray{T,N},
+                  wrk::AbstractArray{T,N},
+                  src::AbstractArray{T,N},
+                  B::Neighborhood{N}) where {T,N}
     dilate!(dst, erode!(wrk, src, B), B)
 end
 
@@ -315,9 +323,9 @@ function top_hat(a, r, s)
     top_hat!(similar(a), wrk, closing!(similar(a), wrk, a, s), r)
 end
 
-function top_hat!{T,N}(dst::AbstractArray{T,N},
-                       wrk::AbstractArray{T,N},
-                       src::AbstractArray{T,N}, r=3)
+function top_hat!(dst::AbstractArray{T,N},
+                  wrk::AbstractArray{T,N},
+                  src::AbstractArray{T,N}, r=3) where {T,N}
     opening!(dst, wrk, src, r)
     @inbounds for i in eachindex(dst, src)
         dst[i] = src[i] - dst[i]
@@ -332,9 +340,9 @@ function bottom_hat(a, r, s)
     bottom_hat!(similar(a), wrk, opening!(similar(a), wrk, a, s), r)
 end
 
-function bottom_hat!{T,N}(dst::AbstractArray{T,N},
-                          wrk::AbstractArray{T,N},
-                          src::AbstractArray{T,N}, r=3)
+function bottom_hat!(dst::AbstractArray{T,N},
+                     wrk::AbstractArray{T,N},
+                     src::AbstractArray{T,N}, r=3) where {T,N}
     closing!(dst, wrk, src, r)
     @inbounds for i in eachindex(dst, src)
         dst[i] -= src[i]

@@ -7,7 +7,7 @@
 A rectangular (cartesian) box is defined by the bounds of the neighborhood
 with respect to the center of the box.
 """
-immutable CartesianBox{N} <: Neighborhood{N}
+struct CartesianBox{N} <: Neighborhood{N}
     # We have to define this type even though it is nothing more than a
     # CartesianRange because of the heritage.
     bounds::CartesianRange{CartesianIndex{N}}
@@ -17,17 +17,17 @@ CartesianBox(B::CartesianBox) = B
 
 CartesianBox(B::CenteredBox) = CartesianBox(CartesianRange(B))
 
-CartesianBox{N}(I0::CartesianIndex{N}, I1::CartesianIndex{N}) =
+CartesianBox(I0::CartesianIndex{N}, I1::CartesianIndex{N}) where {N} =
     CartesianBox(CartesianRange(I0, I1))
 
-CartesianBox{N}(dims::NTuple{N,Integer}, offs::NTuple{N,Integer}) =
+CartesianBox(dims::NTuple{N,Integer}, offs::NTuple{N,Integer}) where {N} =
     (I = CartesianIndex(offs);
      CartesianBox(one(I) - I, CartesianIndex(dims) - I))
 
 CartesianBox{T<:Integer}(inds::AbstractUnitRange{T}...) =
     CartesianBox(inds)
 
-CartesianBox{N,T<:Integer}(inds::NTuple{N,AbstractUnitRange{T}}) =
+CartesianBox(inds::NTuple{N,AbstractUnitRange{T}}) where {N,T<:Integer} =
     CartesianBox(CartesianIndex(map(first, inds)),
                  CartesianIndex(map(last, inds)))
 
@@ -74,9 +74,12 @@ getindex(B::CartesianBox, inds::Integer...) = true
 #    max(imin, i - kmax) ≤ j ≤ min(imax, i - kmin)
 #
 
-function localfilter!{T,N}(dst, A::AbstractArray{T,N},
-                           B::CartesianBox{N}, initial::Function,
-                           update::Function, store::Function)
+function localfilter!(dst,
+                      A::AbstractArray{T,N},
+                      B::CartesianBox{N},
+                      initial::Function,
+                      update::Function,
+                      store::Function) where {T,N}
     R = CartesianRange(size(A))
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -90,8 +93,9 @@ function localfilter!{T,N}(dst, A::AbstractArray{T,N},
     return dst
 end
 
-function localmean!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                         B::CartesianBox{N})
+function localmean!(dst::AbstractArray{T,N},
+                    A::AbstractArray{T,N},
+                    B::CartesianBox{N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> (zero(T), 0),
@@ -99,8 +103,9 @@ function localmean!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                  (d,i,v) -> d[i] = v[1]/v[2])
 end
 
-function erode!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
-                     B::CartesianBox{N})
+function erode!(dst::AbstractArray{T,N},
+                A::AbstractArray{T,N},
+                B::CartesianBox{N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> typemax(T),
@@ -108,9 +113,9 @@ function erode!{T,N}(dst::AbstractArray{T,N}, A::AbstractArray{T,N},
                  (d,i,v) -> d[i] = v)
 end
 
-function dilate!{T,N}(dst::AbstractArray{T,N},
-                      A::AbstractArray{T,N},
-                      B::CartesianBox{N})
+function dilate!(dst::AbstractArray{T,N},
+                 A::AbstractArray{T,N},
+                 B::CartesianBox{N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> typemin(T),
@@ -118,10 +123,10 @@ function dilate!{T,N}(dst::AbstractArray{T,N},
                  (d,i,v) -> d[i] = v)
 end
 
-function localextrema!{T,N}(Amin::AbstractArray{T,N},
-                            Amax::AbstractArray{T,N},
-                            A::AbstractArray{T,N},
-                            B::CartesianBox{N})
+function localextrema!(Amin::AbstractArray{T,N},
+                       Amax::AbstractArray{T,N},
+                       A::AbstractArray{T,N},
+                       B::CartesianBox{N}) where {T,N}
     @assert size(Amin) == size(Amax) == size(A)
     localfilter!((Amin, Amax), A, B,
                  ()      -> (typemax(T),
@@ -131,8 +136,9 @@ function localextrema!{T,N}(Amin::AbstractArray{T,N},
                  (d,i,v) -> (Amin[i], Amax[i]) = v)
 end
 
-function convolve!{S,T,N}(dst::AbstractArray{S,N}, A::AbstractArray{T,N},
-                          B::CartesianBox{N})
+function convolve!(dst::AbstractArray{S,N},
+                   A::AbstractArray{T,N},
+                   B::CartesianBox{N}) where {S,T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  ()      -> zero(S),
