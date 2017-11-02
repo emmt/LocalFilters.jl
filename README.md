@@ -1,5 +1,7 @@
 # LocalFilters.jl
 
+[![Build Status](https://travis-ci.org/emmt/LocalFilters.jl.svg?branch=master)](https://travis-ci.org/emmt/LocalFilters.jl)
+
 This package implements multi-dimensional local filters for Julia (convolution,
 mathematical morphology, etc.).
 
