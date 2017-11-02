@@ -3,11 +3,19 @@
 [![Build Status](https://travis-ci.org/emmt/LocalFilters.jl.svg?branch=master)](https://travis-ci.org/emmt/LocalFilters.jl)
 
 This package implements multi-dimensional local filters for Julia (convolution,
-mathematical morphology, etc.).
+mathematical morphology, etc.).  This document provides the following sections:
 
-**Cavehats:** This is a first implementation to define the API.  It is is
-reasonably fast but optimizations will come later notably for separable
-kernels.
+* [Summary](#summary) provides a quick introduction.
+
+* [Implementation](#implementation) explains how to implement you own filter.
+
+* [Neighborhoods](#neighborhoods) describes the concept of neighborhoods.
+
+* [Installation](#installation) to install the package.
+
+Note that this is a first implementation to define the API.  It is is
+reasonably fast (see [benchmarks.jl](src/benchmarks.jl)) but separable kernels
+can be made much faster.
 
 
 ## Summary
@@ -86,7 +94,12 @@ The same mechanism can be used to implement other operations such as
 convolution, median filtering, *etc.* via the `localfilter!` driver.
 
 
-## Types of Neighborhoods
+## Neighborhoods
+
+`Neighborhood` (a.k.a. *structuring element* for the fans of mathematical
+morphology) is a central concept is `LocalFilters`.
+
+### Types of Neighborhoods
 
 There are many possible types of neighborhood:
 
@@ -126,7 +139,7 @@ There are many possible types of neighborhood:
   dimensions of the neighborhood and its anchor, `inds` are unit ranges.
 
 
-## Methods on a Neighborhood
+### Methods on a Neighborhood
 
 The following methods make sense on a neighborhood `B`:
 
@@ -165,3 +178,17 @@ convert(LocalFilters.Neighborhood{N}, B)
 ```
 
 with `N` the number of dimensions of the target array.
+
+
+## Installation
+
+`LocalFilters` is not yet an
+[official Julia package](https://pkg.julialang.org/) so you have to clone the
+repository to install it:
+
+```julia
+Pkg.clone("https://github.com/emmt/LocalFilters.jl.git")
+```
+
+The `LocalFilters` package is pure Julia code and there is nothing to build.
+
