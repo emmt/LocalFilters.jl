@@ -4,8 +4,12 @@
 
 This package implements multi-dimensional local filters for
 [Julia](http://julialang.org/) (convolution, mathematical morphology, etc.).
+Local filters are defined by specific operations combining each value of a
+source array with the values in a local neighborhood which may have any size,
+shape and dimensionality.  Predefined local filters are provided as well as
+means to simply implement custom filters.
 
-This document is tructured as follows:
+This document is structured as follows:
 
 * [Summary](#summary) provides a quick introduction.
 
@@ -120,7 +124,11 @@ convolution, median filtering, *etc.* via the `localfilter!` driver.
 ## Neighborhoods
 
 `Neighborhood` (a.k.a. *structuring element* for the fans of mathematical
-morphology) is a central concept is `LocalFilters`.
+morphology) is a central concept in `LocalFilters`.  The neighborhood defines
+which values are involved in a local operation for each component of the source
+array.  Neighborhoods are assumed to be shift invariant but may have any
+support shape and may have embedded weights (think about a local convolution).
+
 
 ### Types of Neighborhoods
 
@@ -214,4 +222,3 @@ Pkg.clone("https://github.com/emmt/LocalFilters.jl.git")
 ```
 
 The `LocalFilters` package is pure Julia code and there is nothing to build.
-
