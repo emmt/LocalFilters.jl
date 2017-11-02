@@ -11,6 +11,8 @@
 # Copyright (C) 2017, Éric Thiébaut.
 #
 
+isdefined(Base, :__precompile__) && __precompile__(true)
+
 module LocalFilters
 
 import Base: CartesianRange, eltype, ndims, size, length, first, last, tail,
