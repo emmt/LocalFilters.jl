@@ -1,3 +1,7 @@
+if ! isdefined(:LocalFilters)
+    include("../src/LocalFilters.jl")
+end
+
 module LocalFiltersTests
 
 const DEBUG = false
