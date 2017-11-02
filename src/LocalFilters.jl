@@ -16,16 +16,24 @@ module LocalFilters
 import Base: CartesianRange, eltype, ndims, size, length, first, last, tail,
     getindex, setindex!, convert
 
-export localfilter!,
-    localmean, localmean!,
-    convolve, convolve!,
-    erode, erode!,
-    dilate, dilate!,
-    closing, closing!,
-    opening, opening!,
+export
+    localfilter!,
+    localmean,
+    localmean!,
+    convolve,
+    convolve!,
+    erode,
+    erode!,
+    dilate,
+    dilate!,
+    closing,
+    closing!,
+    opening,
+    opening!,
     top_hat,
     bottom_hat,
-    localextrema, localextrema!
+    localextrema,
+    localextrema!
 
 """
 All neighborhoods are instances of a type derived from `Neighborhood`.
