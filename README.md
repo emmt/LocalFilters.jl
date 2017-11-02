@@ -2,8 +2,10 @@
 
 [![Build Status](https://travis-ci.org/emmt/LocalFilters.jl.svg?branch=master)](https://travis-ci.org/emmt/LocalFilters.jl)
 
-This package implements multi-dimensional local filters for Julia (convolution,
-mathematical morphology, etc.).  This document provides the following sections:
+This package implements multi-dimensional local filters for
+[Julia](http://julialang.org/) (convolution, mathematical morphology, etc.).
+
+This document is tructured as follows:
 
 * [Summary](#summary) provides a quick introduction.
 
@@ -15,7 +17,7 @@ mathematical morphology, etc.).  This document provides the following sections:
 
 Note that this is a first implementation to define the API.  It is is
 reasonably fast (see [benchmarks.jl](src/benchmarks.jl)) but separable kernels
-can be made much faster.
+can be made faster.
 
 
 ## Summary
@@ -72,9 +74,20 @@ end
 
 where `A` is the source of the operation, `B` is the neighborhood, `C` is the
 result of the operation.  Here `Sup(A)` denotes the support of `A` (that is the
-set of indices in `A`).  The methods `initial`,`update` and `store` are
-specific to the considered operation.  For instance, to compute a local maximum
-(*i.e.* a **dilation** in mathematical morphology terms):
+set of indices in `A`).  The methods `initial`, `update` and `store` are
+specific to the considered operation.  To execute the fileter, call the
+`localfilter!` method as:
+
+```julia
+localfilter!(dst, A, B, initial, update, store)
+```
+
+`localfilter!` applies the local filter defined by the neighborhood `B` and
+methods `initial`, `update` and `store` to the source array `A` and stores the
+reseult in the destination `dst` which is then returned.
+
+For instance, to compute a local maximum (*i.e.* a **dilation** in mathematical
+morphology terms):
 
 ```julia
 initial() = typemin(T)
@@ -82,7 +95,17 @@ update(v,a,b) = (b && v < a ? a : v)
 store(c,i,v) = c[i] = v
 ```
 
-with `T` the type of the elements of `A`.  To compute a local average:
+with `T` the type of the elements of `A`.  Of course, anonymous functions can
+be exploted to implement this filter in a single call:
+
+```julia
+localfilter!(dst, A, B,
+             () -> typemin(T),                # initial method
+             (v,a,b) -> (b && v < a ? a : v), # update method
+             (c,i,v) -> c[i] = v)             # store method
+```
+
+Below is another example of the methods needed to implement a local average:
 
 ```julia
 initial() = (0, zero(T))
