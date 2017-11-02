@@ -49,7 +49,7 @@ Kernel(arr::Array{T,N}) where {T,N} =
 
 function Kernel(arr::AbstractArray{T,N},
                 off::CartesianIndex{N}=anchor(arr)) where {T,N}
-    Kernel{T,N}(copy!(Array(T, size(arr)), arr), off)
+    Kernel{T,N}(copy!(Array{T}(size(arr)), arr), off)
 end
 
 function Kernel(::Type{T},
@@ -61,7 +61,7 @@ end
 function Kernel(tup::Tuple{T,T},
                 msk::AbstractArray{Bool,N},
                 off::CartesianIndex{N}=anchor(msk)) where {T,N}
-    arr = Array(T, size(msk))
+    arr = Array{T}(size(msk))
     vtrue, vfalse = tup[1], tup[2]
     @inbounds for i in eachindex(arr, msk)
         arr[i] = msk[i] ? vtrue : vfalse
@@ -103,7 +103,7 @@ function ball(rank::Integer, radius::Real)
     r = strictfloor(Int, b)
     dim = 2*r + 1
     dims = ntuple(d->dim, rank)
-    arr = Array(Bool, dims)
+    arr = Array{Bool}(dims)
     qmax = strictfloor(Int, b^2)
     _ball!(arr, 0, qmax, r, 1:dim, tail(dims))
     arr
