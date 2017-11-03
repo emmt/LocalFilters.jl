@@ -21,9 +21,9 @@ samevalues(a, b) = maximum(a == b)
 #------------------------------------------------------------------------------
 # "Fast" versions fo centered boxes.
 
-function fastlocalmean!{T,N}(dst::AbstractArray{T,N},
-                             A::AbstractArray{T,N},
-                             B::CenteredBox{N})
+function fastlocalmean!(dst::AbstractArray{T,N},
+                        A::AbstractArray{T,N},
+                        B::CenteredBox{N}) where {T,N}
     @assert size(dst) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -39,9 +39,9 @@ function fastlocalmean!{T,N}(dst::AbstractArray{T,N},
     return dst
 end
 
-function fasterode!{T,N}(Amin::AbstractArray{T,N},
-                         A::AbstractArray{T,N},
-                         B::CenteredBox{N})
+function fasterode!(Amin::AbstractArray{T,N},
+                    A::AbstractArray{T,N},
+                    B::CenteredBox{N}) where {T,N}
     @assert size(Amin) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -57,9 +57,9 @@ function fasterode!{T,N}(Amin::AbstractArray{T,N},
     return Amin
 end
 
-function fastdilate!{T,N}(Amax::AbstractArray{T,N},
-                          A::AbstractArray{T,N},
-                          B::CenteredBox{N})
+function fastdilate!(Amax::AbstractArray{T,N},
+                     A::AbstractArray{T,N},
+                     B::CenteredBox{N}) where {T,N}
     @assert size(Amax) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -75,10 +75,10 @@ function fastdilate!{T,N}(Amax::AbstractArray{T,N},
     return Amax
 end
 
-function fastlocalextrema!{T,N}(Amin::AbstractArray{T,N},
-                                Amax::AbstractArray{T,N},
-                                A::AbstractArray{T,N},
-                                B::CenteredBox{N})
+function fastlocalextrema!(Amin::AbstractArray{T,N},
+                           Amax::AbstractArray{T,N},
+                           A::AbstractArray{T,N},
+                           B::CenteredBox{N}) where {T,N}
     @assert size(Amin) == size(Amax) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -99,9 +99,9 @@ end
 #------------------------------------------------------------------------------
 # "Fast" versions for Cartesian boxes.
 
-function fastlocalmean!{T,N}(dst::AbstractArray{T,N},
-                             A::AbstractArray{T,N},
-                             B::CartesianBox{N})
+function fastlocalmean!(dst::AbstractArray{T,N},
+                        A::AbstractArray{T,N},
+                        B::CartesianBox{N}) where {T,N}
     @assert size(dst) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -117,9 +117,9 @@ function fastlocalmean!{T,N}(dst::AbstractArray{T,N},
     return dst
 end
 
-function fasterode!{T,N}(Amin::AbstractArray{T,N},
-                         A::AbstractArray{T,N},
-                         B::CartesianBox{N})
+function fasterode!(Amin::AbstractArray{T,N},
+                    A::AbstractArray{T,N},
+                    B::CartesianBox{N}) where {T,N}
     @assert size(Amin) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -135,9 +135,9 @@ function fasterode!{T,N}(Amin::AbstractArray{T,N},
     return Amin
 end
 
-function fastdilate!{T,N}(Amax::AbstractArray{T,N},
-                          A::AbstractArray{T,N},
-                          B::CartesianBox{N})
+function fastdilate!(Amax::AbstractArray{T,N},
+                     A::AbstractArray{T,N},
+                     B::CartesianBox{N}) where {T,N}
     @assert size(Amax) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -153,9 +153,9 @@ function fastdilate!{T,N}(Amax::AbstractArray{T,N},
     return Amax
 end
 
-function fastconvolve!{T<:AbstractFloat,N}(dst::AbstractArray{T,N},
-                                           A::AbstractArray{T,N},
-                                           B::CartesianBox{N})
+function fastconvolve!(dst::AbstractArray{T,N},
+                       A::AbstractArray{T,N},
+                       B::CartesianBox{N}) where {T<:AbstractFloat,N}
     @assert size(dst) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -172,10 +172,10 @@ function fastconvolve!{T<:AbstractFloat,N}(dst::AbstractArray{T,N},
     return dst
 end
 
-function fastlocalextrema!{T,N}(Amin::AbstractArray{T,N},
-                                Amax::AbstractArray{T,N},
-                                A::AbstractArray{T,N},
-                                B::CartesianBox{N})
+function fastlocalextrema!(Amin::AbstractArray{T,N},
+                           Amax::AbstractArray{T,N},
+                           A::AbstractArray{T,N},
+                           B::CartesianBox{N}) where {T,N}
     @assert size(Amin) == size(Amax) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -196,9 +196,9 @@ end
 #------------------------------------------------------------------------------
 # "Fast" versions for kernels of booleans.
 
-function fastlocalmean!{T,N}(dst::AbstractArray{T,N},
-                             A::AbstractArray{T,N},
-                             B::Kernel{Bool,N})
+function fastlocalmean!(dst::AbstractArray{T,N},
+                        A::AbstractArray{T,N},
+                        B::Kernel{Bool,N}) where {T,N}
     @assert size(dst) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -218,9 +218,9 @@ function fastlocalmean!{T,N}(dst::AbstractArray{T,N},
     return dst
 end
 
-function fasterode!{T,N}(Amin::AbstractArray{T,N},
-                         A::AbstractArray{T,N},
-                         B::Kernel{Bool,N})
+function fasterode!(Amin::AbstractArray{T,N},
+                    A::AbstractArray{T,N},
+                    B::Kernel{Bool,N}) where {T,N}
     @assert size(Amin) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -241,9 +241,9 @@ function fasterode!{T,N}(Amin::AbstractArray{T,N},
     return Amin
 end
 
-function fastdilate!{T,N}(Amax::AbstractArray{T,N},
-                          A::AbstractArray{T,N},
-                          B::Kernel{Bool,N})
+function fastdilate!(Amax::AbstractArray{T,N},
+                     A::AbstractArray{T,N},
+                     B::Kernel{Bool,N}) where {T,N}
     @assert size(Amax) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -264,10 +264,10 @@ function fastdilate!{T,N}(Amax::AbstractArray{T,N},
     return Amax
 end
 
-function fastlocalextrema!{T,N}(Amin::AbstractArray{T,N},
-                                Amax::AbstractArray{T,N},
-                                A::AbstractArray{T,N},
-                                B::Kernel{Bool,N})
+function fastlocalextrema!(Amin::AbstractArray{T,N},
+                           Amax::AbstractArray{T,N},
+                           A::AbstractArray{T,N},
+                           B::Kernel{Bool,N}) where {T,N}
     @assert size(Amin) == size(Amax) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -294,9 +294,9 @@ end
 #------------------------------------------------------------------------------
 # "Fast" versions for other kernels.
 
-function fastlocalmean!{T<:AbstractFloat,N}(dst::AbstractArray{T,N},
-                                            A::AbstractArray{T,N},
-                                            B::Kernel{T,N})
+function fastlocalmean!(dst::AbstractArray{T,N},
+                        A::AbstractArray{T,N},
+                        B::Kernel{T,N}) where {T<:AbstractFloat,N}
     @assert size(dst) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -315,9 +315,9 @@ function fastlocalmean!{T<:AbstractFloat,N}(dst::AbstractArray{T,N},
     return dst
 end
 
-function fasterode!{T<:AbstractFloat,N}(Amin::AbstractArray{T,N},
-                                        A::AbstractArray{T,N},
-                                        B::Kernel{T,N})
+function fasterode!(Amin::AbstractArray{T,N},
+                    A::AbstractArray{T,N},
+                    B::Kernel{T,N}) where {T<:AbstractFloat,N}
     @assert size(Amin) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -335,9 +335,9 @@ function fasterode!{T<:AbstractFloat,N}(Amin::AbstractArray{T,N},
     return Amin
 end
 
-function fastdilate!{T<:AbstractFloat,N}(Amax::AbstractArray{T,N},
-                                         A::AbstractArray{T,N},
-                                         B::Kernel{T,N})
+function fastdilate!(Amax::AbstractArray{T,N},
+                     A::AbstractArray{T,N},
+                     B::Kernel{T,N}) where {T<:AbstractFloat,N}
     @assert size(Amax) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -355,9 +355,9 @@ function fastdilate!{T<:AbstractFloat,N}(Amax::AbstractArray{T,N},
     return Amax
 end
 
-function fastconvolve!{T<:AbstractFloat,N}(dst::AbstractArray{T,N},
-                                           A::AbstractArray{T,N},
-                                           B::Kernel{T,N})
+function fastconvolve!(dst::AbstractArray{T,N},
+                       A::AbstractArray{T,N},
+                       B::Kernel{T,N}) where {T<:AbstractFloat,N}
     @assert size(dst) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
@@ -374,10 +374,10 @@ function fastconvolve!{T<:AbstractFloat,N}(dst::AbstractArray{T,N},
     return dst
 end
 
-function fastlocalextrema!{T<:AbstractFloat,N}(Amin::AbstractArray{T,N},
-                                               Amax::AbstractArray{T,N},
-                                               A::AbstractArray{T,N},
-                                               B::Kernel{T,N})
+function fastlocalextrema!(Amin::AbstractArray{T,N},
+                           Amax::AbstractArray{T,N},
+                           A::AbstractArray{T,N},
+                           B::Kernel{T,N}) where {T<:AbstractFloat,N}
     @assert size(Amin) == size(Amax) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
