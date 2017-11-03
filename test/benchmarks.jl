@@ -155,7 +155,7 @@ end
 
 function fastconvolve!{T<:AbstractFloat,N}(dst::AbstractArray{T,N},
                                            A::AbstractArray{T,N},
-                                           B::Kernel{T,N})
+                                           B::CartesianBox{N})
     @assert size(dst) == size(A)
     R = CartesianRange(size(A))
     imin, imax = limits(R)
