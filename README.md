@@ -23,6 +23,15 @@ Note that this is a first implementation to define the API.  It is is
 reasonably fast (see [benchmarks.jl](src/benchmarks.jl)) but separable kernels
 can be made faster.
 
+Packages with overlapping functionalities:
+
+* [ImageFiltering](https://github.com/JuliaImages/ImageFiltering.jl) for local
+  filters on multidimensional arrays (not just *images*), also implement
+  various boundary conditions;
+
+* [ImageMorphology](https://github.com/JuliaImages/ImageMorphology.jl) for fast
+  morphological operations with separable structuring elements;
+
 
 ## Summary
 
