@@ -53,7 +53,7 @@ getindex(B::CartesianBox, inds::Integer...) = true
 # element the pseudo-code to implement a local operation writes:
 #
 #     for i ∈ Sup(A)
-#         v = initial()
+#         v = initial(A[i])
 #         for k ∈ Sup(B) and j = i - k ∈ Sup(A)
 #             v = update(v, A[j], B[k])
 #         end
@@ -66,7 +66,7 @@ getindex(B::CartesianBox, inds::Integer...) = true
 # Equivalent form:
 #
 #     for i ∈ Sup(A)
-#         v = initial()
+#         v = initial(A[i])
 #         for j ∈ Sup(A) and k = i - j ∈ Sup(B)
 #             v = update(v, A[j], B[k])
 #         end
@@ -93,7 +93,7 @@ function localfilter!(dst,
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     @inbounds for i in R
-        v = initial()
+        v = initial(A[i])
         for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
             v = update(v, A[j], true)
         end
@@ -107,7 +107,7 @@ function localmean!(dst::AbstractArray{T,N},
                     B::CartesianBox{N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
-                 ()      -> (zero(T), 0),
+                 (a)     -> (zero(T), 0),
                  (v,a,b) -> (v[1] + a, v[2] + 1),
                  (d,i,v) -> d[i] = v[1]/v[2])
 end
@@ -117,7 +117,7 @@ function erode!(dst::AbstractArray{T,N},
                 B::CartesianBox{N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
-                 ()      -> typemax(T),
+                 (a)     -> typemax(T),
                  (v,a,b) -> min(v, a),
                  (d,i,v) -> d[i] = v)
 end
@@ -127,7 +127,7 @@ function dilate!(dst::AbstractArray{T,N},
                  B::CartesianBox{N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
-                 ()      -> typemin(T),
+                 (a)     -> typemin(T),
                  (v,a,b) -> max(v, a),
                  (d,i,v) -> d[i] = v)
 end
@@ -138,7 +138,7 @@ function localextrema!(Amin::AbstractArray{T,N},
                        B::CartesianBox{N}) where {T,N}
     @assert size(Amin) == size(Amax) == size(A)
     localfilter!((Amin, Amax), A, B,
-                 ()      -> (typemax(T),
+                 (a)     -> (typemax(T),
                              typemin(T)),
                  (v,a,b) -> (min(v[1], a),
                              max(v[2], a)),
@@ -150,7 +150,7 @@ function convolve!(dst::AbstractArray{S,N},
                    B::CartesianBox{N}) where {S,T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
-                 ()      -> zero(S),
+                 (a)     -> zero(S),
                  (v,a,b) -> v + S(a),
                  (d,i,v) -> d[i] = v)
 end

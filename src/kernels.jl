@@ -136,7 +136,7 @@ end
 # Pseudo-code for a local operation on `A` in a neighborhood `B` is:
 #
 #     for i ∈ Sup(A)
-#         v = initial()
+#         v = initial(A[i])
 #         for j ∈ Sup(A) and i - j ∈ Sup(B)
 #             v = update(v, A[j], kernel[i-j+off])
 #         end
@@ -164,7 +164,7 @@ function localfilter!(dst,
     kmin, kmax = limits(B)
     ker, off = coefs(B), anchor(B)
     @inbounds for i in R
-        v = initial()
+        v = initial(A[i])
         k = i + off
         for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
             v = update(v, A[j], ker[k-j])
@@ -179,7 +179,7 @@ function localmean!(dst::AbstractArray{T,N},
                     B::Kernel{Bool,N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
-                 ()      -> (zero(T), 0),
+                 (a)     -> (zero(T), 0),
                  (v,a,b) -> b ? (v[1] + a, v[2] + 1) : v,
                  (d,i,v) -> d[i] = v[1]/v[2])
 end
@@ -189,7 +189,7 @@ function erode!(dst::AbstractArray{T,N},
                 B::Kernel{Bool,N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
-                 ()      -> typemax(T),
+                 (a)     -> typemax(T),
                  (v,a,b) -> b && a < v ? a : v,
                  (d,i,v) -> d[i] = v)
 end
@@ -199,7 +199,7 @@ function dilate!(dst::AbstractArray{T,N},
                  B::Kernel{Bool,N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
-                 ()      -> typemin(T),
+                 (a)     -> typemin(T),
                  (v,a,b) -> b && a > v ? a : v,
                  (d,i,v) -> d[i] = v)
 end
@@ -210,7 +210,7 @@ function localextrema!(Amin::AbstractArray{T,N},
                        B::Kernel{Bool,N}) where {T,N}
     @assert size(Amin) == size(Amax) == size(A)
     localfilter!((Amin, Amax), A, B,
-                 ()      -> (typemax(T),
+                 (a)     -> (typemax(T),
                              typemin(T)),
                  (v,a,b) -> (b && a < v[1] ? a : v[1],
                              b && a > v[2] ? a : v[2]),
@@ -225,7 +225,7 @@ function localmean!(dst::AbstractArray{T,N},
                     B::Kernel{T,N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
-                 ()      -> (zero(T), zero(T)),
+                 (a)     -> (zero(T), zero(T)),
                  (v,a,b) -> (v[1] + a*b, v[2] + b),
                  (d,i,v) -> d[i] = v[1]/v[2])
 end
@@ -234,7 +234,7 @@ function erode!(dst::AbstractArray{T,N},
                 A::AbstractArray{T,N},
                 B::Kernel{T,N}) where {T,N}
     localfilter!(dst, A, B,
-                 ()      -> typemax(T),
+                 (a)     -> typemax(T),
                  (v,a,b) -> min(v, a - b),
                  (d,i,v) -> d[i] = v)
 end
@@ -244,7 +244,7 @@ function dilate!(dst::AbstractArray{T,N},
                  B::Kernel{T,N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
-                 ()      -> typemin(T),
+                 (a)     -> typemin(T),
                  (v,a,b) -> max(v, a + b),
                  (d,i,v) -> d[i] = v)
 end
@@ -255,7 +255,7 @@ function localextrema!(Amin::AbstractArray{T,N},
                        B::Kernel{T,N}) where {T,N}
     @assert size(Amin) == size(Amax) == size(A)
     localfilter!((Amin, Amax), A, B,
-                 ()      -> (typemax(T),
+                 (a)     -> (typemax(T),
                              typemin(T)),
                  (v,a,b) -> (min(v[1], a - b),
                              max(v[2], a + b)),
@@ -267,7 +267,7 @@ function convolve!(dst::AbstractArray{T,N},
                    B::Kernel{Bool,N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
-                 ()      -> zero(T),
+                 (a)     -> zero(T),
                  (v,a,b) -> b ? v + a : v,
                  (d,i,v) -> d[i] = v)
 end
@@ -277,7 +277,7 @@ function convolve!(dst::AbstractArray{T,N},
                    B::Kernel{T,N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
-                 ()      -> zero(T),
+                 (a)     -> zero(T),
                  (v,a,b) -> v + a*b,
                  (d,i,v) -> d[i] = v)
 end

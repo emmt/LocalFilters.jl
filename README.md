@@ -77,7 +77,7 @@ The pseudo-code for a local filtering operation `C = filter(A, B)` writes:
 
 ```julia
 for i ∈ Sup(A)
-    v = initial()
+    v = initial(A[i])
     for j ∈ Sup(A) and i-j ∈ Sup(B)
         v = update(v, A[j], B[i-j])
     end
@@ -103,7 +103,7 @@ For instance, to compute a local maximum (*i.e.* a **dilation** in mathematical
 morphology terms):
 
 ```julia
-initial() = typemin(T)
+initial(a) = typemin(T)
 update(v,a,b) = (b && v < a ? a : v)
 store(c,i,v) = c[i] = v
 ```
@@ -113,7 +113,7 @@ be exploted to implement this filter in a single call:
 
 ```julia
 localfilter!(dst, A, B,
-             () -> typemin(T),                # initial method
+             (a)     -> typemin(T),           # initial method
              (v,a,b) -> (b && v < a ? a : v), # update method
              (c,i,v) -> c[i] = v)             # store method
 ```
@@ -121,7 +121,7 @@ localfilter!(dst, A, B,
 Below is another example of the methods needed to implement a local average:
 
 ```julia
-initial() = (0, zero(T))
+initial(a) = (0, zero(T))
 update(v,a,b) = v[1] + 1, v[2] + (b ? a : zero(T))
 store(c,i,v) = c[i] = v[2]/v[1]
 ```

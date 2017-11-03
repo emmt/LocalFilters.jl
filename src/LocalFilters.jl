@@ -181,7 +181,7 @@ purposes are explained by the following pseudo-code to implement the local
 operation:
 
     for i ∈ Sup(A)
-        v = initial()
+        v = initial(A[i])
         for j ∈ Sup(A) and i - j ∈ Sup(B)
             v = update(v, A[j], B[i-j])
         end
@@ -194,7 +194,7 @@ where `A` `Sup(A)` yields the support of `A` (that is the set of indices in
 For instance, to compute a local minimum (that is an erosion):
 
     localfilter!(dst, A, B,
-                 ()      -> typemax(T),
+                 (a)     -> typemax(T),
                  (v,a,b) -> min(v,a),
                  (d,i,v) -> d[i] = v)
 

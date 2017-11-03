@@ -55,7 +55,7 @@ function localfilter!(dst,
     imin, imax = limits(R)
     off = last(B)
     @inbounds for i in R
-        v = initial()
+        v = initial(A[i])
         for j in CartesianRange(max(imin, i - off), min(imax, i + off))
             v = update(v, A[j], true)
         end
@@ -69,7 +69,7 @@ function localmean!(dst::AbstractArray{T,N},
                     B::CenteredBox{N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
-                 ()      -> (zero(T), 0),
+                 (a)     -> (zero(T), 0),
                  (v,a,b) -> (v[1] + a, v[2] + 1),
                  (d,i,v) -> d[i] = v[1]/v[2])
 end
@@ -79,7 +79,7 @@ function erode!(dst::AbstractArray{T,N},
                 B::CenteredBox{N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
-                 ()      -> typemax(T),
+                 (a)     -> typemax(T),
                  (v,a,b) -> min(v, a),
                  (d,i,v) -> d[i] = v)
 end
@@ -89,7 +89,7 @@ function dilate!(dst::AbstractArray{T,N},
                  B::CenteredBox{N}) where {T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
-                 ()      -> typemin(T),
+                 (a)     -> typemin(T),
                  (v,a,b) -> max(v, a),
                  (d,i,v) -> d[i] = v)
 end
@@ -100,7 +100,7 @@ function localextrema!(Amin::AbstractArray{T,N},
                        B::CenteredBox{N}) where {T,N}
     @assert size(Amin) == size(Amax) == size(A)
     localfilter!((Amin, Amax), A, B,
-                 ()      -> (typemax(T),
+                 (a)     -> (typemax(T),
                              typemin(T)),
                  (v,a,b) -> (min(v[1], a),
                              max(v[2], a)),
@@ -111,7 +111,7 @@ function convolve!(dst::AbstractArray{S,N}, A::AbstractArray{T,N},
                    B::CenteredBox{N}) where {S,T,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
-                 ()      -> zero(S),
+                 (a)     -> zero(S),
                  (v,a,b) -> v + S(a),
                  (d,i,v) -> d[i] = v)
 end
