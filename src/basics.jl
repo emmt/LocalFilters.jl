@@ -121,7 +121,21 @@ CartesianBox(dims::NTuple{N,Integer}, offs::NTuple{N,Integer}) where {N} =
     (I = CartesianIndex(offs);
      CartesianBox(one(I) - I, CartesianIndex(dims) - I))
 
-CartesianBox{T<:Integer}(inds::AbstractUnitRange{T}...) =
+"""
+
+A `CartesianBox` can be defined by the index ranges along all the dimensions.
+For example:
+
+```julia
+
+CartesianBox(-3:3, -2:1)
+```
+
+yields a 2-dimensional `CartesianBox` of size `7×4` and whose first index
+varies on `-3:3` while its second index varies on `-2:1`.
+
+"""
+CartesianBox(inds::AbstractUnitRange{T}...) where {T<:Integer} =
     CartesianBox(inds)
 
 CartesianBox(inds::NTuple{N,AbstractUnitRange{T}}) where {N,T<:Integer} =
@@ -129,12 +143,20 @@ CartesianBox(inds::NTuple{N,AbstractUnitRange{T}}) where {N,T<:Integer} =
                  CartesianIndex(map(last, inds)))
 
 eltype(B::CartesianBox) = Bool
+size(B::CartesianBox) = size(B.bounds)
 size(B::CartesianBox, i) = max(last(B)[i] - first(B)[i] + 1, 0)
 first(B::CartesianBox) = first(B.bounds)
 last(B::CartesianBox) = last(B.bounds)
 limits(B::CartesianBox) = first(B), last(B)
 getindex(B::CartesianBox, I::CartesianIndex) = true
 getindex(B::CartesianBox, inds::Integer...) = true
+
+bounds(B::Kernel) = B.bounds
+
+# Cartesian boxes can be used as iterators.
+Base.start(B::CartesianBox) = start(B.bounds)
+Base.done(B::CartesianBox, state) = done(B.bounds, state)
+Base.next(B::CartesianBox, state) = next(B.bounds, state)
 
 #------------------------------------------------------------------------------
 # METHODS FOR KERNELS
