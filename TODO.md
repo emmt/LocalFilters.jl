@@ -21,3 +21,8 @@
 * Use `StaticArray` for small kernels.
 
 * Implement morphological gradient operators.
+
+* Merge `CartesianBox` and `CenteredBox` (unless there is a performance
+  regression), make all boxes iterable.
+
+* Automatically split arrays for multi-threaded processing.
