@@ -233,6 +233,15 @@ Kernel(B::Kernel) = B
 
 Kernel(::Type{Bool}, B::Kernel{Bool,N}) where {N} = B
 
+# Conversion of the data type of the kernel coefficients.
+for F in (:Float64, :Float32, :Float16)
+    @eval begin
+        Base.$F(K::Kernel{$F,N}) where {N} = K
+        Base.$F(K::Kernel{T,N}) where {T,N} =
+            Kernel{$F,N}(convert(Array{$F,N}, K.coefs), K.anchor)
+    end
+end
+
 function strictfloor(::Type{T}, x) where {T}
     n = floor(T, x)
     (n < x ? n : n - one(T)) :: T
