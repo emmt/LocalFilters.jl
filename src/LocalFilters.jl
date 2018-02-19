@@ -8,7 +8,7 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2017, Éric Thiébaut.
+# Copyright (C) 2017-2018, Éric Thiébaut.
 #
 
 isdefined(Base, :__precompile__) && __precompile__(true)
@@ -19,6 +19,8 @@ import Base: CartesianRange, eltype, ndims, size, length, first, last, tail,
     getindex, setindex!, convert
 
 export
+    bilateralfilter!,
+    bilateralfilter,
     localfilter!,
     localmean,
     localmean!,
@@ -41,5 +43,6 @@ include("types.jl")
 include("basics.jl")
 include("filters.jl")
 include("morphology.jl")
+include("bilateral.jl")
 
 end

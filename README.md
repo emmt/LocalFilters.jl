@@ -68,6 +68,11 @@ filters are:
 * `convolve(A, B=3)` performs a convolution by the kernel `B` or by the support
   of `B` is `eltype(B)` is `Bool`;
 
+* `bilateralfilter(A, Fr, Gs)` performs a bilateral filtering of array `A` with
+  `Fr` the range kernel for smoothing differences in intensities and `Gs` the
+  spatial kernel for smoothing differences in coordinates (see:
+  https://en.wikipedia.org/wiki/Bilateral_filter).
+
 and many more to come...
 
 

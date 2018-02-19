@@ -23,12 +23,13 @@ size(B::Neighborhood{N}) where N = ntuple(i -> size(B, i), N)
 yields the anchor of the structuring element `B` that is the Cartesian index of
 the central position in the structuring element within its bounding-box.  `N`
 is the number of dimensions.  Argument can also be `K` or `size(K)` to get the
-default anchor for kernel `K` (an array).
+default anchor for kernel `K` (an array).  For arrays, the anchor indices are
+defined according to the conventions in `fftshift`.
 
 """
 anchor(dims::NTuple{N,Integer}) where {N} =
     CartesianIndex(ntuple(d -> (Int(dims[d]) >> 1) + 1, N))
-anchor(B::Neighborhood) = (I = first(B); one(I) - I)
+anchor(B::Neighborhood{N}) where {N} = one(CartesianIndex{N}) - first(B)
 anchor(A::AbstractArray) = anchor(size(A))
 
 """
@@ -184,18 +185,15 @@ Kernel(B::CartesianBox) = Kernel(ones(Bool, size(B)), anchor(B))
 Kernel(B::CenteredBox) = Kernel(ones(Bool, size(B)))
 
 # Wrap an array into a kernel (call copy if you do not want to share).
-Kernel(arr::Array{T,N}) where {T,N} =
-    Kernel{T,N}(arr, anchor(arr))
-
-function Kernel(arr::AbstractArray{T,N},
-                off::CartesianIndex{N}=anchor(arr)) where {T,N}
-    Kernel{T,N}(copy!(Array{T}(size(arr)), arr), off)
-end
+Kernel(arr::AbstractArray{T,N}, args...) where {T,N} =
+    Kernel(T, arr, args...)
 
 function Kernel(::Type{T},
-                arr::AbstractArray{T,N},
-                off::CartesianIndex{N}=anchor(arr)) where {T,N}
-    Kernel(arr, off)
+                arr::AbstractArray{Ta,N},
+                off::CartesianIndex{N} = anchor(arr)) where {T,Ta,N}
+    # `convert` here does nothing if argument is already an array of the
+    # correct kind and does a copy with conversion otherwise
+    Kernel{T,N}(convert(Array{T,N}, arr), off)
 end
 
 function Kernel(tup::Tuple{T,T},
@@ -226,12 +224,22 @@ Kernel(::Type{T}, B::Kernel{Bool,N}) where {T,N} =
 Kernel(::Type{T}, B::Kernel{Bool,N}) where {T<:AbstractFloat,N} =
     Kernel(T, coefs(B), anchor(B))
 
-Kernel(::Type{T1}, msk::AbstractArray{T2,N}) where {T1,T2,N} =
-    Kernel(T1, msk, anchor(msk))
-
 Kernel(B::Kernel) = B
 
 Kernel(::Type{Bool}, B::Kernel{Bool,N}) where {N} = B
+
+# Make a kernel from a neighborhood and a function.
+function Kernel(::Type{T}, f::Function, B::RectangularBox{N}) where {T,N}
+    dims, offs = size(B), anchor(B)
+    W = Array{T}(dims)
+    @inbounds for i in CartesianRange(dims)
+        W[i] = f(i - offs)
+    end
+    return Kernel(W, offs)
+end
+
+Kernel(f::Function, B::RectangularBox{N}) where {N} =
+    Kernel(typeof(f(zero(CartesianIndex{N}))), f, B)
 
 # Conversion of the data type of the kernel coefficients.
 for F in (:Float64, :Float32, :Float16)

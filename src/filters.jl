@@ -198,7 +198,7 @@ function localfilter!(dst,
     off = last(B)
     @inbounds for i in R
         v = initial(A[i])
-        for j in CartesianRange(max(imin, i - off), min(imax, i + off))
+        @simd for j in CartesianRange(max(imin, i - off), min(imax, i + off))
             v = update(v, A[j], true)
         end
         store(dst, i, v)
@@ -217,7 +217,7 @@ function localfilter!(dst,
     kmin, kmax = limits(B)
     @inbounds for i in R
         v = initial(A[i])
-        for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
+        @simd for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
             v = update(v, A[j], true)
         end
         store(dst, i, v)
@@ -259,7 +259,7 @@ function localfilter!(dst,
     @inbounds for i in R
         v = initial(A[i])
         k = i + off
-        for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
+        @simd for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
             v = update(v, A[j], ker[k-j])
         end
         store(dst, i, v)
