@@ -184,7 +184,7 @@ function fastlocalextrema!(Amin::AbstractArray{T,N},
     @inbounds for i in R
         vmin, vmax = tmax, tmin
         for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
-                vmin = min(vmin, A[j])
+            vmin = min(vmin, A[j])
             vmax = max(vmax, A[j])
         end
         Amin[i] = vmin
