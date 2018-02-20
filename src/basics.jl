@@ -35,7 +35,7 @@ anchor(A::AbstractArray) = anchor(size(A))
 """
 The `limits` method yields the corners (as a tuple of 2 `CartesianIndex`)
 of `B` (an array, a `CartesianRange` or a `Neighborhood`) and the
-infium and supremum of a type `T`:
+infimum and supremum of a type `T`:
 
     limits(B) -> first(B), last(B)
     limits(T) -> typemin(T), typemax(T)
