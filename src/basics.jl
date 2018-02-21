@@ -56,10 +56,13 @@ CartesianRange(B::Neighborhood{N}) where {N} =
 # source (e.g., of given rank `N`).
 
 convert(::Type{Neighborhood{N}}, dim::Integer) where {N} =
-    CenteredBox(ntuple(i->dim, N))
+    CenteredBox(ntuple(i->dim, Val(N)))
 
 convert(::Type{Neighborhood{N}}, dims::Vector{T}) where {N,T<:Integer} =
-    (@assert length(dims) == N; CenteredBox(dims...))
+    (@assert length(dims) == N; CenteredBox(dims))
+
+convert(::Type{Neighborhood{N}}, dims::NTuple{N,Integer}) where {N} =
+    CenteredBox(dims)
 
 convert(::Type{Neighborhood{N}}, A::AbstractArray{T,N}) where {T,N} =
     Kernel(A)
@@ -74,6 +77,10 @@ function convert(::Type{Neighborhood{N}},
     CartesianBox(inds)
 end
 
+convert(::Type{Kernel{T,N}}, ker::Kernel{T,N}) where {T,N} = ker
+convert(::Type{Kernel{T,N}}, ker::Kernel{S,N}) where {T,S,N} =
+    Kernel{T,N}(convert(Array{T,N}, ker.coefs), ker.anchor)
+
 #------------------------------------------------------------------------------
 # METHODS FOR CENTERED BOXES
 
@@ -84,16 +91,12 @@ end
 
 CenteredBox(B::CenteredBox) = B
 
-CenteredBox(siz::Integer...) =
-    (N = length(siz);
-     CenteredBox{N}(CartesianIndex(ntuple(i -> halfdim(siz[i]), N))))
+CenteredBox(siz::Integer...) = CenteredBox(siz)
 
-CenteredBox(siz::Vector{<:Integer}) =
-    (N = length(siz);
-     CenteredBox{N}(CartesianIndex(ntuple(i -> halfdim(siz[i]), N))))
+CenteredBox(siz::Vector{<:Integer}) = CenteredBox(siz...)
 
 CenteredBox(siz::NTuple{N,Integer}) where {N} =
-    CenteredBox{N}(CartesianIndex(ntuple(i -> halfdim(siz[i]), N)))
+    CenteredBox{N}(CartesianIndex(map(halfdim, siz)))
 
 eltype(B::CenteredBox) = Bool
 size(B::CenteredBox, i) = 2*last(B)[i] + 1
@@ -287,4 +290,40 @@ end
         arr[I...,i] = (q + x*x ≤ qmax)
         x += 1
     end
+end
+
+
+# Manage to automatically convert the kernel type for some operations.
+convertkernel(::Type{T}, B::Kernel{<:Real,N}) where {T<:AbstractFloat,N} =
+    convert(Kernel{T,N}, B)
+convertkernel(::Type{T}, B::Kernel{<:Integer,N}) where {T<:Integer,N} =
+    convert(Kernel{T,N}, B)
+convertkernel(::Type{T}, B::Kernel{K,N}) where {T,K,N} =
+    throw(ArgumentError("cannot convert kernel of type $K into type $T"))
+
+for f in (:localmean!, :convolve!)
+    @eval begin
+        function $f(dst::AbstractArray{T,N},
+                    A::AbstractArray{T,N},
+                    B::Kernel{K,N}) where {T,K,N}
+            $f(dst, A, convertkernel(T, B))
+        end
+    end
+end
+
+for f in (:erode!, :dilate!)
+    @eval begin
+        function $f(dst::AbstractArray{T,N},
+                    A::AbstractArray{T,N},
+                    B::Kernel{K,N}) where {T,K,N}
+            $f(dst, A, convertkernel(T, B))
+        end
+    end
+end
+
+function localextrema!(Amin::AbstractArray{T,N},
+                       Amax::AbstractArray{T,N},
+                       A::AbstractArray{T,N},
+                       B::Kernel{K,N}) where {T,K,N}
+    localextrema!(Amin, Amax, A, convertkernel(T, B))
 end
