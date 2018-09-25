@@ -1,7 +1,7 @@
 #
 # bilateral.jl --
 #
-# Implement the bilateral filter.
+# Implements the bilateral filter.
 #
 #------------------------------------------------------------------------------
 #

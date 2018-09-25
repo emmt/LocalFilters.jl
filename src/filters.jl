@@ -12,15 +12,20 @@
 #
 
 """
-
-    localmean(A, B)
+```julia
+localmean(A, B)
+```
 
 yields the local mean of `A` in a neighborhood defined by `B`.  The result is
 an array similar to `A`.
 
 The in-place version is:
 
-    localmean!(dst, A, B) -> dst
+```julia
+localmean!(dst, A, B) -> dst
+```
+
+See also [`localfilter!`](@ref).
 
 """
 localmean(A::AbstractArray, args...) = localmean!(similar(A), A, args...)
@@ -61,16 +66,21 @@ function localmean!(dst::AbstractArray{T,N},
 end
 
 """
-
-    convolve(A, B)
+```julia
+convolve(A, B)
+```
 
 yields the convolution of `A` by the support of the neighborhood defined by
-`B` of by the kernel `B` if it is an instance of `LocalFilters.Kernel`
-with numerical coefficients.  The result is an array similar to `A`.
+`B` of by the kernel `B` if it is an instance of `LocalFilters.Kernel` with
+numerical coefficients.  The result is an array similar to `A`.
 
 The in-place version is:
 
-    convolve!(dst, A, B) -> dst
+```julia
+convolve!(dst, A, B) -> dst
+```
+
+See also [`localfilter!`](@ref).
 
 """
 convolve(A::AbstractArray, args...) = convolve!(similar(A), A, args...)
@@ -148,34 +158,40 @@ end
 """
 A local filtering operation can be performed by calling:
 
-    localfilter!(dst, A, B, initial, update, store) -> dst
+```julia
+localfilter!(dst, A, B, initial, update, store) -> dst
+```
 
 where `dst` is the destination, `A` is the source, `B` defines the
 neighborhood, `initial`, `update` and `store` are three functions whose
 purposes are explained by the following pseudo-code to implement the local
 operation:
 
-    for i ∈ Sup(A)
-        v = initial(A[i])
-        for j ∈ Sup(A) and i - j ∈ Sup(B)
-            v = update(v, A[j], B[i-j])
-        end
-        store(dst, i, v)
+```
+for i ∈ Sup(A)
+    v = initial(A[i])
+    for j ∈ Sup(A) and i - j ∈ Sup(B)
+        v = update(v, A[j], B[i-j])
     end
+    store(dst, i, v)
+end
+```
 
 where `A` `Sup(A)` yields the support of `A` (that is the set of indices in
 `A`) and likely `Sub(B)` for `B`.
 
-For instance, to compute a local minimum (that is an erosion):
+For instance, to compute a local minimum (that is, an *erosion*):
 
-    localfilter!(dst, A, B,
-                 (a)     -> typemax(T),
-                 (v,a,b) -> min(v,a),
-                 (d,i,v) -> d[i] = v)
+```julia
+localfilter!(dst, A, B,
+             (a)     -> typemax(T),
+             (v,a,b) -> min(v,a),
+             (d,i,v) -> d[i] = v)
+```
 
 **Important:** For efficiency reasons, the loop(s) in `localfilter!` are
-perfomed without bound checking and it is the caller's responsability to insure
-that the arguments have the correct sizes.
+performed without bound checking and it is the caller's responsability to
+insure that the arguments have the correct sizes.
 
 """
 function localfilter!(dst, A::AbstractArray{T,N}, B, initial::Function,

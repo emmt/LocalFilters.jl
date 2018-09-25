@@ -17,14 +17,16 @@ length(B::Neighborhood) = prod(size(B))
 size(B::Neighborhood{N}) where N = ntuple(i -> size(B, i), N)
 
 """
+```julia
+anchor(B) -> I::CartesianIndex{N}
+```
 
-    anchor(B)    -> I::CartesianIndex{N}
-
-yields the anchor of the structuring element `B` that is the Cartesian index of
-the central position in the structuring element within its bounding-box.  `N`
-is the number of dimensions.  Argument can also be `K` or `size(K)` to get the
-default anchor for kernel `K` (an array).  For arrays, the anchor indices are
-defined according to the conventions in `fftshift`.
+yields the anchor of the structuring element `B` that is the Cartesian index
+(see [`CartesianIndex`](@ref)) of the central position in the structuring
+element within its bounding-box.  `N` is the number of dimensions.  Argument
+can also be `K` or `size(K)` to get the default anchor for kernel `K` (an
+array).  For arrays, the anchor indices are defined according to the
+conventions in [`fftshift`](@ref).
 
 """
 anchor(dims::NTuple{N,Integer}) where {N} =
@@ -33,12 +35,15 @@ anchor(B::Neighborhood{N}) where {N} = one(CartesianIndex{N}) - first(B)
 anchor(A::AbstractArray) = anchor(size(A))
 
 """
-The `limits` method yields the corners (as a tuple of 2 `CartesianIndex`)
-of `B` (an array, a `CartesianRange` or a `Neighborhood`) and the
-infimum and supremum of a type `T`:
 
-    limits(B) -> first(B), last(B)
-    limits(T) -> typemin(T), typemax(T)
+The `limits` method yields the corners (as a tuple of 2 `CartesianIndex`) of
+`B` (an array, a `CartesianRange` or a `Neighborhood`) and the infimum and
+supremum of a type `T`:
+
+```julia
+limits(B) -> first(B), last(B)
+limits(T) -> typemin(T), typemax(T)
+```
 
 """
 limits(R::CartesianRange) = first(R), last(R)
@@ -131,7 +136,6 @@ A `CartesianBox` can be defined by the index ranges along all the dimensions.
 For example:
 
 ```julia
-
 CartesianBox(-3:3, -2:1)
 ```
 

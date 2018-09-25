@@ -14,29 +14,34 @@
 """
 Basic operations of mathematical morphology are:
 
-    erode(A, B) -> Amin
-    dilate(A, B) -> Amax
+```julia
+erode(A, B) -> Amin
+dilate(A, B) -> Amax
+```
 
-which return the local minima `Amin` and the local maxima `Amax` of argument
-`A` in a neighborhood defined by `B`.  The returned result is similar to `A`
-(same size and type).
+which respectively return the local minima `Amin` and the local maxima `Amax`
+of argument `A` in a neighborhood defined by `B`.  The returned result is
+similar to `A` (same size and type).
 
 The two operations can be combined in one call:
 
-    localextrema(A, B) -> Amin, Amax
+```julia
+localextrema(A, B) -> Amin, Amax
+```
 
 The in-place versions:
 
-    erode!(Amin, A, B) -> Amin
-    dilate!(Amax, A, B) -> Amax
-    localextrema!(Amin, Amax, A, B) -> Amin, Amax
+```julia
+erode!(Amin, A, B) -> Amin
+dilate!(Amax, A, B) -> Amax
+localextrema!(Amin, Amax, A, B) -> Amin, Amax
+```
 
 apply the operation to `A` with structuring element `B` and store the
 result in the provided arrays `Amin` and/or `Amax`.
 
-
-## See also:
-localmean, opening, closing, top_hat, bottom_hat
+See also [`localmean`](@ref), [`opening`](@ref), [`closing`](@ref),
+[`top_hat`](@ref) and [`bottom_hat`](@ref).
 
 """
 erode(A::AbstractArray, args...) = erode!(similar(A), A, args...)
@@ -170,26 +175,29 @@ end
 # Higher level operators.
 
 """
+```julia
+closing(A, R)
+opening(A, R)
+```
 
-    closing(arr, r)
-    opening(arr, r)
-
-perform a closing or an opening of array `arr` by the structuring element
-`r`.  If not specified, `r` is a box of size 3 along all the dimensions of
-`arr`.  A closing is a dilation followed by an erosion, whereas an opening
-is an erosion followed by a dilation.
+respectively perform a closing or an opening of array `A` by the structuring
+element `R`.  If not specified, `R` is a box of size 3 along all the dimensions
+of `A`.  A closing is a dilation followed by an erosion, whereas an opening is
+an erosion followed by a dilation.
 
 The in-place versions are:
 
-    closing!(dst, wrk, src, r)
-    opening!(dst, wrk, src, r)
+```julia
+closing!(dst, wrk, src, R)
+opening!(dst, wrk, src, R)
+```
 
 which perform the operation on the source `src` and store the result in
-destination `dst` using `wrk` as a workspace array.  These 3 arguments must
-be similar arrays, `dst` and `src` may be identical, but `wrk` must not be
-the same array as `src` or `dst`.  The destination `dst` is returned.
+destination `dst` using `wrk` as a workspace array.  These 3 arguments must be
+similar arrays, `dst` and `src` may be identical, but `wrk` must not be the
+same array as `src` or `dst`.  The destination `dst` is returned.
 
-See `erode` or `dilate` for the meaning of the arguments.
+See [`erode`](@ref) or [`dilate`](@ref) for the meaning of the arguments.
 
 """
 closing(A::AbstractArray, args...) =
@@ -232,33 +240,38 @@ end
 # pre-filtering, 3 allocations with a pre-filtering.
 
 """
+```julia
+top_hat(A, R)
+top_hat(A, R, S)
+bottom_hat(A, R)
+bottom_hat(A, R, S)
+```
 
-    top_hat(a, r)
-    top_hat(a, r, s)
-    bottom_hat(a, r)
-    bottom_hat(a, r, s)
+Perform A summit/valley detection by applying a top-hat filter to array
+`A`.  Argument `R` defines the structuring element for the feature
+detection.  Optional argument `S` specifies the structuring element used to
+apply a smoothing to `A` prior to the top-hat filter.  If `R` and `S` are
+specified as the radii of the structuring elements, then `S` should be
+smaller than `R`.  For instance:
 
-Perform a summit/valley detection by applying a top-hat filter to array
-`a`.  Argument `r` defines the structuring element for the feature
-detection.  Optional argument `s` specifies the structuring element used to
-apply a smoothing to `a` prior to the top-hat filter.  If `r` and `s` are
-specified as the radii of the structuring elements, then `s` should be
-smaller than `r`.  For instance:
-
-     top_hat(bitmap, 3, 1)
+```julia
+top_hat(bitmap, 3, 1)
+```
 
 may be used to detect text or lines in a bimap image.
 
 The in-place versions:
 
-     top_hat!(dst, wrk, src, r)
-     bottom_hat!(dst, wrk, src, r)
+```julia
+top_hat!(dst, wrk, src, R)
+bottom_hat!(dst, wrk, src, R)
+```
 
 apply the top-hat filter on the source `src` and store the result in the
 destination `dst` using `wrk` as a workspace array.  These 3 arguments must
 be similar but different arrays.  The destination `dst` is returned.
 
-See also: dilate, closing, morph_enhance.
+See also [`dilate`](@ref), [`closing`](@ref) and [`morph_enhance`](@ref).
 
 """
 top_hat(a, r=3) = top_hat!(similar(a), similar(a), a, r)
