@@ -120,41 +120,6 @@ function convolve!(dst::AbstractArray{T,N},
                  (d,i,v) -> d[i] = v)
 end
 
-#
-# With `dst` the destination, `A` the source, and `B` the structuring
-# element the pseudo-code to implement a local operation writes:
-#
-#     for i ∈ Sup(A)
-#         v = initial(A[i])
-#         for k ∈ Sup(B) and j = i - k ∈ Sup(A)
-#             v = update(v, A[j], B[k])
-#         end
-#         dst[i] = final(v)
-#     end
-#
-# where `A` `Sup(A)` yields the support of `A` (that is the set of indices in
-# `A`) and likely `Sub(B)` for `B`.
-#
-# Equivalent form:
-#
-#     for i ∈ Sup(A)
-#         v = initial(A[i])
-#         for j ∈ Sup(A) and k = i - j ∈ Sup(B)
-#             v = update(v, A[j], B[k])
-#         end
-#         dst[i] = final(v)
-#     end
-#
-# In the second form, the bounds for `j` are:
-#
-#    imin ≤ j ≤ imax   and   kmin ≤ k = i - j ≤ kmax
-#
-# where `imin` and `imax` are the bounds for `A` while `kmin` and `kmax` are
-# the bounds for `B`.  The above constraints are identical to:
-#
-#    max(imin, i - kmax) ≤ j ≤ min(imax, i - kmin)
-#
-
 """
 A local filtering operation can be performed by calling:
 
@@ -178,7 +143,7 @@ end
 ```
 
 where `A` `Sup(A)` yields the support of `A` (that is the set of indices in
-`A`) and likely `Sub(B)` for `B`.
+`A`) and likely `Sup(B)` for `B`.
 
 For instance, to compute a local minimum (that is, an *erosion*):
 
@@ -189,19 +154,59 @@ localfilter!(dst, A, B,
              (d,i,v) -> d[i] = v)
 ```
 
-**Important:** For efficiency reasons, the loop(s) in `localfilter!` are
-performed without bound checking and it is the caller's responsability to
-insure that the arguments have the correct sizes.
+**Important:** Because the result of an elementary operation can be somthing
+else than just a scalar, the loop(s) in `localfilter!` are performed without
+bound checking of the destination and it is the caller's responsability to
+insure that the destination have the correct sizes.
 
 """
 function localfilter!(dst, A::AbstractArray{T,N}, B, initial::Function,
                       update::Function, store::Function) where {T,N}
     # Notes: The signature of this method is intentionally as little
     #        specialized as possible to avoid confusing the dispatcher.  The
-    #        prupose of this method is just to convert `B ` into a neighborhood
+    #        purpose of this method is just to convert `B ` into a neighborhood
     #        suitable for `A`.
     localfilter!(dst, A, convert(Neighborhood{N}, B), initial, update, store)
 end
+
+#
+# With `dst` the destination, `A` the source, and `B` the structuring
+# element the pseudo-code to implement a local operation writes:
+#
+#     for i ∈ Sup(A)
+#         v = initial(A[i])
+#         for k ∈ Sup(B) and j = i - k ∈ Sup(A)
+#             v = update(v, A[j], B[k])
+#         end
+#         dst[i] = final(v)
+#     end
+#
+# where `A` `Sup(A)` yields the support of `A` (that is the set of indices in
+# `A`) and likely `Sup(B)` for `B`.  Note that, in this example, destination
+# `dst` and source `A` must have the same support.
+#
+# Equivalent form:
+#
+#     for i ∈ Sup(A)
+#         v = initial(A[i])
+#         for j ∈ Sup(A) and k = i - j ∈ Sup(B)
+#             v = update(v, A[j], B[k])
+#         end
+#         dst[i] = final(v)
+#     end
+#
+# In the second form, the bounds for `j` are:
+#
+#    imin ≤ j ≤ imax   and   kmin ≤ k = i - j ≤ kmax
+#
+# where `imin = initialindex(A)` and `imax = finalindex(A)` are the bounds for
+# `A` while `kmin = initialindex(B)` and `kmax = finalindex(B)` are the bounds
+# for `B`.  The above constraints are identical to:
+#
+#    max(imin, i - kmax) ≤ j ≤ min(imax, i - kmin)
+#
+# For a `CenteredBox`, `kmin = -kmax`.
+#
 
 function localfilter!(dst,
                       A::AbstractArray{T,N},
@@ -209,12 +214,13 @@ function localfilter!(dst,
                       initial::Function,
                       update::Function,
                       store::Function) where {T,N}
-    R = CartesianRange(size(A))
+    R = cartesianregion(A)
     imin, imax = limits(R)
-    off = last(B)
+    off = finalindex(B)
     @inbounds for i in R
         v = initial(A[i])
-        @simd for j in CartesianRange(max(imin, i - off), min(imax, i + off))
+        @simd for j in cartesianregion(max(imin, i - off),
+                                       min(imax, i + off))
             v = update(v, A[j], true)
         end
         store(dst, i, v)
@@ -228,12 +234,13 @@ function localfilter!(dst,
                       initial::Function,
                       update::Function,
                       store::Function) where {T,N}
-    R = CartesianRange(size(A))
+    R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     @inbounds for i in R
         v = initial(A[i])
-        @simd for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
+        @simd for j in cartesianregion(max(imin, i - kmax),
+                                       min(imax, i - kmin))
             v = update(v, A[j], true)
         end
         store(dst, i, v)
@@ -252,7 +259,7 @@ end
 #         dst[i] = final(v)
 #     end
 #
-# where `off` is the anchor offset; the bounds for `j` are:
+# where `off` is the offset; the bounds for `j` are:
 #
 #    imin ≤ j ≤ imax   and   kmin ≤ i - j ≤ kmax
 #
@@ -268,14 +275,15 @@ function localfilter!(dst,
                       initial::Function,
                       update::Function,
                       store::Function) where {T,K,N}
-    R = CartesianRange(size(A))
+    R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
-    ker, off = coefs(B), anchor(B)
+    ker, off = coefs(B), offset(B)
     @inbounds for i in R
         v = initial(A[i])
         k = i + off
-        @simd for j in CartesianRange(max(imin, i - kmax), min(imax, i - kmin))
+        @simd for j in cartesianregion(max(imin, i - kmax),
+                                       min(imax, i - kmin))
             v = update(v, A[j], ker[k-j])
         end
         store(dst, i, v)

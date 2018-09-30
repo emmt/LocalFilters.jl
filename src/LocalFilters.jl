@@ -15,9 +15,6 @@ isdefined(Base, :__precompile__) && __precompile__(true)
 
 module LocalFilters
 
-import Base: CartesianRange, eltype, ndims, size, length, first, last, tail,
-    getindex, setindex!, convert
-
 export
     bilateralfilter!,
     bilateralfilter,
@@ -38,6 +35,24 @@ export
     bottom_hat,
     localextrema,
     localextrema!
+
+import Base: eltype, ndims, size, length, first, last, tail,
+    getindex, setindex!, convert
+
+# Deal with compatibility issues.
+using Compat
+@static if isdefined(Base, :CartesianIndices)
+    import Base: CartesianIndices
+else
+    import Base: CartesianRange
+    import Compat: CartesianIndices
+end
+@static if isdefined(Base, :axes)
+    import Base: axes
+else
+    import Base: indices
+    const axes = indices
+end
 
 include("types.jl")
 include("basics.jl")

@@ -12,7 +12,7 @@
 #
 
 function bilateralfilter(::Type{T}, A::AbstractArray, args...) where {T}
-    return bilateralfilter!(Array{T}(size(A)), A, args...)
+    return bilateralfilter!(Array{T}(undef, size(A)), A, args...)
 end
 
 """

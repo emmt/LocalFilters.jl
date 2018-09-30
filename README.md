@@ -83,8 +83,8 @@ The pseudo-code for a local filtering operation `C = filter(A, B)` writes:
 ```julia
 for i ∈ Sup(A)
     v = initial(A[i])
-    for j ∈ Sup(A) and i-j ∈ Sup(B)
-        v = update(v, A[j], B[i-j])
+    for j ∈ Sup(B) and such that i-j ∈ Sup(A)
+        v = update(v, A[i-j], B[j])
     end
     store(C, i, v)
 end
@@ -93,7 +93,7 @@ end
 where `A` is the source of the operation, `B` is the neighborhood, `C` is the
 result of the operation.  Here `Sup(A)` denotes the support of `A` (that is the
 set of indices in `A`).  The methods `initial`, `update` and `store` are
-specific to the considered operation.  To execute the fileter, call the
+specific to the considered operation.  To execute the filter, call the
 `localfilter!` method as:
 
 ```julia
@@ -227,11 +227,17 @@ with `N` the number of dimensions of the target array.
 
 ## Installation
 
-`LocalFilters` is not yet an
-[official Julia package](https://pkg.julialang.org/) so you have to clone the
-repository to install it:
+To install the last official version:
 
 ```julia
+using Pkg
+Pkg.add("LocalFilters")
+```
+
+To use the last development version:
+
+```julia
+using Pkg
 Pkg.clone("https://github.com/emmt/LocalFilters.jl.git")
 ```
 

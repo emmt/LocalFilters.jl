@@ -1,7 +1,5 @@
 * Factorize computations for rectangular regions, see erode/dilate/etc.  in
-  `JuliaImages/Images.jl`.
-
-* Use `indices()` instead of `size()`.
+  `JuliaImages/Images.jl`.  Implement van Herk / Gil & Werman algorithm.
 
 * Add a repeat count to a basic operation, or even better: use `B^n` to repeat
   `n` times basic operations with structuring element, or `...*B2*B1` to apply
@@ -26,3 +24,5 @@
   regression), make all boxes iterable.
 
 * Automatically split arrays for multi-threaded processing.
+
+* Make all neighborhoods iterable and check iterations over neighborhoods.

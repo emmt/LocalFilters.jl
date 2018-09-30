@@ -1,19 +1,18 @@
-if ! isdefined(:LocalFilters)
+if ! isdefined(Base, :LocalFilters)
     include("../src/LocalFilters.jl")
 end
 
 module LocalFiltersTests
 
-const DEBUG = false
+const DEBUG = true
 
-using LocalFilters, Base.Test
-import LocalFilters: Neighborhood, CenteredBox, CartesianBox, Kernel,
-    anchor
-import Base.CartesianRange
+using Compat
+using LocalFilters, Compat.Test
+import LocalFilters: Neighborhood, CenteredBox, CartesianBox, Kernel
 
 replicate(a, n::Integer) = ntuple(i->a, n)
 compare(a, b) = maximum(abs(a - b))
-samevalues(a, b) = maximum(a == b)
+samevalues(a, b) = maximum(a .== b)
 
 if DEBUG
     a = rand(62,81)
@@ -37,7 +36,7 @@ end
                                ((23,28,27),(3,7,5)))
         rank = length(arrdims)
         @testset "  $(rank)D test with boxes" begin
-            a = rand(arrdims)
+            a = rand(arrdims...)
             cbox = CenteredBox(boxdims)
             rbox = CartesianBox(cbox)
             mask = Kernel(cbox)
@@ -69,11 +68,11 @@ end
     end
 
     @testset "  2D test with a 5x5 ball" begin
-        ball5x5 = [false true true true false;
-                   true  true true true true;
-                   true  true true true true;
-                   true  true true true true;
-                   false true true true false];
+        ball5x5 = Bool[0 1 1 1 0;
+                       1 1 1 1 1;
+                       1 1 1 1 1;
+                       1 1 1 1 1;
+                       0 1 1 1 0];
         a = rand(162,181)
         mask = Kernel(ball5x5)
         kern = Kernel(eltype(a), mask)

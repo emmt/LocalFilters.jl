@@ -11,48 +11,170 @@
 # Copyright (C) 2017-2018, Éric Thiébaut.
 #
 
+# Extend `CartesianIndices` and, maybe, `CartesianRange` which have been
+# imported from where they are.
+@static if ! isdefined(Base, :CartesianIndices)
+    CartesianRange(B::Neighborhood) = CartesianRange(limits(B)...)
+    function convert(::Type{CartesianRange{CartesianIndex{N}}},
+                     B::Neighborhood{N}) where N
+        return CartesianRange(B)
+    end
+end
+CartesianIndices(B::Neighborhood) =
+    CartesianIndices(map((i,j) -> i:j, limits(B)...))
+convert(::Type{CartesianIndices{N}}, B::Neighborhood{N}) where N =
+    CartesianIndices(B)
+
 # Default implementation of common methods.
 ndims(::Neighborhood{N}) where N = N
 length(B::Neighborhood) = prod(size(B))
-size(B::Neighborhood{N}) where N = ntuple(i -> size(B, i), N)
+size(B::Neighborhood) = map(_length, initialindex(B).I, finalindex(B).I)
+size(B::Neighborhood, d) = _length(initialindex(B)[d], finalindex(B)[d])
+axes(B::Neighborhood) = map((i,j) -> i:j, initialindex(B).I, finalindex(B).I)
+axes(B::Neighborhood, d) = (initialindex(B)[d]:finalindex(B)[d])
+getindex(B::Neighborhood, inds::Union{Integer,CartesianIndex}...) =
+    getindex(B, CartesianIndex(inds...))
+setindex!(B::Neighborhood, val, inds::Union{Integer,CartesianIndex}...) =
+    setindex!(B, val, CartesianIndex(inds...))
+
+@inline _length(start::Integer, stop::Integer) = _length(Int(start), Int(stop))
+@inline _length(start::Int, stop::Int) = max(stop - start + 1, 0)
 
 """
 ```julia
-anchor(B) -> I::CartesianIndex{N}
+defaultstart(A) -> I::CartesianIndex
 ```
 
-yields the anchor of the structuring element `B` that is the Cartesian index
-(see [`CartesianIndex`](@ref)) of the central position in the structuring
-element within its bounding-box.  `N` is the number of dimensions.  Argument
-can also be `K` or `size(K)` to get the default anchor for kernel `K` (an
-array).  For arrays, the anchor indices are defined according to the
-conventions in [`fftshift`](@ref).
+yields the initial (multi-dimensional) index of a Cartesian region which has
+the same size as the array `A` but whose origin (that is, index
+`zero(CartesianIndex{N})`) is at the geometrical center of the region (with the
+same conventions as [`fftshift`](@ref)).
 
 """
-anchor(dims::NTuple{N,Integer}) where {N} =
-    CartesianIndex(ntuple(d -> (Int(dims[d]) >> 1) + 1, N))
-anchor(B::Neighborhood{N}) where {N} = one(CartesianIndex{N}) - first(B)
-anchor(A::AbstractArray) = anchor(size(A))
+defaultstart(A::AbstractArray) = defaultstart(axes(A))
+defaultstart(inds::NTuple{N,IndexInterval}) where N =
+    defaultstart(map(length, inds))
+defaultstart(dims::NTuple{N,Integer}) where N =
+    CartesianIndex(map(d -> -(d >> 1), dims))
 
 """
 
-The `limits` method yields the corners (as a tuple of 2 `CartesianIndex`) of
-`B` (an array, a `CartesianRange` or a `Neighborhood`) and the infimum and
-supremum of a type `T`:
+```
+initialindex(B) -> Imin::CartesianIndex{N}
+finalindex(B)   -> Imax::CartesianIndex{N}
+```
+
+respectively yield the initial and final multi-dimensional index for indexing
+the Cartesian region defined by `B`.  A Cartesian region defines a rectangular
+set of indices whose edges are aligned with the indexing axes.
+
+Compared to similar methods [`firstindex`](@ref), [`finalindex()`](@ref),
+[`first()`](@ref) and [`last()`](@ref), the returned value is always an
+instance of `CartesianIndex{N}` with `N` the number of dimensions.
+
+Any multi-dimensional index `I::CartesianIndex{N}` is in the Cartesian region
+defined `B` if and only if `Imin ≤ I ≤ Imax`.
+
+Also see: [`limits`](@ref), [`CartesianRegion`](@ref).
+"""
+initialindex(B::Neighborhood) = B.start
+finalindex(B::Neighborhood) = B.stop
+initialindex(R::CartesianIndices) = first(R)
+finalindex(R::CartesianIndices) = last(R)
+initialindex(A::AbstractArray) = initialindex(axes(A))
+finalindex(A::AbstractArray) = finalindex(axes(A))
+initialindex(inds::NTuple{N,IndexInterval}) where {N} =
+    CartesianIndex(map(first, inds))
+finalindex(inds::NTuple{N,IndexInterval}) where {N} =
+     CartesianIndex(map(last, inds))
+@static if !isdefined(Base, :CartesianIndices)
+    initialindex(R::CartesianRange) = first(R)
+    finalindex(R::CartesianRange) = last(R)
+end
+
+"""
 
 ```julia
-limits(B) -> first(B), last(B)
-limits(T) -> typemin(T), typemax(T)
+limits(T::DataType) -> typemin(T), typemax(T)
 ```
 
+yields the infimum and supremum of a type `T`.
+
+
+```julia
+limits(B) -> Imin, Imax
+```
+
+yields the corners (as a tuple of 2 `CartesianIndex`) of the Cartesian
+region defined by `B`.
+
+Also see: [`initialindex`](@ref), [`finalindex`](@ref) and
+[`CartesianRegion`](@ref).
+
 """
-limits(R::CartesianRange) = first(R), last(R)
 limits(::Type{T}) where {T} = typemin(T), typemax(T)
-limits(A::AbstractArray) = limits(CartesianRange(size(A)))
-limits(B::Neighborhood) = first(B), last(B)
+limits(R::CartesianRegion{N}) where {N} = initialindex(R), finalindex(R)
+limits(A::AbstractArray) = limits(axes(A)) # provides a slight optimization?
 
-CartesianRange(B::Neighborhood{N}) where {N} =
-    CartesianRange{CartesianIndex{N}}(first(B), last(B))
+"""
+
+```julia
+cartesianregion(args...) -> R
+```
+
+yields the rectangular region (as an instance of `CartesianIndices` or
+`CartesianRange` depending on Julia version) specified by the arguments which
+can be:
+
+* an abstract array whose valid index ranges define the region (see
+  [`axes`](@ref));
+
+* two abstract arrays to yield their support which is asserted to be identical;
+
+* a list of unit range indices and/or indices along each dimension;
+
+* the corners of the bounding box, say `start` and `stop`, specified as
+  instances of `CartesianIndex`;
+
+* a neighborhood (see [`Neighborhood`](@ref));
+
+* an instance of `CartesianIndices` or `CartesianRange`.
+
+This method is a workaround to deal with optimization issues between different
+versions of Julia.  In recent Julia versions (≥ 0.7),
+`cartesianregion(args...)` yields an instance of `CartesianIndices`; while in
+Julia version 0.6, `cartesianregion(args...)` yields a `CartesianRange` which
+appears to be faster than `CartesianIndices` as provided by `Compat`.
+
+See also: [`initialindex`](@ref), [`finalindex`](@ref), [`limits`](@ref) and
+[`CartesianRegion`](@ref).
+
+"""
+cartesianregion(B::Neighborhood) =
+    cartesianregion(initialindex(B), finalindex(B))
+cartesianregion(A::AbstractArray) = cartesianregion(axes(A))
+# The most critical version of `cartesianregion` is the one which takes the
+# first and last indices of the region and which is inlined.
+@static if isdefined(Base, :CartesianIndices)
+    # Favor CartesianIndices.
+    cartesianregion(R::CartesianIndices) = R
+    @inline function cartesianregion(start::CartesianIndex{N},
+                                     stop::CartesianIndex{N}) where N
+	return CartesianIndices(map((i,j) -> i:j, start.I, stop.I))
+    end
+    cartesianregion(inds::NTuple{N,IndexInterval}) where N =
+        CartesianIndices(inds)
+else
+    # Favor CartesianRange.
+    cartesianregion(R::CartesianRange) = R
+    cartesianregion(R::CartesianIndices) = cartesianregion(R.indices)
+    @inline function cartesianregion(start::CartesianIndex{N},
+                                     stop::CartesianIndex{N}) where N
+	return CartesianRange(start, stop)
+    end
+    cartesianregion(inds::NTuple{N,IndexInterval}) where N =
+        CartesianRange(initialindex(inds), finalindex(inds))
+end
 
 #------------------------------------------------------------------------------
 
@@ -60,10 +182,11 @@ CartesianRange(B::Neighborhood{N}) where {N} =
 # to convert various types of arguments into a neighborhood suitable with the
 # source (e.g., of given rank `N`).
 
+# This gives an hyper-square centered Cartesian box:
 convert(::Type{Neighborhood{N}}, dim::Integer) where {N} =
     CenteredBox(ntuple(i->dim, Val(N)))
 
-convert(::Type{Neighborhood{N}}, dims::Vector{T}) where {N,T<:Integer} =
+convert(::Type{Neighborhood{N}}, dims::Vector{<:Integer}) where {N} =
     (@assert length(dims) == N; CenteredBox(dims))
 
 convert(::Type{Neighborhood{N}}, dims::NTuple{N,Integer}) where {N} =
@@ -72,43 +195,43 @@ convert(::Type{Neighborhood{N}}, dims::NTuple{N,Integer}) where {N} =
 convert(::Type{Neighborhood{N}}, A::AbstractArray{T,N}) where {T,N} =
     Kernel(A)
 
-function convert(::Type{Neighborhood{N}},
-                 R::CartesianRange{CartesianIndex{N}}) where {N}
-    CartesianBox(R)
+@static if !isdefined(Base, :CartesianIndices)
+    function convert(::Type{Neighborhood{N}},
+                     R::CartesianRange{CartesianIndex{N}}) where {N}
+        CartesianBox(R)
+    end
 end
 
-function convert(::Type{Neighborhood{N}},
-                 inds::NTuple{N,AbstractUnitRange{T}}) where {N,T<:Integer}
+convert(::Type{Neighborhood{N}}, inds::NTuple{N,IndexInterval}) where {N} =
     CartesianBox(inds)
-end
 
 convert(::Type{Kernel{T,N}}, ker::Kernel{T,N}) where {T,N} = ker
 convert(::Type{Kernel{T,N}}, ker::Kernel{S,N}) where {T,S,N} =
-    Kernel{T,N}(convert(Array{T,N}, ker.coefs), ker.anchor)
+    Kernel{T,N}(convert(Array{T,N}, coefs(ker)), initialindex(ker))
 
 #------------------------------------------------------------------------------
 # METHODS FOR CENTERED BOXES
 
-@inline function halfdim(n::Integer)
-    @assert n ≥ 1 && isodd(n) "dimensions of centered box must be ≥ 1 and odd"
-    Int(n)>>1
+@inline function _halfdim(n::Integer)
+    (n ≥ 1 && isodd(n)) ||
+        throw(ArgumentError("dimension(s) of must be nonnegative and odd"))
+    return (Int(n) >> 1)
 end
 
 CenteredBox(B::CenteredBox) = B
 
-CenteredBox(siz::Integer...) = CenteredBox(siz)
+CenteredBox(dims::Integer...) = CenteredBox(dims)
 
-CenteredBox(siz::Vector{<:Integer}) = CenteredBox(siz...)
+CenteredBox(dims::AbstractVector{<:Integer}) = CenteredBox(dims...)
 
-CenteredBox(siz::NTuple{N,Integer}) where {N} =
-    CenteredBox{N}(CartesianIndex(map(halfdim, siz)))
+CenteredBox(dims::NTuple{N,Integer}) where {N} =
+    CenteredBox{N}(CartesianIndex(map(_halfdim, dims)))
 
-eltype(B::CenteredBox) = Bool
-size(B::CenteredBox, i) = 2*last(B)[i] + 1
-first(B::CenteredBox) = -last(B)
-last(B::CenteredBox) = B.last
-getindex(B::CenteredBox, i::CartesianIndex) = true
-getindex(B::CenteredBox, i::Integer...) = true
+eltype(B::Union{CenteredBox,CartesianBox}) = Bool
+function getindex(B::Union{CenteredBox{N},CartesianBox{N}},
+                  I::CartesianIndex{N}) where {N}
+    return initialindex(B) ≤ I ≤ finalindex(B)
+end
 
 #------------------------------------------------------------------------------
 #
@@ -121,162 +244,176 @@ getindex(B::CenteredBox, i::Integer...) = true
 
 CartesianBox(B::CartesianBox) = B
 
-CartesianBox(B::CenteredBox) = CartesianBox(CartesianRange(B))
+CartesianBox(inds::IndexInterval...) = CartesianBox(inds)
 
-CartesianBox(I0::CartesianIndex{N}, I1::CartesianIndex{N}) where {N} =
-    CartesianBox(CartesianRange(I0, I1))
-
-CartesianBox(dims::NTuple{N,Integer}, offs::NTuple{N,Integer}) where {N} =
-    (I = CartesianIndex(offs);
-     CartesianBox(one(I) - I, CartesianIndex(dims) - I))
-
-"""
-
-A `CartesianBox` can be defined by the index ranges along all the dimensions.
-For example:
-
-```julia
-CartesianBox(-3:3, -2:1)
-```
-
-yields a 2-dimensional `CartesianBox` of size `7×4` and whose first index
-varies on `-3:3` while its second index varies on `-2:1`.
-
-"""
-CartesianBox(inds::AbstractUnitRange{T}...) where {T<:Integer} =
-    CartesianBox(inds)
-
-CartesianBox(inds::NTuple{N,AbstractUnitRange{T}}) where {N,T<:Integer} =
-    CartesianBox(CartesianIndex(map(first, inds)),
-                 CartesianIndex(map(last, inds)))
-
-eltype(B::CartesianBox) = Bool
-size(B::CartesianBox) = size(B.bounds)
-size(B::CartesianBox, i) = max(last(B)[i] - first(B)[i] + 1, 0)
-first(B::CartesianBox) = first(B.bounds)
-last(B::CartesianBox) = last(B.bounds)
-limits(B::CartesianBox) = first(B), last(B)
-getindex(B::CartesianBox, I::CartesianIndex) = true
-getindex(B::CartesianBox, inds::Integer...) = true
-
-bounds(B::Kernel) = B.bounds
-
-# Cartesian boxes can be used as iterators.
-Base.start(B::CartesianBox) = start(B.bounds)
-Base.done(B::CartesianBox, state) = done(B.bounds, state)
-Base.next(B::CartesianBox, state) = next(B.bounds, state)
+CartesianBox(R::CartesianRegion{N}) where {N} = CartesianBox(initialindex(R),
+                                                             finalindex(R))
 
 #------------------------------------------------------------------------------
 # METHODS FOR KERNELS
 
-# The index in the array of kernel coefficients is `k + anchor` hence:
-#
-#     1 ≤ k + anchor ≤ dim
-#     1 - anchor ≤ k ≤ dim - anchor
-#
-# thus `first = 1 - anchor` and `last = dim - anchor`.
-
 eltype(B::Kernel{T,N}) where {T,N} = T
 length(B::Kernel) = length(coefs(B))
 size(B::Kernel) = size(coefs(B))
-size(B::Kernel, i) = size(coefs(B), i)
-first(B::Kernel) = (I = anchor(B); one(I) - I)
-last(B::Kernel) = CartesianIndex(size(coefs(B))) - anchor(B)
-getindex(B::Kernel, I::CartesianIndex) = getindex(coefs(B), I + anchor(B))
-getindex(B::Kernel, inds::Integer...) = getindex(B, CartesianIndex(inds))
+size(B::Kernel, d) = size(coefs(B), d)
+getindex(B::Kernel, I::CartesianIndex) = getindex(coefs(B), I + offset(B))
+setindex!(B::Kernel, val, I::CartesianIndex) =
+    setindex!(coefs(B), val, I + offset(B))
 
+"""
+
+`LocalFilters.coefs(B)` yields the array of coefficients embedded in
+kernel `B`.
+
+"""
 coefs(B::Kernel) = B.coefs
-anchor(B::Kernel) = B.anchor
 
-Kernel(B::CartesianBox) = Kernel(ones(Bool, size(B)), anchor(B))
-Kernel(B::CenteredBox) = Kernel(ones(Bool, size(B)))
+"""
 
-# Wrap an array into a kernel (call copy if you do not want to share).
-Kernel(arr::AbstractArray{T,N}, args...) where {T,N} =
-    Kernel(T, arr, args...)
+`LocalFilters.offset(B)` yields the index offset of the array of coefficients
+embedded in kernel `B`.   That is, `B[k] ≡ coefs(B)[k + offset(B)]`.
 
-function Kernel(::Type{T},
-                arr::AbstractArray{Ta,N},
-                off::CartesianIndex{N} = anchor(arr)) where {T,Ta,N}
-    # `convert` here does nothing if argument is already an array of the
-    # correct kind and does a copy with conversion otherwise
-    Kernel{T,N}(convert(Array{T,N}, arr), off)
+"""
+offset(B::Kernel) = B.offset
+
+# This method is to call the inner constructor.
+Kernel(C::AbstractArray{T,N}, off::CartesianIndex{N}) where {T,N} =
+    Kernel{T,N,typeof(C)}(C,off)
+
+# Methods to convert other neighborhoods.  When type of coefficients is
+# converted, boolean to floating-point yields `0` or `-Inf` so as to have a
+# consistent *flat* structuring element.
+
+Kernel(B::RectangularBox) = Kernel(ones(Bool, size(B)), initialindex(B))
+Kernel(::Type{Bool}, B::RectangularBox) = Kernel(B)
+Kernel(::Type{T}, B::CenteredBox{N}) where {T<:AbstractFloat,N} =
+    Kernel{T,N,Array{T,N}}(zeros(T, size(B)), initialindex(B))
+
+Kernel(K::Kernel) = K
+Kernel(::Type{T}, K::Kernel{T,N}) where {T,N} = K
+Kernel(::Type{Bool}, K::Kernel{Bool,N}) where {N} = K
+Kernel(::Type{T}, K::Kernel{<:Any,N}) where {T,N} =
+    Kernel{T,N,Array{T,N}}(convert(Array{T,N}, coefs(K)), initialindex(K))
+Kernel(::Type{T}, K::Kernel{Bool,N}) where {T<:AbstractFloat,N} =
+    Kernel((zero(T), -T(Inf)), coefs(K), initialindex(K))
+
+# Methods to wrap an array into a kernel (call copy if you do not want to
+# share).
+
+Kernel(A::AbstractArray) =
+    Kernel(A, defaultstart(A))
+
+Kernel(::Type{T}, A::AbstractArray) where {T} =
+    Kernel(T, A, defaultstart(A))
+
+Kernel(A::AbstractArray{T,N}, inds::NTuple{N,Integer}) where {T,N} =
+    Kernel(A, CartesianIndex(inds))
+
+Kernel(::Type{T}, A::AbstractArray{<:Any,N},
+       inds::NTuple{N,Integer}) where {T,N} =
+    Kernel(T, A, CartesianIndex(inds))
+
+Kernel(::Type{T}, A::AbstractArray{T,N}, I::CartesianIndex{N}) where {T,N} =
+    Kernel(A, I)
+
+Kernel(::Type{T}, A::AbstractArray{<:Any,N}, I::CartesianIndex{N}) where {T,N} =
+    Kernel(convert(Array{T,N}, A), I)
+
+Kernel(::Type{T}, A::AbstractArray{Bool,N},
+       I::CartesianIndex{N} = defaultstart(A)) where {T<:AbstractFloat,N} =
+    Kernel((zero(T), -T(Inf)), A, I)
+
+Kernel(A::AbstractArray, inds::IndexInterval...) = Kernel(A, inds)
+
+function Kernel(A::AbstractArray{T,N}, bnds::CartesianRegion{N}) where {T,N}
+    # Bounds for indexing the kernel.
+    kmin, kmax = limits(bnds)
+
+    # Bounds for indexing the array of coeffcients.
+    jmin, jmax = limits(A)
+
+    # Check size is identical for all dimensions.
+    all(d -> (jmax[d] - jmin[d]) == (kmax[d] - kmin[d]), 1:N) ||
+        throw(DimensionMismatch("dimensions must be the same"))
+
+    # Make a kernel with the correct initial index.
+    return Kernel(A, kmin)
 end
 
+# Methods to convert other neighborhoods.  Beware that booleans mean something
+# specific, i.e. the result is a so-called *flat* structuring element
+# when a kernel whose coefficients are boolean is converted to some
+# floating-point type.
+
+# Make a flat structuring element from a boolean mask.
 function Kernel(tup::Tuple{T,T},
                 msk::AbstractArray{Bool,N},
-                off::CartesianIndex{N}=anchor(msk)) where {T,N}
-    arr = Array{T}(size(msk))
+                start::CartesianIndex{N} = defaultstart(msk)) where {T,N}
+    arr = similar(Array{T}, axes(msk))
     vtrue, vfalse = tup[1], tup[2]
     @inbounds for i in eachindex(arr, msk)
         arr[i] = msk[i] ? vtrue : vfalse
     end
-    Kernel{T,N}(arr, off)
+    Kernel(arr, start)
 end
 
 Kernel(tup::Tuple{T,T}, B::Kernel{Bool,N}) where {T,N} =
-    Kernel(tup, coefs(B), anchor(B))
+    Kernel(tup, coefs(B), initialindex(B))
 
-# Make a flat structuring element from a boolean kernel.
-function Kernel(::Type{T},
-                msk::AbstractArray{Bool,N},
-                off::CartesianIndex{N}=anchor(msk)) where {T<:AbstractFloat,N}
-    Kernel((zero(T), -T(Inf)), msk, off)
-end
-
-Kernel(::Type{T}, B::Kernel{Bool,N}) where {T,N} =
-    Kernel(T, coefs(B), anchor(B))
-
-
-Kernel(::Type{T}, B::Kernel{Bool,N}) where {T<:AbstractFloat,N} =
-    Kernel(T, coefs(B), anchor(B))
-
-Kernel(B::Kernel) = B
-
-Kernel(::Type{Bool}, B::Kernel{Bool,N}) where {N} = B
-
-# Make a kernel from a neighborhood and a function.
-function Kernel(::Type{T}, f::Function, B::RectangularBox{N}) where {T,N}
-    dims, offs = size(B), anchor(B)
-    W = Array{T}(dims)
-    @inbounds for i in CartesianRange(dims)
-        W[i] = f(i - offs)
+# Make a kernel from a function and anything suitable to define a Cartesian
+# region.  The element type of the kernel coefficients can be imposed.
+function Kernel(::Type{T}, f::Function, bnds::CartesianRegion{N}) where {T,N}
+    kmin, kmax = limits(bnds)
+    W = Array{T,N}(undef, map(_length, kmin.I, kmax.I))
+    offs = initialindex(W) - kmin
+    @inbounds for i in cartesianregion(bnds)
+        W[i + offs] = f(i)
     end
-    return Kernel(W, offs)
+    return Kernel{T,N,Array{T,N}}(W, kmin)
 end
 
-Kernel(f::Function, B::RectangularBox{N}) where {N} =
-    Kernel(typeof(f(zero(CartesianIndex{N}))), f, B)
+# Idem but element type of the kernel if automatically guessed.
+Kernel(f::Function, bnds::CartesianRegion) =
+    Kernel(map(f, cartesianregion(bnds)), initialindex(bnds))
 
 # Conversion of the data type of the kernel coefficients.
 for F in (:Float64, :Float32, :Float16)
     @eval begin
         Base.$F(K::Kernel{$F,N}) where {N} = K
-        Base.$F(K::Kernel{T,N}) where {T,N} =
-            Kernel{$F,N}(convert(Array{$F,N}, K.coefs), K.anchor)
+        Base.$F(K::Kernel{T,N}) where {T,N} = Kernel($F, K)
     end
 end
 
-function strictfloor(::Type{T}, x) where {T}
+function strictfloor(::Type{T}, x)::T where {T}
     n = floor(T, x)
-    (n < x ? n : n - one(T)) :: T
+    return (n < x ? n : n - one(T))
 end
 
+"""
+```julia
+LocalFilters.ball(N, r)
+```
+
+yields a boolean mask which is a `N`-dimensional array with all dimensions odd
+and equal and set to true where position is inside a `N`-dimesional ball of
+radius `r`.
+
+"""
 function ball(rank::Integer, radius::Real)
     b = radius + 1/2
     r = strictfloor(Int, b)
     dim = 2*r + 1
     dims = ntuple(d->dim, rank)
-    arr = Array{Bool}(dims)
+    arr = Array{Bool}(undef, dims)
     qmax = strictfloor(Int, b^2)
     _ball!(arr, 0, qmax, r, 1:dim, tail(dims))
-    arr
+    return arr
 end
 
-@inline function _ball!{N}(arr::AbstractArray{Bool,N},
-                           q::Int, qmax::Int, r::Int,
-                           range::UnitRange{Int},
-                           dims::Tuple{Int}, I::Int...)
+@inline function _ball!(arr::AbstractArray{Bool,N},
+                        q::Int, qmax::Int, r::Int,
+                        range::AbstractUnitRange{Int},
+                        dims::Tuple{Int}, I::Int...) where {N}
     nextdims = tail(dims)
     x = -r
     for i in range
@@ -287,7 +424,7 @@ end
 
 @inline function _ball!(arr::AbstractArray{Bool,N},
                         q::Int, qmax::Int, r::Int,
-                        range::UnitRange{Int},
+                        range::AbstractUnitRange{Int},
                         ::Tuple{}, I::Int...) where {N}
     x = -r
     for i in range
