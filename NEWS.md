@@ -1,4 +1,5 @@
-* (2018-09-30) many improvements and changes:
+
+  - Add fast separable filters with the van Herk-Gil-Werman algorithm.
 
   - Compatibility with Julia versions 0.6, 0.7 and 1.0 without loss of
     performances.

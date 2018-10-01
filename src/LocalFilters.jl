@@ -57,6 +57,7 @@ end
 include("types.jl")
 include("basics.jl")
 include("filters.jl")
+include("separable.jl")
 include("morphology.jl")
 include("bilateral.jl")
 

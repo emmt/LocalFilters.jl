@@ -121,6 +121,8 @@ function convolve!(dst::AbstractArray{T,N},
 end
 
 """
+# General local filters
+
 A local filtering operation can be performed by calling:
 
 ```julia
@@ -154,7 +156,7 @@ localfilter!(dst, A, B,
              (d,i,v) -> d[i] = v)
 ```
 
-**Important:** Because the result of an elementary operation can be somthing
+**Important:** Because the result of an elementary operation can be something
 else than just a scalar, the loop(s) in `localfilter!` are performed without
 bound checking of the destination and it is the caller's responsability to
 insure that the destination have the correct sizes.
