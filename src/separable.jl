@@ -192,22 +192,37 @@ function localfilter!(dst::AbstractArray{T,N},
         # in the forward direction if the shift is negative and in the
         # backward direction otherwise.
         k = kmin
-        rng = (k < 0 ? (jmin:jmax) : (jmax:-1:jmin))
-        @inbounds for J2 in R2, J1 in R1
-            @simd for j in rng
-                # FIXME: This loop is (a bit) faster with clamp instead of
-                #        min-max and with SIMD.
-                jp = clamp(j - k, jmin, jmax)
-                dst[J1,j,J2] = A[J1,jp,J2]
-            end
+        if k < 0
+            _shiftarray!(dst, A, R1, jmin:jmax, R2, k)
+        else
+            _shiftarray!(dst, A, R1, jmax:-1:jmin, R2, k)
         end
-        return dst
+    else
+        # Apply van Herk-Gil-Werman algorithm.
+        _localfilter!(dst, A, R1, jmin, jmax, R2, op, kmin, kmax, w)
     end
+    return dst
+end
 
-    # Make sure workspace array is large enough to temporarily store
-    # W[1:p-1] ≡ R[1:p-1] and W[j-k+off] ≡ A[j-k] for all possible
-    # j ∈ [jmin,jmax] and k ∈ [kmin,kmax] and according to boundary
-    # conditions.
+# Private methods to break type uncertainty.
+
+function _shiftarray!(dst::AbstractArray{T,N}, A::AbstractArray{T,N}, R1,
+                      rng::AbstractRange{Int}, R2, k::Int) where {T,N}
+    jmin, jmax = minimum(rng), maximum(rng)
+    @inbounds for J2 in R2, J1 in R1
+        @simd for j in rng
+            jp = clamp(j - k, jmin, jmax)
+            dst[J1,j,J2] = A[J1,jp,J2]
+        end
+    end
+    return nothing
+end
+
+function _localfilter!(dst::AbstractArray{T,N},
+                       A::AbstractArray{T,N},
+                       R1, jmin::Int, jmax::Int, R2,
+                       op::Function, kmin::Int, kmax::Int,
+                       w::Vector{T}) where {T,N}
     n = jmax - jmin + 1 # length of dimension in A
     p = kmax - kmin + 1 # length of neighborhood
     imin, imax = p, workspacelength(n, p) # range for storing A in W
@@ -220,10 +235,8 @@ function localfilter!(dst::AbstractArray{T,N},
         # Fill the workspace W[imin:imax] with A[jmin-kmax:jmax-kmin] taking
         # care of boundary conditions (here we assume nearest neighbor
         # conditions).
-        for i in imin:imax
-            # FIXME: This loop is (a bit) faster with min-max instead of clamp
-            #        and no SIMD.
-            j = min(max(i - off, jmin), jmax)
+        @simd for i in imin:imax
+            j = clamp(i - off, jmin, jmax)
             w[i] = A[J1,j,J2]
         end
 
@@ -252,9 +265,8 @@ function localfilter!(dst::AbstractArray{T,N},
             end
         end
     end
-    return dst
+    return nothing
 end
-
 
 # Provide destination.
 
