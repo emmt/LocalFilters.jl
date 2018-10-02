@@ -12,16 +12,6 @@
 # Copyright (C) 2018, Éric Thiébaut.
 #
 
-
-
-# FIXME: Allocating a vector and then resizing it is almost as fast as directly
-#        allocating to the given size, except for very small vectors.  So the
-#        default workspace is an empty vector which is automatically resized as
-#        needed.
-
-# FIXME: When multiple filtering passes are planned, resize the workspace
-#        at most once.
-
 """
 # Local filter by the van Herk-Gil-Werman algorithm
 
@@ -31,13 +21,13 @@ localfilter!([dst = A,] A, dims, op, rngs [, w])
 
 overwrite the contents of `dst` with the result of applying van Herk-Gil-Werman
 algorithm to filter array `A` along dimension(s) `dims` with (associative)
-binary operation `op` and a contiguous structuring element defined by the
+binary operation `op` and contiguous structuring element(s) defined by the
 interval(s) `rngs`.  Optional argument `w` is a workspace array which is
 automatically allocated if not provided; otherwise, it must be a vector of same
-element type as `A` which may be resized (with [`resize!`](@ref) if its length
-is insufficient).  The destination `dst` must have the same indices as the
-source `A`.  Operation can be done in-place; that is, `dst` and `A` can be the
-same.
+element type as `A` which is resized (with [`resize!`](@ref)) as needed.  The
+destination `dst` must have the same indices as the source `A` (see
+[`axes`](@ref)).  Operation can be done in-place; that is, `dst` and `A` can be
+the same.
 
 Argument `dims` specifies along which dimension(s) of `A` the filter is to be
 applied, it can be a single integer, several integers or a colon `:` to specify
@@ -45,49 +35,26 @@ all dimensions.  Dimensions are processed in the order given by `dims` (the
 same dimension may appear several times) and there must be a matching interval
 in `rngs` to specify the structuring element (except that if `rngs` is a single
 interval, it is used for every dimension in `dims`).  An interval is either an
-integer or an integer unit range in the form `kmin:kmax`.
+integer or an integer unit range in the form `kmin:kmax` (an interval specified
+as a single integer, say `k`, is the same as specifying `k:k`).
 
-Assuming mono-dimensional arrays `A` and `dst` and a single filtering pass, the
-result is:
+Assuming mono-dimensional arrays `A` and `dst`, the single filtering pass:
+
+```julia
+localfilter!(dst, A, :, op, rng)
+```
+
+yields:
 
 ```
 dst[j] = A[j-kmax] ⋄ A[j-kmax+1] ⋄ A[j-kmax+2] ⋄ ... ⋄ A[j-kmin]
 ```
 
-for all `j ∈ [first(axes(A,d)):last(axes(A,d))]`, with `x ⋄ y = op(x, y)`,
-`kmin = first(rng)` and `kmax = last(rng)`.  Note that if `kmin = kmax` (which
-occurs if `rng` is a simple integer), the result of the filter is to operate a
-simple shift by `kmin` along the dimension `d`.
-
-The in-place *erosion* (local minimum) of the monodimensional array `A` on a
-centered structuring element of width 7 can be computed as:
-
-```julia
-localfilter!(A, :, min, -3:3)
-```
-
-To apply the same filter along all dimensions (with different
-index intervals for the structuring element), call:
-
-```julia
-localfilter!([dst = A,] A, :, op, rngs [, w])
-```
-
-with `inds` a tuple of index intervals to specify the structuring element along
-each dimension of `A`.  Specify index interval `0` to do nothing along the
-corresponding dimension.  For instance:
-
-```julia
-localfilter!(A, :, max, (-3:3, 0, -4:4))
-```
-
-will overwrite `A` with the local maxima of the three-dimensional array `A` in
-a centered local neighborhood of size `7×1×9` (nothing is done along the second
-dimension).  The same result may be obtained with:
-
-```julia
-localfilter!(A, (1,3), max, (-3:3, -4:4))
-```
+for all `j ∈ [first(axes(A,1)):last(axes(A,1))]`, with `x ⋄ y = op(x, y)`,
+`kmin = first(rng)` and `kmax = last(rng)`.  Note that if `kmin = kmax = k`
+(which occurs if `rng` is a simple integer), the result of the filter is to
+operate a simple shift by `k` along the corresponding dimension and has no
+effects if `k = 0`.  This can be exploited to not filter some dimension(s).
 
 The out-place version, allocates the destination array and is called as:
 
@@ -95,12 +62,41 @@ The out-place version, allocates the destination array and is called as:
 localfilter(A, dims, op, rngs [, w])
 ```
 
-For instance, the local average of the two-dimensional array `A` on a centered
+## Examples
+
+The in-place *morphological erosion* (local minimum) of the array `A` on a
+centered structuring element of width 7 in every dimension can be applied by:
+
+```julia
+localfilter!(A, :, min, -3:3)
+```
+
+On can specify index interval `0` to do nothing along the corresponding
+dimension.  For instance:
+
+```julia
+localfilter!(A, :, max, (-3:3, 0, -4:4))
+```
+
+will overwrite `A` with the local maxima (a.k.a. *morphological dilation*) of
+the three-dimensional array `A` in a centered local neighborhood of size
+`7×1×9` (nothing is done along the second dimension).  The same result may be
+obtained with:
+
+```julia
+localfilter!(A, (1,3), max, (-3:3, -4:4))
+```
+
+where the second dimension is omitted from the list of dimensions.
+
+The *local average* of the two-dimensional array `A` on a centered
 structuring element of size 11×11 can be computed as:
 
 ```julia
 localfilter(A, :, +, (-5:5, -5:5))*(1/11)
 ```
+
+## Efficiency an restrictions
 
 The van Herk-Gil-Werman algorithm is very fast for large rectangular
 structuring elements.  It takes at most 3 operations to filter an element along
@@ -108,10 +104,16 @@ a given dimension whatever the width `p` of the considered local neighborhood.
 For `N`-dimensional arrays, the algorithm requires only `3N` operations per
 element instead of `p^N - 1` operations for a naive implementation.  This
 however requires to make a pass along each dimension so memory page faults may
-reduce the performances.  This is however attenuated by the fact that the
+reduce the performances.  This is somewhat attenuated by the fact that the
 algorithm can be applied in-place.  For efficient multi-dimensional out of
 place filtering, make the first pass with a fresh destination array and then
 all other passes in-place on the destination array.
+
+To apply the van Herk-Gil-Werman algorithm, the structuring element must be
+separable along the dimensiions and its components must be contiguous.  In
+other words, the algorithm is only applicable for `N`-dimensional rectangular
+neighborhoods.  The structuring element may however be off-centered by an
+arbitrary offset.
 
 To take into account boundary conditions (for now only least neighborhood is
 implemented) and allow for in-place operation, the algorithm allocates a
@@ -277,6 +279,8 @@ function localfilter(A::AbstractArray{T,N},
     return localfilter!(similar(Array{T,N}, axes(A)), A, dims, op, args...)
 end
 
+@doc @doc(localfilter!) localfilter
+
 # In-place operation.
 
 function localfilter!(A::AbstractArray{T,N},
@@ -293,7 +297,7 @@ function localfilter!(dst::AbstractArray{T,N},
                       d::Integer,
                       op::Function,
                       rng::IndexInterval,
-                      w::Vector{T} = Array{T}(undef,0)) where {T,N}
+                      w::Vector{T} = workspace(A, d, rng)) where {T,N}
     return localfilter!(dst, A, Int(d), op, Int(first(rng)), Int(last(rng)), w)
 end
 
@@ -302,11 +306,15 @@ function localfilter!(dst::AbstractArray{T,N},
                       ::Colon,
                       op::Function,
                       rng::IndexInterval,
-                      w::Vector{T} = Array{T}(undef,0)) where {T,N}
+                      w::Vector{T} = workspace(A, :, rng)) where {T,N}
     kmin, kmax = Int(first(rng)), Int(last(rng))
-    localfilter!(dst, A, 1, op, kmin, kmax, w)
-    for d in 2:N
-        localfilter!(dst, d, op, kmin, kmax, w)
+    if N ≥ 1
+        localfilter!(dst, A, 1, op, kmin, kmax, w)
+        for d in 2:N
+            localfilter!(dst, d, op, kmin, kmax, w)
+        end
+    else
+        copyto!(dst, A)
     end
     return dst
 end
@@ -317,11 +325,15 @@ function localfilter!(dst::AbstractArray{T,N},
                       op::Function,
                       rngs::Union{AbstractVector{<:IndexInterval},
                                   Tuple{Vararg{IndexInterval}}},
-                      w::Vector{T} = Array{T}(undef,0)) where {T,N}
+                      w::Vector{T} = workspace(A, :, rngs)) where {T,N}
     length(rngs) == N || throw(DimensionMismatch("there must be as many intervals as dimensions"))
-    localfilter!(dst, A, 1, op, rngs[1], w)
-    for d in 2:N
-        localfilter!(dst, d, op, rngs[d], w)
+    if N ≥ 1
+        localfilter!(dst, A, 1, op, rngs[1], w)
+        for d in 2:N
+            localfilter!(dst, d, op, rngs[d], w)
+        end
+    else
+        copyto!(dst, A)
     end
     return dst
 end
@@ -332,9 +344,8 @@ function localfilter!(dst::AbstractArray{T,N},
                                   Tuple{Vararg{Integer}}},
                       op::Function,
                       rng::IndexInterval,
-                      w::Vector{T} = Array{T}(undef,0)) where {T,M,N}
-    m = length(dims)
-    if m ≥ 1
+                      w::Vector{T} = workspace(A, dims, rng)) where {T,N}
+    if (m = length(dims)) ≥ 1
         localfilter!(dst, A, dims[1], op, rng, w)
         for d in 2:m
             localfilter!(dst, dims[d], op, rng, w)
@@ -352,7 +363,7 @@ function localfilter!(dst::AbstractArray{T,N},
                       op::Function,
                       rngs::Union{AbstractVector{<:IndexInterval},
                                   Tuple{Vararg{IndexInterval}}},
-                      w::Vector{T} = Array{T}(undef,0)) where {T,M,N}
+                      w::Vector{T} = workspace(A, dims, rngs)) where {T,N}
     (m = length(dims)) == length(rngs) || throw(DimensionMismatch("list of dimensions and list of intervals must have the same length"))
     if m ≥ 1
         localfilter!(dst, A, dims[1], op, rngs[1], w)
@@ -365,68 +376,7 @@ function localfilter!(dst::AbstractArray{T,N},
     return dst
 end
 
-
-# Wrapper methods for in-place operation.
-
-function localfilter!(A::AbstractArray{T,N},
-                      d::Integer,
-                      op::Function,
-                      rng::IndexInterval,
-                      w::Vector{T} = Array{T}(undef,0)) where {T,N}
-    return localfilter!(A, Int(d), op, Int(first(rng)), Int(last(rng)), w)
-end
-
-function localfilter!(A::AbstractArray{T,N}, ::Colon,
-                      op::Function, rng::IndexInterval,
-                      w::Vector{T} = Array{T}(undef,0)) where {T,N}
-    kmin, kmax = Int(first(rng)), Int(last(rng))
-    for d in 1:N
-        localfilter!(A, d, op, kmin, kmax, w)
-    end
-    return A
-end
-
-function localfilter!(A::AbstractArray{T,N},
-                      ::Colon,
-                      op::Function,
-                      rngs::Union{AbstractVector{<:IndexInterval},
-                                  Tuple{Vararg{IndexInterval}}},
-                      w::Vector{T} = Array{T}(undef,0)) where {T,N}
-    length(rngs) == N || throw(DimensionMismatch("there must be as many intervals as dimensions"))
-    for d in 1:N
-        localfilter!(A, d, op, rngs[d], w)
-    end
-    return A
-end
-
-function localfilter!(A::AbstractArray{T,N},
-                      dims::Union{AbstractVector{<:Integer},
-                                  Tuple{Vararg{Integer}}},
-                      op::Function,
-                      rng::IndexInterval,
-                      w::Vector{T} = Array{T}(undef,0)) where {T,M,N}
-    m = length(dims)
-    for d in 1:m
-        localfilter!(A, dims[d], op, rng, w)
-    end
-    return A
-end
-
-function localfilter!(A::AbstractArray{T,N},
-                      dims::Union{AbstractVector{<:Integer},
-                                  Tuple{Vararg{Integer}}},
-                      op::Function,
-                      rngs::Union{AbstractVector{<:IndexInterval},
-                                  Tuple{Vararg{IndexInterval}}},
-                      w::Vector{T} = Array{T}(undef,0)) where {T,M,N}
-    (m = length(dims)) == length(rngs) || throw(DimensionMismatch("list of dimensions and list of intervals must have the same length"))
-    for d in 1:m
-        localfilter!(A, dims[d], op, rngs[d], w)
-    end
-    return A
-end
-
-
+# Basic morphological operations.
 
 for (f, op) in ((:erode, min), (:dilate, max))
     fp = Symbol(f, "!")
@@ -465,10 +415,117 @@ end
 
 """
 
-`workspacelength(n, p)` yields the minimal length of the workspace array for
-applying the van Herk-Gil-Werman algorithm along a dimension of length `n` with
-a structuring element of width `p`.  If `n < 1` or `p ≤ 1`, zero is returned
-because there is no needs for a workspace array.
+```julia
+workspacelength(n, p)
+```
+
+yields the minimal length of the workspace array for applying the van
+Herk-Gil-Werman algorithm along a dimension of length `n` with a structuring
+element of width `p`.  If `n < 1` or `p ≤ 1`, zero is returned because there is
+no needs for a workspace array.
+
+```julia
+workspacelength(A, dims, rngs)
+```
+
+yields the minimal length of the workspace array for applying the van
+Herk-Gil-Werman algorithm along the dimension(s) `dims` of array `A` with a
+structuring element defined by the interval(s) `rngs`.  If arguments are not
+compatible, ero is returned because there is no needs for a workspace array.
 
 """
 workspacelength(n::Int, p::Int) = (n < 1 || p ≤ 1 ? 0 : n + 2*(p - 1))
+
+function workspacelength(A::AbstractArray{<:Any,N},
+                         d::Integer,
+                         rng::IndexInterval) where {N}
+    if 1 ≤ d ≤ N
+        n = length(axes(A, d))
+        p = length(rng)
+        return workspacelength(n, p)
+    end
+    return 0
+end
+
+function workspacelength(A::AbstractArray{<:Any,N},
+                         ::Colon,
+                         rng::IndexInterval) where {N}
+    if N ≥ 1
+        p = length(rng)
+        n = reduce(max, map(length, axes(A)))
+        return workspacelength(n, p)
+    end
+    return 0
+end
+
+function workspacelength(A::AbstractArray{<:Any,N},
+                         ::Colon,
+                         rngs::Union{AbstractVector{<:IndexInterval},
+                                     Tuple{Vararg{IndexInterval}}}) where {N}
+    numb = 0
+    if length(rngs) == N
+        for d in 1:N
+            n = length(axes(A, d))
+            p = length(rngs[d])
+            numb = max(numb, workspacelength(n, p))
+        end
+    end
+    return numb
+end
+
+function workspacelength(A::AbstractArray{<:Any,N},
+                         dims::Union{AbstractVector{<:Integer},
+                                     Tuple{Vararg{Integer}}},
+                         rng::IndexInterval) where {N}
+    numb = 0
+    p = length(rng)
+    for dim in dims
+        n = length(axes(A, dim))
+        numb = max(numb, workspacelength(n, p))
+    end
+    return numb
+end
+
+function workspacelength(A::AbstractArray{<:Any,N},
+                         dims::Union{AbstractVector{<:Integer},
+                                     Tuple{Vararg{Integer}}},
+                         rngs::Union{AbstractVector{<:IndexInterval},
+                                     Tuple{Vararg{IndexInterval}}}) where {N}
+    numb = 0
+    if (m = length(dims)) == length(rngs)
+        for d in 1:m
+            n = length(axes(A, dims[d]))
+            p = length(rngs[d])
+            numb = max(numb, workspacelength(n, p))
+        end
+    end
+    return numb
+end
+"""
+
+```julia
+workspace([T,] A, dims, rngs)
+```
+
+yields a workspace array for applying the van Herk-Gil-Werman algorithm along
+the dimension(s) `dims` of array `A` with a structuring element defined by the
+interval(s) `rngs`.  The element type of the workspace is `T` which is that of
+`A` by default.
+
+"""
+function workspace(A::AbstractArray{T,N},
+                   dims::Union{Colon, Integer, AbstractVector{<:Integer},
+                               Tuple{Vararg{Integer}}},
+                   rngs::Union{IndexInterval, AbstractVector{<:IndexInterval},
+                               Tuple{Vararg{IndexInterval}}}) where {T,N}
+    return workspace(T, A, dims, rngs)
+end
+
+function workspace(::Type{T},
+                   A::AbstractArray{<:Any,N},
+                   dims::Union{Colon, Integer, AbstractVector{<:Integer},
+                               Tuple{Vararg{Integer}}},
+                   rngs::Union{IndexInterval, AbstractVector{<:IndexInterval},
+                               Tuple{Vararg{IndexInterval}}}) where {T,N}
+    return Array{T}(undef, workspacelength(A, dims, rngs))
+end
