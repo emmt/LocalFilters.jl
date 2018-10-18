@@ -80,7 +80,7 @@ struct CartesianBox{N} <: Neighborhood{N}
 end
 
 @static if length(Compat.InteractiveUtils.subtypes(CartesianIndex)) != 0
-    @error "CartesianIndex is assumed to be a concrete type"
+    error("CartesianIndex is assumed to be a concrete type")
 end
 
 """
