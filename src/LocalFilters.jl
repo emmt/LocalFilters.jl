@@ -16,8 +16,9 @@ isdefined(Base, :__precompile__) && __precompile__(true)
 module LocalFilters
 
 export
-    bilateralfilter!,
     bilateralfilter,
+    bilateralfilter!,
+    localfilter,
     localfilter!,
     localmean,
     localmean!,
