@@ -12,7 +12,7 @@ import LocalFilters: Neighborhood, CenteredBox, CartesianBox, Kernel
 
 replicate(a, n::Integer) = ntuple(i->a, n)
 compare(a, b) = maximum(abs(a - b))
-samevalues(a, b) = maximum(a .== b)
+samevalues(a, b) = minimum(a .== b)
 
 if DEBUG
     a = rand(62,81)
