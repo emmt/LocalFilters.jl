@@ -1,5 +1,19 @@
-* Factorize computations for rectangular regions, see erode/dilate/etc.  in
-  `JuliaImages/Images.jl`.  Implement van Herk / Gil & Werman algorithm.
+* Merge `CartesianBox` and `CenteredBox` (unless there is a performance
+  regression), make all boxes iterable.
+
+  - Suppress/deprecate `CenteredBox` which is just a `CartesianBox`.  Rename
+    `CartesianBox` as `RectangularBox` to avoid conflicts with CartesianBoxes
+    package.  Hence, `Neighborhood` has two concrete subtypes: `RectangularBox`
+    and `Kernel`.
+
+  - Check that the incidence on execution time (`localfilter!` may be faster on
+    `CenteredBox`) is negligible.
+
+* A union being slower to dispatch (check this?), consider suppressing
+  `CartesianRegion` and `IndexInterval`.
+
+* Use van Herk / Gil & Werman algorithm whenever possible (for
+  `RectangularBox`, or `Kernel` whose elements are all equal to 1).
 
 * Add a repeat count to a basic operation, or even better: use `B^n` to repeat
   `n` times basic operations with structuring element, or `...*B2*B1` to apply
@@ -7,7 +21,7 @@
 
 * Detect zero-width region which are a no-op.
 
-* Define regions as `OffsetArray` (see
+* Define neighborhoods as `OffsetArray` (see
   https://github.com/alsam/OffsetArrays.jl).
 
 * Extend this to other types of *kernels* (convolution, median, *etc.*).
@@ -20,12 +34,9 @@
 
 * Implement morphological gradient operators.
 
-* Merge `CartesianBox` and `CenteredBox` (unless there is a performance
-  regression), make all boxes iterable.
-
-* Automatically split arrays for multi-threaded processing.
+* Multi-threading:
+  - Automatically split arrays for multi-threaded processing.
+  - Multi-thread separable filtering operations (require one workspace per
+    thread).
 
 * Make all neighborhoods iterable and check iterations over neighborhoods.
-
-* Multi-thread separable filtering operations (require one workspace per
-  thread).
