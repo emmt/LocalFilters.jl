@@ -1,10 +1,6 @@
-if ! isdefined(Base, :LocalFilters)
-    include("../src/LocalFilters.jl")
-end
+isdefined(Base, :LocalFilters) || include("../src/LocalFilters.jl")
 
 module LocalFiltersTests
-
-const DEBUG = true
 
 using Compat
 using LocalFilters, Compat.Test
@@ -13,22 +9,6 @@ import LocalFilters: Neighborhood, CenteredBox, CartesianBox, Kernel
 replicate(a, n::Integer) = ntuple(i->a, n)
 compare(a, b) = maximum(abs(a - b))
 samevalues(a, b) = minimum(a .== b)
-
-if DEBUG
-    a = rand(62,81)
-    cbox = CenteredBox(3,5)
-    rbox = CartesianBox(cbox)
-    mask = Kernel(cbox)
-    kern = Kernel(eltype(a), mask)
-    result = erode(a, cbox)
-    println("erode 1 -> ", samevalues(erode(a, rbox), result))
-    println("erode 2 -> ", samevalues(erode(a, mask), result))
-    println("erode 3 -> ", samevalues(erode(a, kern), result))
-    result = dilate(a, cbox)
-    println("dilate 1 -> ", samevalues(dilate(a, rbox), result))
-    println("dilate 2 -> ", samevalues(dilate(a, mask), result))
-    println("dilate 3 -> ", samevalues(dilate(a, kern), result))
-end
 
 @testset "LocalFilters" begin
     for (arrdims, boxdims) in (((341,),    (3,)),
