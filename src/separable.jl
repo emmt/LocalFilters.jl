@@ -96,24 +96,24 @@ structuring element of size 11×11 can be computed as:
 localfilter(A, :, +, (-5:5, -5:5))*(1/11)
 ```
 
-## Efficiency an restrictions
+## Efficiency and restrictions
 
-The van Herk-Gil-Werman algorithm is very fast for large rectangular
-structuring elements.  It takes at most 3 operations to filter an element along
-a given dimension whatever the width `p` of the considered local neighborhood.
-For `N`-dimensional arrays, the algorithm requires only `3N` operations per
-element instead of `p^N - 1` operations for a naive implementation.  This
-however requires to make a pass along each dimension so memory page faults may
-reduce the performances.  This is somewhat attenuated by the fact that the
-algorithm can be applied in-place.  For efficient multi-dimensional out of
-place filtering, make the first pass with a fresh destination array and then
-all other passes in-place on the destination array.
+The van Herk-Gil-Werman algorithm is very fast for rectangular structuring
+elements.  It takes at most 3 operations to filter an element along a given
+dimension whatever the width `p` of the considered local neighborhood.  For
+`N`-dimensional arrays, the algorithm requires only `3N` operations per element
+instead of `p^N - 1` operations for a naive implementation.  This however
+requires to make a pass along each dimension so memory page faults may reduce
+the performances.  This is somewhat attenuated by the fact that the algorithm
+can be applied in-place.  For efficient multi-dimensional out-of-place
+filtering, it is recommended to make the first pass with a fresh destination
+array and then all other passes in-place on the destination array.
 
 To apply the van Herk-Gil-Werman algorithm, the structuring element must be
-separable along the dimensiions and its components must be contiguous.  In
-other words, the algorithm is only applicable for `N`-dimensional rectangular
-neighborhoods.  The structuring element may however be off-centered by an
-arbitrary offset.
+separable along the dimensions and its components must be contiguous.  In other
+words, the algorithm is only applicable for `N`-dimensional rectangular
+neighborhoods.  The structuring element may however be off-centered by
+arbitrary offsets along each dimension.
 
 To take into account boundary conditions (for now only least neighborhood is
 implemented) and allow for in-place operation, the algorithm allocates a
@@ -174,7 +174,7 @@ function localfilter!(dst::AbstractArray{T,N},
     #
 
     # Check arguments and get dimensions.
-    1 ≤ d ≤ N || throw(BoundsError("out of bounds dimension index"))
+    1 ≤ d ≤ N || throw(ArgumentError("out of bounds dimension index"))
     kmin ≤ kmax || throw(ArgumentError("invalid structuring element interval"))
     inds = axes(A)
     axes(dst) == inds || throw(DimensionMismatch("source and destination must have the same indices"))
@@ -384,9 +384,9 @@ for (f, op) in ((:erode, min), (:dilate, max))
 
         function $f(A::AbstractArray{T,N},
                     dims::Union{Colon, Integer, Tuple{Vararg{Integer}},
-                                 AbstractVector{<:Integer}},
+                                AbstractVector{<:Integer}},
                     rngs::Union{IndexInterval, Tuple{Vararg{IndexInterval}},
-                                 AbstractVector{<:IndexInterval}},
+                                AbstractVector{<:IndexInterval}},
                     args...) where {T,N}
             return localfilter(A, dims, $op, rngs, args...)
         end
