@@ -26,3 +26,6 @@
 * Automatically split arrays for multi-threaded processing.
 
 * Make all neighborhoods iterable and check iterations over neighborhoods.
+
+* Multi-thread separable filtering operations (require one workspace per
+  thread).
