@@ -21,7 +21,7 @@
     end
 end
 CartesianIndices(B::Neighborhood) =
-    CartesianIndices(map((i,j) -> i:j, limits(B)...))
+    CartesianIndices(map((i,j) -> i:j, initialindex(B).I, finalindex(B).I))
 convert(::Type{CartesianIndices{N}}, B::Neighborhood{N}) where N =
     CartesianIndices(B)
 

@@ -27,8 +27,12 @@ const triviallocalextrema = localextrema
             @test Neighborhood(B2) === box
             @test Neighborhood(B2...) === box
             @test Neighborhood(CartesianIndices(inds)) === box
+            @test CartesianIndices(box) === CartesianIndices(inds)
             @static if !isdefined(Base, :CartesianIndices)
                 @test Neighborhood(CartesianRange(inds)) === box
+                @test Neighborhood(CartesianRange(I1, I2)) === box
+                @test CartesianRange(box) === CartesianRange(inds)
+                @test CartesianRange(box) === CartesianRange(I1, I2)
             end
             @test RectangularBox(B1) === box
             @test RectangularBox(B1...) === box
@@ -38,6 +42,9 @@ const triviallocalextrema = localextrema
             @static if !isdefined(Base, :CartesianIndices)
                 @test RectangularBox(CartesianRange(inds)) === box
             end
+            @test length(box) === length(CartesianIndices(inds))
+            @test size(box) === size(CartesianIndices(inds))
+            # FIXME: @test axes(box) === axes(CartesianIndices(inds))
         end
     end
 
