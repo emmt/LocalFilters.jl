@@ -73,8 +73,10 @@ function bilateralfilter!(::Type{T},
                           Gs::Function,
                           width::Integer
                           ) where {T<:AbstractFloat, Td<:Real, Ta<:Real, N}
-    @assert width > 0 && isodd(width) "width or region of interest must be at least and odd"
-    B = CenteredBox{N}(CartesianIndex(ntuple(i -> Int(width), N)))
+    @assert width > 0 && isodd(width) "width or region of interest must be at least one and odd"
+    h = Int(width) >> 1
+    I = CartesianIndex(ntuple(i -> h, N))
+    B = RectangularBox{N}(-I, I)
     return bilateralfilter!(T, dst, A, Fr, Gs, B)
 end
 

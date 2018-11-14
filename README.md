@@ -149,47 +149,86 @@ support shape and may have embedded weights (*e.g.*, to implement *local
 convolution*).
 
 
-### Types of Neighborhoods
+### Types of neighborhoods
 
-There are many possible types of neighborhood:
+From the user point of view, there are three kinds of neighborhoods:
 
-* The *default neighborhood* is a `LocalFilters.CenteredBox` of width 3 in each
+* **Rectangular boxes** are rectangular neighborhoods whose edges are aligned
+  with the axes of array indices and which may be centered or have arbitrary
+  offsets along the dimensions.  These neighborhoods are represented by
+  instances of `LocalFilters.RectangularBox`.
+
+* **Arbitrarily shaped neighborhoods** are neighborhoods with arbitrary shape
+  and offset.  These neighborhoods are represented by instances of
+  `LocalFilters.Kernel` with boolean element type.  These neighborhoods are
+  constructed from an array of booleans and an optional starting index.
+
+* **Kernels** are neighborhoods whose elements are weights and which be may
+  have arbitrary offset.  These neighborhoods are represented by instances of
+  `LocalFilters.Kernel` with numerical element type.  These neighborhoods are
+  constructed from an array of weights and an optional starting index.
+
+
+### Syntax for neighborhoods
+
+
+* The *default neighborhood* is a centered rectangular box of width 3 in each
   of its dimensions.
 
-* A *scalar* integer `w` yields a `LocalFilters.CenteredBox` of size `w` along
-  all dimensions.  `w` must be an odd integer at least equal to 1.
+* A *scalar* integer `w` yields a centered rectangular box of size `w` along
+  all dimensions.  `w` must be at least equal to 1 and the geometrical center
+  of the box is defined according to the conventions in `fftshift`.
 
-* A *tuple* `t` of integers yields a `LocalFilters.CenteredBox` whose size is
-  `t[i]` along the `i`-th dimension.  All values of `t` must be odd integers
-  larger or equal to 1.  Tip: Remember that you can use `v...` to convert a
-  *vector* `v` into a tuple.
+* A *tuple* `t` of integers yields a centered rectangular box whose size is
+  `t[i]` along the `i`-th dimension.  All values of `t` must be larger or equal
+  to 1.  Tip: Remember that you can use `v...` to convert a *vector* `v` into a
+  tuple.
 
 * An *array* `A` yields a `LocalFilters.Kernel` whose coefficients are the
   values of `A` and whose neighborhood is the centered bounding-box of `A`.
 
-* A *Cartesian range* `R` (an instance of `Base.CartesianRange`) yields a
-  `LocalFilters.CartesianBox` which is a rectangular neighborhood whose support
-  contains all relative positions within `first(R)` and `last(R)`.
+* A *Cartesian range* `R` (an instance of `CartesianIndices` or of
+  `CartesianRange`) yields a `LocalFilters.RectangularBox` which is a
+  rectangular neighborhood whose support contains all relative positions within
+  `first(R)` and `last(R)`.
 
-* A centered rectangular box created with `LocalFilters.CenteredBox(dims)`
-  with `dims` a tuple of odd integers (all ≥ 1).
-
-* A rectangular box, possibly off-centered, created with one of:
+* A rectangular box neighborhood created by calling
+  `LocalFilters.RectangularBox` as:
 
   ```julia
-  LocalFilters.CartesianBox(R)
-  LocalFilters.CartesianBox(I0, I1)
-  LocalFilters.CartesianBox(dims, offs)
-  LocalFilters.CartesianBox(inds)
+  LocalFilters.RectangularBox(R)
+  LocalFilters.RectangularBox(I1, I2)
+  LocalFilters.RectangularBox(dims, offs)
+  LocalFilters.RectangularBox(inds)
   ```
 
-  where `R` is a `Base.CartesianRange`, `I0` and `I1` are two
-  `Base.CartesianIndex` specifying the first and last relative position within
-  the neighborhood, `dims` and `offs` are tuples of integers specifying the
-  dimensions of the neighborhood and its anchor, `inds` are unit ranges.
+  where `R` is an instance of`CartesianIndices` (or of `CartesianRange` for old
+  Julia version), `I1` and `I2` are two `CartesianIndex` specifying the first
+  and last relative position within the neighborhood, `dims` and `offs` are
+  tuples of integers specifying the dimensions of the neighborhood and its
+  offsets, `inds` are unit ranges.
+
+  Assuming `dim` is an integer, then:
+
+  ```julia
+  LocalFilters.RectangularBox{N}(dim)
+  ```
+
+  yields an `N`-dimensional rectangular box of size `dim` along all dimensions
+  and centered at the geometrical center of the box (with the same conventions
+  as `fftshift`).
+
+  Similarly, assuming `i1` and `i2` are integers, then:
+
+  ```julia
+  LocalFilters.RectangularBox{N}(i1:i2)
+  ```
+
+  yields an `N`-dimensional rectangular box with index range `i1:i2` along all
+  dimensions.
 
 
-### Methods on a Neighborhood
+### Methods on a neighborhood
 
 The following methods make sense on a neighborhood `B`:
 
@@ -209,7 +248,7 @@ B[i]      -> yields the kernel value of B at index i
 Note that the index `i` in `B[i]` is assumed to be between `first(B)` and
 `last(B)`, for efficiency reasons this is not checked.  The type returned by
 `eltype(B)` is `Bool` for a neighborhood which is just defined by its support
-(*e.g.* a `LocalFilters.CenteredBox` or a `LocalFilters.CartesianBox`), the
+(*e.g.* a `LocalFilters.CenteredBox` or a `LocalFilters.RectangularBox`), the
 element type of its kernel otherwise.
 
 ```julia

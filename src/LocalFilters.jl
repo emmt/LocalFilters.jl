@@ -16,6 +16,8 @@ isdefined(Base, :__precompile__) && __precompile__(true)
 module LocalFilters
 
 export
+    Neighborhood,
+    RectangularBox,
     bilateralfilter,
     bilateralfilter!,
     localfilter,

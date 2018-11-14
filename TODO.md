@@ -1,13 +1,5 @@
-* Merge `CartesianBox` and `CenteredBox` (unless there is a performance
-  regression), make all boxes iterable.
-
-  - Suppress/deprecate `CenteredBox` which is just a `CartesianBox`.  Rename
-    `CartesianBox` as `RectangularBox` to avoid conflicts with CartesianBoxes
-    package.  Hence, `Neighborhood` has two concrete subtypes: `RectangularBox`
-    and `Kernel`.
-
-  - Check that the incidence on execution time (`localfilter!` may be faster on
-    `CenteredBox`) is negligible.
+* Check that the incidence on execution time (`localfilter!` may be faster on
+  `CenteredBox`) is negligible.
 
 * A union being slower to dispatch (check this?), consider suppressing
   `CartesianRegion` and `IndexInterval`.

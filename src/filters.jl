@@ -207,32 +207,9 @@ end
 #
 #    max(imin, i - kmax) ≤ j ≤ min(imax, i - kmin)
 #
-# For a `CenteredBox`, `kmin = -kmax`.
-#
-
 function localfilter!(dst,
                       A::AbstractArray{T,N},
-                      B::CenteredBox{N},
-                      initial::Function,
-                      update::Function,
-                      store::Function) where {T,N}
-    R = cartesianregion(A)
-    imin, imax = limits(R)
-    off = finalindex(B)
-    @inbounds for i in R
-        v = initial(A[i])
-        @simd for j in cartesianregion(max(imin, i - off),
-                                       min(imax, i + off))
-            v = update(v, A[j], true)
-        end
-        store(dst, i, v)
-    end
-    return dst
-end
-
-function localfilter!(dst,
-                      A::AbstractArray{T,N},
-                      B::CartesianBox{N},
+                      B::RectangularBox{N},
                       initial::Function,
                       update::Function,
                       store::Function) where {T,N}

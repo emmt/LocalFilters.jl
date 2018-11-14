@@ -18,62 +18,48 @@ abstract type Neighborhood{N} end
 
 """
 
-A centered box is a rectangular neighborhood which is defined by the offsets of
-the last element of the neighborhood with respect to the center of the box.
-
-"""
-struct CenteredBox{N} <: Neighborhood{N}
-    # For a CenteredBox, the most used operation is getting its limits, so
-    # this is what we store.  The inner constructor enforces the constraints.
-    start::CartesianIndex{N}
-    stop::CartesianIndex{N}
-    CenteredBox{N}(stop::CartesianIndex{N}) where {N} = new{N}(-stop, stop)
-end
-
-"""
-
 ```julia
-CartesianBox(start, stop)
+RectangularBox(start, stop)
 ```
 
-yields a rectangular (cartesian) box defined by the bounds of the
-multi-dimensional indices in the box.
+yields a neighborhood which is a rectangular (Cartesian) box defined by the
+bounds of the multi-dimensional indices in the box.
 
 Another possibility is to specify the dimensions of the box and the offsets of
 its central element:
 
 ```julia
-CartesianBox(dims, offs)
+RectangularBox(dims, offs)
 ```
 
 with `dims` a `N`-tuple of dimensions and `offs` either a `N`-tuple of indices
 of an instance of `CartesianIndex{N}`.
 
-A `CartesianBox` can also be defined by the index ranges along all the
+A `RectangularBox` can also be defined by the index ranges along all the
 dimensions.  For example:
 
 ```julia
-CartesianBox(-3:3, 0, -2:1)
-CartesianBox((-3:3, 0, -2:1))
+RectangularBox(-3:3, 0, -2:1)
+RectangularBox((-3:3, 0, -2:1))
 
 ```
 
-both yield a 3-dimensional `CartesianBox` of size `7×1×4` and whose first index
-varies on `-3:3`, its second index is `0` while its third index varies on
+both yield a 3-dimensional `RectangularBox` of size `7×1×4` and whose first
+index varies on `-3:3`, its second index is `0` while its third index varies on
 `-2:1`.
 
-Finally, a `CartesianBox` can be defined as:
+Finally, a `RectangularBox` can be defined as:
 
 ```julia
-CartesianBox(R)
+RectangularBox(R)
 ```
 
 where `R` is an instance of `CartesianIndices` or, on version of Julia ≤ 0.6,
 `CartesianRange`.
 
 """
-struct CartesianBox{N} <: Neighborhood{N}
-    # For a CartesianBox, the most used operation is getting its limits, so
+struct RectangularBox{N} <: Neighborhood{N}
+    # For a RectangularBox, the most used operation is getting its limits, so
     # this is what we store.
     start::CartesianIndex{N}
     stop::CartesianIndex{N}
@@ -125,8 +111,8 @@ Kernel(T, K)
 which yields a kernel whose coefficients are those of the kernel `K`
 converted to type `T`.
 
-It is also possible to convert neighborhoods such as [`CenteredBox`](@ref) and
-[`CartesianBox`](@ref) into a kernel with boolean coefficients by calling:
+It is also possible to convert instances of [`RectangularBox`](@ref) into a
+kernel with boolean coefficients by calling:
 
 ```julia
 Kernel(B)
@@ -171,11 +157,6 @@ struct Kernel{T,N,A<:AbstractArray{T,N}} <: Neighborhood{N}
 end
 
 """
-A `RectangularBox{N}` is an union of `CenteredBox{N}` and `CartesianBox{N}`.
-"""
-const RectangularBox{N} = Union{CenteredBox{N}, CartesianBox{N}}
-
-"""
 
 `IndexInterval` is an union of the types of any argument suitable to specify an
 interval of indices along a dimension (that is, an integer or an integer valued
@@ -195,11 +176,13 @@ whose type belongs to `CartesianRegion`.
 """
 CartesianRegion
 @static if isdefined(Base, :CartesianIndices)
-    const CartesianRegion{N} = Union{NTuple{N,IndexInterval},
+    const CartesianRegion{N} = Union{NTuple{2,CartesianIndex{N}},
+                                     NTuple{N,AbstractUnitRange{<:Integer}},
                                      Neighborhood{N},
                                      CartesianIndices{N}}
 else
-    const CartesianRegion{N} = Union{NTuple{N,IndexInterval},
+    const CartesianRegion{N} = Union{NTuple{2,CartesianIndex{N}},
+                                     NTuple{N,AbstractUnitRange{<:Integer}},
                                      Neighborhood{N},
                                      CartesianIndices{N},
                                      CartesianRange{CartesianIndex{N}}}

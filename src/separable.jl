@@ -71,7 +71,7 @@ centered structuring element of width 7 in every dimension can be applied by:
 localfilter!(A, :, min, -3:3)
 ```
 
-On can specify index interval `0` to do nothing along the corresponding
+One can specify index interval `0` to do nothing along the corresponding
 dimension.  For instance:
 
 ```julia
