@@ -68,7 +68,7 @@ respectively yield the initial and final multi-dimensional index for indexing
 the Cartesian region defined by `B`.  A Cartesian region defines a rectangular
 set of indices whose edges are aligned with the indexing axes.
 
-Compared to similar methods [`firstindex`](@ref), [`finalindex()`](@ref),
+Compared to similar methods [`firstindex`](@ref), [`lastindex()`](@ref),
 [`first()`](@ref) and [`last()`](@ref), the returned value is always an
 instance of `CartesianIndex{N}` with `N` the number of dimensions.
 
@@ -88,6 +88,7 @@ initialindex(inds::NTuple{N,IndexInterval}) where {N} =
 finalindex(inds::NTuple{N,IndexInterval}) where {N} =
      CartesianIndex(map(last, inds))
 @static if !isdefined(Base, :CartesianIndices)
+    # For compatibility with Julia ≤ 0.6
     initialindex(R::CartesianRange) = first(R)
     finalindex(R::CartesianRange) = last(R)
 end
@@ -126,14 +127,11 @@ yields the rectangular region (as an instance of `CartesianIndices` or
 `CartesianRange` depending on Julia version) specified by the arguments which
 can be:
 
-* an abstract array whose valid index ranges define the region (see
-  [`axes`](@ref));
-
-* two abstract arrays to yield their support which is asserted to be identical;
+* an abstract array whose axes define the region (see [`axes`](@ref));
 
 * a list of unit range indices and/or indices along each dimension;
 
-* the corners of the bounding box, say `start` and `stop`, specified as
+* the corners of the bounding box, say `start` and `stop`, specified as two
   instances of `CartesianIndex`;
 
 * a neighborhood (see [`Neighborhood`](@ref));
@@ -214,7 +212,7 @@ convert(::Type{Kernel{T,N}}, ker::Kernel{S,N}) where {T,S,N} =
 
 @inline function _halfdim(n::Integer)
     (n ≥ 1 && isodd(n)) ||
-        throw(ArgumentError("dimension(s) of must be nonnegative and odd"))
+        throw(ArgumentError("dimension(s) must be at least one and odd"))
     return (Int(n) >> 1)
 end
 

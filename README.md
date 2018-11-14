@@ -118,7 +118,7 @@ store(c,i,v) = c[i] = v
 ```
 
 with `T` the type of the elements of `A`.  Of course, anonymous functions can
-be exploted to implement this filter in a single call:
+be exploited to implement this filter in a single call:
 
 ```julia
 localfilter!(dst, A, B,
@@ -145,7 +145,8 @@ convolution, median filtering, *etc.* via the `localfilter!` driver.
 morphology) is a central concept in `LocalFilters`.  The neighborhood defines
 which values are involved in a local operation for each component of the source
 array.  Neighborhoods are assumed to be shift invariant but may have any
-support shape and may have embedded weights (think about a local convolution).
+support shape and may have embedded weights (*e.g.*, to implement *local
+convolution*).
 
 
 ### Types of Neighborhoods
@@ -159,7 +160,7 @@ There are many possible types of neighborhood:
   all dimensions.  `w` must be an odd integer at least equal to 1.
 
 * A *tuple* `t` of integers yields a `LocalFilters.CenteredBox` whose size is
-  `t[i]` along the `i`-th dimension.  All values of `t` must an odd integers
+  `t[i]` along the `i`-th dimension.  All values of `t` must be odd integers
   larger or equal to 1.  Tip: Remember that you can use `v...` to convert a
   *vector* `v` into a tuple.
 
@@ -197,12 +198,12 @@ eltype(B) -> element type of B
 ndims(B)  -> number of dimensions of B
 length(B) -> number of elements in the bounding-box of B
 size(B)   -> size of the bounding-box of B along all dimensions
-size(B,i) -> size of the bounding-box of B along i-th dimension
+size(B,d) -> size of the bounding-box of B along d-th dimension
 first(B)  -> CartesianIndex of first position in the bounding-box
              of B relative to its anchor
 last(B)   -> CartesianIndex of last position in the bounding-box
              of B relative to its anchor
-B[i]      -> yields the kernel value of `B` at index `i`
+B[i]      -> yields the kernel value of B at index i
 ```
 
 Note that the index `i` in `B[i]` is assumed to be between `first(B)` and
