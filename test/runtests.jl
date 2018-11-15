@@ -261,12 +261,20 @@ f2(x) = x > 0.5
                 @test samevalues(bottom_hat(a, box), result)
                 @test samevalues(bottom_hat(a, mask), result)
                 @test samevalues(bottom_hat(a, kern), result)
+                result = bottom_hat(REF, a, box, 3)
+                @test samevalues(bottom_hat(a, box, 3), result)
+                @test samevalues(bottom_hat(a, mask, 3), result)
+                @test samevalues(bottom_hat(a, kern, 3), result)
             end
             @testset "top-hat" begin
                 result = top_hat(REF, a, box)
                 @test samevalues(top_hat(a, box), result)
                 @test samevalues(top_hat(a, mask), result)
                 @test samevalues(top_hat(a, kern), result)
+                result = top_hat(REF, a, box, 3)
+                @test samevalues(top_hat(a, box,  3), result)
+                @test samevalues(top_hat(a, mask, 3), result)
+                @test samevalues(top_hat(a, kern, 3), result)
             end
             @testset "localextrema" begin
                 e0, d0 = erode(REF, a, box), dilate(REF, a, box)
