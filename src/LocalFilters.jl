@@ -57,6 +57,9 @@ else
     import Base: indices
     const axes = indices
 end
+@static if VERSION < v"0.7.0-alpha"
+    Base.Tuple(index::CartesianIndex) = index.I
+end
 
 include("types.jl")
 include("basics.jl")
