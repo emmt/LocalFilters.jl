@@ -27,10 +27,8 @@ using LocalFilters:
     offset
 
 import LocalFilters:
-    bottom_hat!,
     bottom_hat,
     cartesianregion,
-    closing!,
     closing,
     convolve!,
     convolve,
@@ -43,9 +41,7 @@ import LocalFilters:
     localfilter!,
     localmean,
     localmean!,
-    opening!,
     opening,
-    top_hat!,
     top_hat
 
 convolve(variant::Val, A::AbstractArray, args...) =
@@ -57,81 +53,25 @@ dilate(variant::Val, A::AbstractArray, args...) =
 erode(variant::Val, A::AbstractArray, args...) =
     erode!(variant, similar(A), A, args...)
 
-closing(variant::Val, A::AbstractArray, args...) =
-    closing!(variant, similar(A), similar(A), A, args...)
+closing(variant::Val, A::AbstractArray{T,N}, B=3) where {T,N} =
+    closing(variant, A, Neighborhood{N}(B))
 
-function closing!(variant::Val,
-                  dst::AbstractArray{T,N},
-                  wrk::AbstractArray{T,N},
-                  src::AbstractArray{T,N}, B=3) where {T,N}
-    closing!(variant, dst, wrk, src, convert(Neighborhood{N}, B))
-end
+closing(variant::Val, A::AbstractArray, B::Neighborhood) =
+    erode(variant, dilate(variant, A, B), B)
 
-function closing!(variant::Val,
-                  dst::AbstractArray{T,N},
-                  wrk::AbstractArray{T,N},
-                  src::AbstractArray{T,N},
-                  B::Neighborhood{N}) where {T,N}
-    erode!(variant, dst, dilate!(variant, wrk, src, B), B)
-end
+opening(variant::Val, A::AbstractArray{T,N}, B=3) where {T,N} =
+    opening(variant, A, Neighborhood{N}(B))
 
-opening(variant::Val, A::AbstractArray, args...) =
-    opening!(variant, similar(A), similar(A), A, args...)
+opening(variant::Val, A::AbstractArray, B::Neighborhood) =
+    dilate(variant, erode(variant, A, B), B)
 
-function opening!(variant::Val,
-                  dst::AbstractArray{T,N},
-                  wrk::AbstractArray{T,N},
-                  src::AbstractArray{T,N}, B=3) where {T,N}
-    opening!(variant, dst, wrk, src, convert(Neighborhood{N}, B))
-end
+top_hat(variant::Val, a, r=3) = a .- opening(variant, a, r)
+top_hat(variant::Val, a, r, s) =
+    top_hat(variant, closing(variant, a, s), r)
 
-function opening!(variant::Val,
-                  dst::AbstractArray{T,N},
-                  wrk::AbstractArray{T,N},
-                  src::AbstractArray{T,N},
-                  B::Neighborhood{N}) where {T,N}
-    dilate!(variant, dst, erode!(variant, wrk, src, B), B)
-end
-
-top_hat(variant::Val, a, r=3) =
-    top_hat!(variant, similar(a), similar(a), a, r)
-
-function top_hat(variant::Val, a, r, s)
-    wrk = similar(a)
-    top_hat!(variant, similar(a), wrk,
-             closing!(variant, similar(a), wrk, a, s), r)
-end
-
-function top_hat!(variant::Val,
-                  dst::AbstractArray{T,N},
-                  wrk::AbstractArray{T,N},
-                  src::AbstractArray{T,N}, r=3) where {T,N}
-    opening!(variant, dst, wrk, src, r)
-    @inbounds for i in eachindex(dst, src)
-        dst[i] = src[i] - dst[i]
-    end
-    return dst
-end
-
-bottom_hat(variant::Val, a, r=3) =
-    bottom_hat!(variant, similar(a), similar(a), a, r)
-
-function bottom_hat(variant::Val, a, r, s)
-    wrk = similar(a)
-    bottom_hat!(variant, similar(a), wrk,
-                opening!(variant, similar(a), wrk, a, s), r)
-end
-
-function bottom_hat!(variant::Val,
-                     dst::AbstractArray{T,N},
-                     wrk::AbstractArray{T,N},
-                     src::AbstractArray{T,N}, r=3) where {T,N}
-    closing!(variant, dst, wrk, src, r)
-    @inbounds for i in eachindex(dst, src)
-        dst[i] -= src[i]
-    end
-    return dst
-end
+bottom_hat(variant::Val, a, r=3) = closing(variant, a, r) .- a
+bottom_hat(variant::Val, a, r, s) =
+    bottom_hat(variant, opening(variant, a, s), r)
 
 localmean(variant::Val, A::AbstractArray, args...) =
     localmean!(variant, similar(A), A, args...)
