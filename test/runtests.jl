@@ -95,6 +95,7 @@ f2(x) = x > 0.5
 
             # Neighborhood constructors.
             @test Neighborhood(box) === box
+            @test Neighborhood(ker) === ker
             @test Neighborhood(A) === ker
             @test Neighborhood(dims...) === box
             @test Neighborhood(rngs) === box
@@ -144,6 +145,9 @@ f2(x) = x > 0.5
             end
 
             # Kernel constructors.
+            @test Kernel(ker) === ker
+            @test identical(Kernel(box), Kernel(ones(Bool, dims)))
+            @test identical(Kernel(Bool, box), Kernel(ones(Bool, dims)))
             @test Kernel(A, initialindex(ker)) === ker
             @test Kernel(A, rngs) === ker
             @test Kernel(A, rngs...) === ker
@@ -152,10 +156,14 @@ f2(x) = x > 0.5
                 @test Kernel(A, CartesianRange(ker)) === ker
             end
             off = initialindex(A) - initialindex(ker)
-            @test identical(Kernel(i -> f1(A[off + i]), CartesianIndices(ker)),
-                            Kernel(map(f1, A)))
-            @test identical(Kernel(i -> f2(A[off + i]), CartesianIndices(ker)),
-                            Kernel(map(f2, A)))
+            @test identical(Kernel(eltype(A), i -> f1(A[off + i]),
+                                   CartesianIndices(ker)), Kernel(map(f1, A)))
+            @test identical(Kernel(i -> f1(A[off + i]),
+                                   CartesianIndices(ker)), Kernel(map(f1, A)))
+            @test identical(Kernel(Bool, i -> f2(A[off + i]),
+                                   CartesianIndices(ker)), Kernel(map(f2, A)))
+            @test identical(Kernel(i -> f2(A[off + i]),
+                                   CartesianIndices(ker)), Kernel(map(f2, A)))
 
             # Conversion Neighborhood <-> CartesianIndices.
             @test Neighborhood(CartesianIndices(rngs)) === box
