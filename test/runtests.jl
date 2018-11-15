@@ -244,6 +244,30 @@ f2(x) = x > 0.5
                 @test samevalues(dilate(a, mask), result)
                 @test samevalues(dilate(a, kern), result)
             end
+            @testset "closing" begin
+                result = closing(REF, a, box)
+                @test samevalues(closing(a, box), result)
+                @test samevalues(closing(a, mask), result)
+                @test samevalues(closing(a, kern), result)
+            end
+            @testset "opening" begin
+                result = opening(REF, a, box)
+                @test samevalues(opening(a, box), result)
+                @test samevalues(opening(a, mask), result)
+                @test samevalues(opening(a, kern), result)
+            end
+            @testset "bottom-hat" begin
+                result = bottom_hat(REF, a, box)
+                @test samevalues(bottom_hat(a, box), result)
+                @test samevalues(bottom_hat(a, mask), result)
+                @test samevalues(bottom_hat(a, kern), result)
+            end
+            @testset "top-hat" begin
+                result = top_hat(REF, a, box)
+                @test samevalues(top_hat(a, box), result)
+                @test samevalues(top_hat(a, mask), result)
+                @test samevalues(top_hat(a, kern), result)
+            end
             @testset "localextrema" begin
                 e0, d0 = erode(REF, a, box), dilate(REF, a, box)
                 e1, d1 = localextrema(REF, a, box)
@@ -264,6 +288,8 @@ f2(x) = x > 0.5
             end
             @testset "convolve" begin
                 result = convolve(REF, a, kern)
+                @test similarvalues(convolve(a, box), result)
+                @test similarvalues(convolve(a, mask), result)
                 @test similarvalues(convolve(a, kern), result)
             end
         end
