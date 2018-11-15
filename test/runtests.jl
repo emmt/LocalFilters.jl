@@ -1,11 +1,11 @@
-isdefined(Base, :LocalFilters) || include("../src/LocalFilters.jl")
+isdefined(Main, :LocalFilters) || include("../src/LocalFilters.jl")
 
 module LocalFiltersTests
 
 using Compat
 using LocalFilters, Compat.Test
 using LocalFilters: Neighborhood, RectangularBox, Kernel,
-    axes, initialindex, finalindex, limits, cartesianregion, ball,
+    axes, initialindex, finalindex, limits, cartesianregion, ball, coefs,
     strictfloor, USE_CARTESIAN_RANGE, _range
 
 replicate(a, n::Integer) = ntuple(i->a, n)
@@ -15,6 +15,16 @@ samevalues(a, b) = minimum(a .== b)
 const trivialerode = erode
 const trivialdilate = dilate
 const triviallocalextrema = localextrema
+
+function reversealldims(A::Array{T,N}) where {T,N}
+    B = Array{T,N}(undef, size(A))
+    len = length(A)
+    off = len + 1
+    @inbounds for i in 1:len
+        B[off - i] = A[i]
+    end
+    return B
+end
 
 @testset "LocalFilters" begin
 
@@ -36,7 +46,7 @@ const triviallocalextrema = localextrema
             N = length(dims)
             box = Neighborhood(dims)
             I1, I2 = limits(box)
-            A = Array{Int}(undef, dims)
+            A = rand(dims...)
 
             # Test limits(), initialindex() and finalindex().
             @test initialindex(CartesianIndices(rngs)) === I1
@@ -142,6 +152,15 @@ const triviallocalextrema = localextrema
             @test size(box) === size(CartesianIndices(rngs))
             @test size(box) === ntuple(d -> size(box, d), N)
             @test axes(box) === ntuple(d -> axes(box, d), N)
+
+            ker = Kernel(A)
+            revbox = reverse(box)
+            revker = reverse(ker)
+            @test initialindex(revbox) === -finalindex(box)
+            @test finalindex(revbox) === -initialindex(box)
+            @test initialindex(revker) === -finalindex(ker)
+            @test finalindex(revker) === -initialindex(ker)
+            @test samevalues(coefs(revker), reversealldims(coefs(ker)))
         end
     end
 

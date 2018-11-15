@@ -40,7 +40,7 @@ export
     localextrema!
 
 import Base: eltype, ndims, size, length, first, last, tail,
-    getindex, setindex!, convert
+    getindex, setindex!, convert, reverse
 
 # Deal with compatibility issues.
 using Compat

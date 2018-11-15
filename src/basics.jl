@@ -445,6 +445,29 @@ for F in (:Float64, :Float32, :Float16)
     end
 end
 
+"""
+
+```julia
+reverse(B::LocalFilters.Neighborhood)
+```
+
+yields neighborhood `B` reversed along all its dimensions.  This can be used
+to correlate by `B` rather than convolving by `B`.
+
+"""
+reverse(box::RectangularBox) =
+    RectangularBox(-finalindex(box), -initialindex(box))
+
+function reverse(ker::Kernel{T,N}) where {T,N}
+    kmin = -finalindex(ker)
+    kmax = -initialindex(ker)
+    rev = Kernel(Array{T}(undef, size(ker)), kmin)
+    @inbounds for k in cartesianregion(kmin, kmax)
+        rev[k] = ker[-k]
+    end
+    return rev
+end
+
 function strictfloor(::Type{T}, x)::T where {T}
     n = floor(T, x)
     return (n < x ? n : n - one(T))
