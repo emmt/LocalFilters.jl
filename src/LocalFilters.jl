@@ -44,11 +44,12 @@ import Base: eltype, ndims, size, length, first, last, tail,
 
 # Deal with compatibility issues.
 using Compat
-@static if isdefined(Base, :CartesianIndices)
-    import Base: CartesianIndices
-else
+const USE_CARTESIAN_RANGE = !isdefined(Base, :CartesianIndices)
+@static if USE_CARTESIAN_RANGE
     import Base: CartesianRange
     import Compat: CartesianIndices
+else
+    import Base: CartesianIndices
 end
 @static if isdefined(Base, :axes)
     import Base: axes

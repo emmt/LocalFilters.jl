@@ -13,8 +13,9 @@
 
 # Extend `CartesianIndices` and, maybe, `CartesianRange` which have been
 # imported from where they are.
-@static if ! isdefined(Base, :CartesianIndices)
+@static if USE_CARTESIAN_RANGE
     CartesianRange(B::Neighborhood) = CartesianRange(limits(B)...)
+    convert(::Type{CartesianRange}, B::Neighborhood) = CartesianRange(B)
     function convert(::Type{CartesianRange{CartesianIndex{N}}},
                      B::Neighborhood{N}) where N
         return CartesianRange(B)
@@ -22,6 +23,8 @@
 end
 CartesianIndices(B::Neighborhood) =
     CartesianIndices(map((i,j) -> i:j, initialindex(B).I, finalindex(B).I))
+convert(::Type{CartesianIndices}, B::Neighborhood) =
+    CartesianIndices(B)
 convert(::Type{CartesianIndices{N}}, B::Neighborhood{N}) where N =
     CartesianIndices(B)
 
@@ -37,8 +40,7 @@ getindex(B::Neighborhood, inds::Union{Integer,CartesianIndex}...) =
 setindex!(B::Neighborhood, val, inds::Union{Integer,CartesianIndex}...) =
     setindex!(B, val, CartesianIndex(inds...))
 
-@inline _length(start::Integer, stop::Integer) = _length(Int(start), Int(stop))
-@inline _length(start::Int, stop::Int) = max(stop - start + 1, 0)
+@inline _length(start::Int, stop::Int) = max(Int(stop) - Int(start) + 1, 0)
 
 """
 ```julia
@@ -83,15 +85,15 @@ finalindex(R::CartesianIndices) = last(R)
 initialindex(A::AbstractArray) = initialindex(axes(A))
 finalindex(A::AbstractArray) = finalindex(axes(A))
 
-initialindex(inds::NTuple{N,AbstractUnitRange{<:Integer}}) where {N} =
+initialindex(inds::UnitIndexRanges{N}) where {N} =
     CartesianIndex(map(first, inds))
-finalindex(inds::NTuple{N,AbstractUnitRange{<:Integer}}) where {N} =
+finalindex(inds::UnitIndexRanges{N}) where {N} =
      CartesianIndex(map(last, inds))
 
 initialindex(inds::NTuple{2,CartesianIndex{N}}) where {N} = inds[1]
 finalindex(inds::NTuple{2,CartesianIndex{N}}) where {N} = inds[2]
 
-@static if !isdefined(Base, :CartesianIndices)
+@static if USE_CARTESIAN_RANGE
     # For compatibility with Julia ≤ 0.6
     initialindex(R::CartesianRange) = first(R)
     finalindex(R::CartesianRange) = last(R)
@@ -120,10 +122,10 @@ limits(::Type{T}) where {T} = typemin(T), typemax(T)
 limits(A::AbstractArray) = limits(axes(A)) # provides a slight optimization?
 limits(B::Neighborhood) = initialindex(B), finalindex(B)
 limits(R::CartesianIndices) = initialindex(R), finalindex(R)
-limits(inds::NTuple{N,AbstractUnitRange{<:Integer}}) where {N} =
+limits(inds::UnitIndexRanges{N}) where {N} =
     initialindex(inds), finalindex(inds)
 limits(inds::NTuple{2,CartesianIndex{N}}) where {N} = inds
-@static if !isdefined(Base, :CartesianIndices)
+@static if USE_CARTESIAN_RANGE
     limits(R::CartesianRange) = initialindex(R), finalindex(R)
 end
 
@@ -162,16 +164,7 @@ cartesianregion(B::Neighborhood) =
 cartesianregion(A::AbstractArray) = cartesianregion(axes(A))
 # The most critical version of `cartesianregion` is the one which takes the
 # first and last indices of the region and which is inlined.
-@static if isdefined(Base, :CartesianIndices)
-    # Favor CartesianIndices.
-    cartesianregion(R::CartesianIndices) = R
-    @inline function cartesianregion(start::CartesianIndex{N},
-                                     stop::CartesianIndex{N}) where N
-	return CartesianIndices(map((i,j) -> i:j, start.I, stop.I))
-    end
-    cartesianregion(inds::NTuple{N,AbstractUnitRange{<:Integer}}) where N =
-        CartesianIndices(inds)
-else
+@static if USE_CARTESIAN_RANGE
     # Favor CartesianRange.
     cartesianregion(R::CartesianRange) = R
     cartesianregion(R::CartesianIndices) = cartesianregion(R.indices)
@@ -179,8 +172,17 @@ else
                                      stop::CartesianIndex{N}) where N
 	return CartesianRange(start, stop)
     end
-    cartesianregion(inds::NTuple{N,AbstractUnitRange{<:Integer}}) where N =
+    cartesianregion(inds::UnitIndexRanges{N}) where N =
         CartesianRange(initialindex(inds), finalindex(inds))
+else
+    # Favor CartesianIndices.
+    cartesianregion(R::CartesianIndices) = R
+    @inline function cartesianregion(start::CartesianIndex{N},
+                                     stop::CartesianIndex{N}) where N
+	return CartesianIndices(map((i,j) -> i:j, start.I, stop.I))
+    end
+    cartesianregion(inds::UnitIndexRanges{N}) where N =
+        CartesianIndices(inds)
 end
 
 #------------------------------------------------------------------------------
@@ -195,23 +197,35 @@ convert(::Type{Neighborhood{N}}, A::AbstractArray{T,N}) where {T,N} =
 for T in (Neighborhood, RectangularBox)
     @eval begin
 
-        convert(::Type{$T{N}}, dims::NTuple{N,Integer}) where {N} =
+        convert(::Type{$T{N}}, dims::Dimensions{N}) where {N} =
             RectangularBox(dims)
 
-        function convert(::Type{$T{N}},
-                         rngs::NTuple{N,AbstractUnitRange{<:Integer}}) where {N}
-            return RectangularBox(rngs)
-        end
+        convert(::Type{$T}, dims::Dimensions) =
+            RectangularBox(dims)
+
+        convert(::Type{$T{N}}, rngs::UnitIndexRanges{N}) where {N} =
+            RectangularBox(rngs)
+
+        convert(::Type{$T}, rngs::UnitIndexRanges) =
+            RectangularBox(rngs)
 
         convert(::Type{$T{N}}, R::CartesianIndices{N}) where {N} =
             RectangularBox(R)
 
+        convert(::Type{$T}, R::CartesianIndices) =
+            RectangularBox(R)
     end
 
-    @static if !isdefined(Base, :CartesianIndices)
-        @eval function convert(::Type{$T{N}},
-                               R::CartesianRange{CartesianIndex{N}}) where {N}
-            return RectangularBox(R)
+    @static if USE_CARTESIAN_RANGE
+        @eval begin
+            function convert(::Type{$T{N}},
+                             R::CartesianRange{CartesianIndex{N}}) where {N}
+                return RectangularBox(R)
+            end
+            function convert(::Type{$T},
+                             R::CartesianRange{CartesianIndex{N}}) where {N}
+                return RectangularBox(R)
+            end
         end
     end
 end
@@ -225,19 +239,19 @@ convert(::Type{Kernel{T,N}}, ker::Kernel{S,N}) where {T,S,N} =
 Neighborhood(A::AbstractArray) = Kernel(A)
 
 Neighborhood{N}(dim::Integer) where {N} = RectangularBox{N}(dim)
-Neighborhood{N}(rng::AbstractUnitRange{<:Integer}) where {N} =
+Neighborhood{N}(rng::UnitIndexRange) where {N} =
     RectangularBox{N}(rng)
 
 Neighborhood(dims::Integer...) = Neighborhood(dims)
-Neighborhood(rngs::AbstractUnitRange{<:Integer}...) = RectangularBox(rngs)
+Neighborhood(rngs::UnitIndexRange...) = RectangularBox(rngs)
 
-Neighborhood(dims::NTuple{N,Integer}) where {N} = RectangularBox(dims)
-Neighborhood(rngs::NTuple{N,AbstractUnitRange{<:Integer}}) where {N} =
+Neighborhood(dims::Dimensions{N}) where {N} = RectangularBox(dims)
+Neighborhood(rngs::UnitIndexRanges{N}) where {N} =
     RectangularBox(rngs)
 
 Neighborhood(R::CartesianIndices) = RectangularBox(R)
 
-@static if !isdefined(Base, :CartesianIndices)
+@static if USE_CARTESIAN_RANGE
     Neighborhood(R::CartesianRange) = RectangularBox(R)
 end
 
@@ -266,10 +280,10 @@ RectangularBox{N}(dim::Integer) where {N} = RectangularBox{N}(_range(dim))
 
 RectangularBox(dims::Integer...) = RectangularBox(dims)
 
-RectangularBox(dims::NTuple{N,Integer}) where {N} =
+RectangularBox(dims::Dimensions{N}) where {N} =
     RectangularBox(map(_range, dims))
 
-function RectangularBox{N}(rng::AbstractUnitRange{<:Integer}) where {N}
+function RectangularBox{N}(rng::UnitIndexRange) where {N}
     imin = Int(first(rng))
     imax = Int(last(rng))
     Imin = CartesianIndex(ntuple(d -> imin, Val(N)))
@@ -277,9 +291,9 @@ function RectangularBox{N}(rng::AbstractUnitRange{<:Integer}) where {N}
     return RectangularBox{N}(Imin, Imax)
 end
 
-RectangularBox(rngs::AbstractUnitRange{<:Integer}...) = RectangularBox(rngs)
+RectangularBox(rngs::UnitIndexRange...) = RectangularBox(rngs)
 
-function RectangularBox(rngs::NTuple{N,AbstractUnitRange{<:Integer}}) where {N}
+function RectangularBox(rngs::UnitIndexRanges{N}) where {N}
     I1 = CartesianIndex(map(r -> Int(first(r)), rngs))
     I2 = CartesianIndex(map(r -> Int(last(r)), rngs))
     return RectangularBox{N}(I1, I2)
@@ -288,7 +302,7 @@ end
 RectangularBox(R::CartesianIndices) =
     RectangularBox(initialindex(R), finalindex(R))
 
-@static if !isdefined(Base, :CartesianIndices)
+@static if USE_CARTESIAN_RANGE
     RectangularBox(R::CartesianRange) =
         RectangularBox(initialindex(R), finalindex(R))
 end
@@ -347,11 +361,11 @@ Kernel(A::AbstractArray) =
 Kernel(::Type{T}, A::AbstractArray) where {T} =
     Kernel(T, A, defaultstart(A))
 
-Kernel(A::AbstractArray{T,N}, inds::NTuple{N,Integer}) where {T,N} =
+Kernel(A::AbstractArray{T,N}, inds::Dimensions{N}) where {T,N} =
     Kernel(A, CartesianIndex(inds))
 
 Kernel(::Type{T}, A::AbstractArray{<:Any,N},
-       inds::NTuple{N,Integer}) where {T,N} =
+       inds::Dimensions{N}) where {T,N} =
     Kernel(T, A, CartesianIndex(inds))
 
 Kernel(::Type{T}, A::AbstractArray{T,N}, I::CartesianIndex{N}) where {T,N} =
@@ -364,7 +378,7 @@ Kernel(::Type{T}, A::AbstractArray{Bool,N},
        I::CartesianIndex{N} = defaultstart(A)) where {T<:AbstractFloat,N} =
     Kernel((zero(T), -T(Inf)), A, I)
 
-Kernel(A::AbstractArray, inds::AbstractUnitRange{<:Integer}...) =
+Kernel(A::AbstractArray, inds::UnitIndexRange...) =
     Kernel(A, inds)
 
 function Kernel(A::AbstractArray{T,N}, bnds::CartesianRegion{N}) where {T,N}

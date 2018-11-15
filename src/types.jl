@@ -167,6 +167,30 @@ const IndexInterval = Union{Integer,AbstractUnitRange{<:Integer}}
 
 """
 
+`Dimensions{N}` is an `N`-tuple of integers, that is the type of an argument
+suitable for specifying a list of dimensions.
+
+"""
+const Dimensions{N} = NTuple{N,Integer}
+
+"""
+
+`UnitIndexRange` is any integer valued range with unit step, that is the type
+of an argument suitable for specifying a range of contiguous indices.
+
+"""
+const UnitIndexRange = AbstractUnitRange{<:Integer}
+
+"""
+
+`UnitIndexRanges{N}` is an `N`-tuple of `UnitIndexRange`, that is the type of
+an argument suitable for specifying a list of Cartesian indices.
+
+"""
+const UnitIndexRanges{N} = NTuple{N,UnitIndexRange}
+
+"""
+
 `CartesianRegion{N}` is an union of the types of anything suitable to define a
 Cartesian region in `N` dimensions.  That is, an interval of Cartesian indices
 in `N` dimensions.  Methods [`initialindex`](@ref), [`finalindex`](@ref),
@@ -175,15 +199,15 @@ whose type belongs to `CartesianRegion`.
 
 """
 CartesianRegion
-@static if isdefined(Base, :CartesianIndices)
+@static if USE_CARTESIAN_RANGE
     const CartesianRegion{N} = Union{NTuple{2,CartesianIndex{N}},
-                                     NTuple{N,AbstractUnitRange{<:Integer}},
-                                     Neighborhood{N},
-                                     CartesianIndices{N}}
-else
-    const CartesianRegion{N} = Union{NTuple{2,CartesianIndex{N}},
-                                     NTuple{N,AbstractUnitRange{<:Integer}},
+                                     UnitIndexRanges{N},
                                      Neighborhood{N},
                                      CartesianIndices{N},
                                      CartesianRange{CartesianIndex{N}}}
+else
+    const CartesianRegion{N} = Union{NTuple{2,CartesianIndex{N}},
+                                     UnitIndexRanges{N},
+                                     Neighborhood{N},
+                                     CartesianIndices{N}}
 end
