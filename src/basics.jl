@@ -194,70 +194,49 @@ end
 # to convert various types of arguments into a neighborhood suitable with the
 # source (e.g., of given rank `N`).
 
-convert(::Type{Neighborhood{N}}, A::AbstractArray{T,N}) where {T,N} =
-    Kernel(A)
+convert(::Type{Neighborhood}, x) = Neighborhood(x)
+convert(::Type{Neighborhood}, x::Neighborhood) = x
+convert(::Type{Neighborhood{N}}, x) where {N} = Neighborhood{N}(x)
+convert(::Type{Neighborhood{N}}, x::Neighborhood{N}) where {N} = x
 
-for T in (Neighborhood, RectangularBox)
-    @eval begin
+convert(::Type{RectangularBox}, x) = RectangularBox(x)
+convert(::Type{RectangularBox}, x::RectangularBox) = x
+convert(::Type{RectangularBox{N}}, x) where {N} = RectangularBox{N}(x)
+convert(::Type{RectangularBox{N}}, x::RectangularBox{N}) where {N} = x
 
-        convert(::Type{$T{N}}, dims::Dimensions{N}) where {N} =
-            RectangularBox(dims)
+convert(::Type{Kernel}, x) = Kernel(x)
+convert(::Type{Kernel}, x::Kernel) = x
+convert(::Type{Kernel{T}}, x) where {T} = Kernel{T}(x)
+convert(::Type{Kernel{T}}, x::Kernel{T}) where {T} = x
+convert(::Type{Kernel{T,N}}, x) where {T,N} = Kernel{T,N}(x)
+convert(::Type{Kernel{T,N}}, x::Kernel{T,N}) where {T,N} = x
 
-        convert(::Type{$T}, dims::Dimensions) =
-            RectangularBox(dims)
-
-        convert(::Type{$T{N}}, rngs::UnitIndexRanges{N}) where {N} =
-            RectangularBox(rngs)
-
-        convert(::Type{$T}, rngs::UnitIndexRanges) =
-            RectangularBox(rngs)
-
-        convert(::Type{$T{N}}, R::CartesianIndices{N}) where {N} =
-            RectangularBox(R)
-
-        convert(::Type{$T}, R::CartesianIndices) =
-            RectangularBox(R)
-    end
-
-    @static if USE_CARTESIAN_RANGE
-        @eval begin
-            function convert(::Type{$T{N}},
-                             R::CartesianRange{CartesianIndex{N}}) where {N}
-                return RectangularBox(R)
-            end
-            function convert(::Type{$T},
-                             R::CartesianRange{CartesianIndex{N}}) where {N}
-                return RectangularBox(R)
-            end
-        end
-    end
-end
-
-convert(::Type{Kernel{T,N}}, ker::Kernel{T,N}) where {T,N} = ker
-convert(::Type{Kernel{T,N}}, ker::Kernel{S,N}) where {T,S,N} =
-    Kernel{T,N}(convert(Array{T,N}, coefs(ker)), initialindex(ker))
 
 # Outer Neighborhood constructors.
 
 Neighborhood(B::Neighborhood) = B
+Neighborhood{N}(B::Neighborhood{N}) where {N} = B
 
 Neighborhood(A::AbstractArray) = Kernel(A)
+Neighborhood{N}(A::AbstractArray{T,N}) where {T,N} = Kernel(A)
 
-Neighborhood{N}(dim::Integer) where {N} = RectangularBox{N}(dim)
-Neighborhood{N}(rng::UnitIndexRange) where {N} =
-    RectangularBox{N}(rng)
-
-Neighborhood(dims::Integer...) = Neighborhood(dims)
-Neighborhood(rngs::UnitIndexRange...) = RectangularBox(rngs)
-
+Neighborhood(dims::Integer...) = RectangularBox(dims)
 Neighborhood(dims::Dimensions{N}) where {N} = RectangularBox(dims)
-Neighborhood(rngs::UnitIndexRanges{N}) where {N} =
-    RectangularBox(rngs)
+Neighborhood{N}(dims::Dimensions{N}) where {N} = RectangularBox(dims)
+Neighborhood{N}(dim::Integer) where {N} = RectangularBox{N}(dim)
+
+Neighborhood(rngs::UnitIndexRange...) = RectangularBox(rngs)
+Neighborhood(rngs::UnitIndexRanges{N}) where {N} = RectangularBox(rngs)
+Neighborhood{N}(rngs::UnitIndexRanges{N}) where {N} = RectangularBox(rngs)
+Neighborhood{N}(rng::UnitIndexRange) where {N} = RectangularBox{N}(rng)
 
 Neighborhood(R::CartesianIndices) = RectangularBox(R)
+Neighborhood{N}(R::CartesianIndices{N}) where {N} = RectangularBox(R)
 
 @static if USE_CARTESIAN_RANGE
     Neighborhood(R::CartesianRange) = RectangularBox(R)
+    Neighborhood{N}(R::CartesianRange{CartesianIndex{N}}) where {N} =
+        RectangularBox(R)
 end
 
 #------------------------------------------------------------------------------
@@ -280,13 +259,17 @@ function _range(dim::Int)
 end
 
 RectangularBox(B::RectangularBox) = B
+RectangularBox{N}(B::RectangularBox{N}) where {N} = B
 
+RectangularBox(dim::Integer) = RectangularBox{1}(dim)
 RectangularBox{N}(dim::Integer) where {N} = RectangularBox{N}(_range(dim))
 
 RectangularBox(dims::Integer...) = RectangularBox(dims)
+RectangularBox{N}(dims::Integer...) where {N} = RectangularBox{N}(dims)
 
 RectangularBox(dims::Dimensions{N}) where {N} =
     RectangularBox(map(_range, dims))
+RectangularBox{N}(dims::Dimensions{N}) where {N} = RectangularBox(dims)
 
 function RectangularBox{N}(rng::UnitIndexRange) where {N}
     imin = Int(first(rng))
@@ -297,6 +280,7 @@ function RectangularBox{N}(rng::UnitIndexRange) where {N}
 end
 
 RectangularBox(rngs::UnitIndexRange...) = RectangularBox(rngs)
+RectangularBox{N}(rngs::UnitIndexRange...) where {N} = RectangularBox{N}(rngs)
 
 function RectangularBox(rngs::UnitIndexRanges{N}) where {N}
     I1 = CartesianIndex(map(r -> Int(first(r)), rngs))
@@ -304,11 +288,18 @@ function RectangularBox(rngs::UnitIndexRanges{N}) where {N}
     return RectangularBox{N}(I1, I2)
 end
 
+RectangularBox{N}(rngs::UnitIndexRanges{N}) where {N} =
+    RectangularBox(rngs)
+
 RectangularBox(R::CartesianIndices) =
+    RectangularBox(initialindex(R), finalindex(R))
+RectangularBox{N}(R::CartesianIndices{N}) where {N} =
     RectangularBox(initialindex(R), finalindex(R))
 
 @static if USE_CARTESIAN_RANGE
     RectangularBox(R::CartesianRange) =
+        RectangularBox(initialindex(R), finalindex(R))
+    RectangularBox{N}(R::CartesianRange{CartesianIndex{N}}) where {N} =
         RectangularBox(initialindex(R), finalindex(R))
 end
 
