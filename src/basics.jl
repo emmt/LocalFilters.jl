@@ -22,7 +22,8 @@
     end
 end
 CartesianIndices(B::Neighborhood) =
-    CartesianIndices(map((i,j) -> i:j, initialindex(B).I, finalindex(B).I))
+    CartesianIndices(map((i,j) -> i:j,
+                         Tuple(initialindex(B)), Tuple(finalindex(B))))
 convert(::Type{CartesianIndices}, B::Neighborhood) =
     CartesianIndices(B)
 convert(::Type{CartesianIndices{N}}, B::Neighborhood{N}) where N =
@@ -31,9 +32,11 @@ convert(::Type{CartesianIndices{N}}, B::Neighborhood{N}) where N =
 # Default implementation of common methods.
 ndims(::Neighborhood{N}) where {N} = N
 length(B::Neighborhood) = prod(size(B))
-size(B::Neighborhood) = map(_length, initialindex(B).I, finalindex(B).I)
+size(B::Neighborhood) =
+    map(_length, Tuple(initialindex(B)), Tuple(finalindex(B)))
 size(B::Neighborhood, d) = _length(initialindex(B)[d], finalindex(B)[d])
-axes(B::Neighborhood) = map((i,j) -> i:j, initialindex(B).I, finalindex(B).I)
+axes(B::Neighborhood) =
+    map((i,j) -> i:j, Tuple(initialindex(B)), Tuple(finalindex(B)))
 axes(B::Neighborhood, d) = (initialindex(B)[d]:finalindex(B)[d])
 getindex(B::Neighborhood, inds::Union{Integer,CartesianIndex}...) =
     getindex(B, CartesianIndex(inds...))
@@ -179,7 +182,7 @@ else
     cartesianregion(R::CartesianIndices) = R
     @inline function cartesianregion(start::CartesianIndex{N},
                                      stop::CartesianIndex{N}) where N
-	return CartesianIndices(map((i,j) -> i:j, start.I, stop.I))
+	return CartesianIndices(map((i,j) -> i:j, Tuple(start), Tuple(stop)))
     end
     cartesianregion(inds::UnitIndexRanges{N}) where N =
         CartesianIndices(inds)
@@ -422,7 +425,7 @@ Kernel(tup::Tuple{T,T}, B::Kernel{Bool,N}) where {T,N} =
 # region.  The element type of the kernel coefficients can be imposed.
 function Kernel(::Type{T}, f::Function, bnds::CartesianRegion{N}) where {T,N}
     kmin, kmax = limits(bnds)
-    W = Array{T,N}(undef, map(_length, kmin.I, kmax.I))
+    W = Array{T,N}(undef, map(_length, Tuple(kmin), Tuple(kmax)))
     offs = initialindex(W) - kmin
     @inbounds for i in cartesianregion(bnds)
         W[i + offs] = f(i)
