@@ -9,8 +9,16 @@ using LocalFilters: Neighborhood, RectangularBox, Kernel,
     strictfloor, USE_CARTESIAN_RANGE, _range
 
 replicate(a, n::Integer) = ntuple(i->a, n)
-compare(a, b) = maximum(abs(a - b))
-samevalues(a, b) = minimum(a .== b)
+compare(a::AbstractArray, b::AbstractArray) = maximum(abs(a - b))
+samevalues(a::AbstractArray, b::AbstractArray) = minimum(a .== b)
+identical(a::RectangularBox{N}, b::RectangularBox{N}) where {N} =
+    (initialindex(a) === initialindex(b) &&
+     finalindex(a) === finalindex(b))
+identical(a::Kernel{T,N}, b::Kernel{T,N}) where {T,N} =
+    (initialindex(a) === initialindex(b) &&
+     finalindex(a) === finalindex(b) &&
+     samevalues(coefs(a), coefs(b)))
+identical(a::Neighborhood, b::Neighborhood) = false
 
 const trivialerode = erode
 const trivialdilate = dilate
@@ -25,6 +33,9 @@ function reversealldims(A::Array{T,N}) where {T,N}
     end
     return B
 end
+
+f1(x) = 1 + x*x
+f2(x) = x > 0.5
 
 @testset "LocalFilters" begin
 
@@ -47,6 +58,7 @@ end
             box = Neighborhood(dims)
             I1, I2 = limits(box)
             A = rand(dims...)
+            ker = Kernel(A)
 
             # Test limits(), initialindex() and finalindex().
             @test initialindex(CartesianIndices(rngs)) === I1
@@ -83,6 +95,7 @@ end
 
             # Neighborhood constructors.
             @test Neighborhood(box) === box
+            @test Neighborhood(A) === ker
             @test Neighborhood(dims...) === box
             @test Neighborhood(rngs) === box
             @test Neighborhood(rngs...) === box
@@ -126,8 +139,23 @@ end
                 @test convert(RectangularBox{N}, CartesianRange(rngs)) === box
                 @test CartesianRange(box) === CartesianRange(rngs)
                 @test convert(CartesianRange, box) === CartesianRange(rngs)
-                @test convert(CartesianRange{CartesianIndex{N}}, box) === CartesianRange(rngs)
+                @test convert(CartesianRange{CartesianIndex{N}}, box) ===
+                    CartesianRange(rngs)
             end
+
+            # Kernel constructors.
+            @test Kernel(A, initialindex(ker)) === ker
+            @test Kernel(A, rngs) === ker
+            @test Kernel(A, rngs...) === ker
+            @test Kernel(A, CartesianIndices(ker)) === ker
+            @static if USE_CARTESIAN_RANGE
+                @test Kernel(A, CartesianRange(ker)) === ker
+            end
+            off = initialindex(A) - initialindex(ker)
+            @test identical(Kernel(i -> f1(A[off + i]), CartesianIndices(ker)),
+                            Kernel(map(f1, A)))
+            @test identical(Kernel(i -> f2(A[off + i]), CartesianIndices(ker)),
+                            Kernel(map(f2, A)))
 
             # Conversion Neighborhood <-> CartesianIndices.
             @test Neighborhood(CartesianIndices(rngs)) === box
@@ -152,8 +180,12 @@ end
             @test size(box) === size(CartesianIndices(rngs))
             @test size(box) === ntuple(d -> size(box, d), N)
             @test axes(box) === ntuple(d -> axes(box, d), N)
+            @test length(ker) === length(A)
+            @test size(ker) === size(A)
+            @test size(ker) === ntuple(d -> size(ker, d), N)
+            @test axes(ker) === ntuple(d -> axes(ker, d), N)
 
-            ker = Kernel(A)
+            # Test reverse().
             revbox = reverse(box)
             revker = reverse(ker)
             @test initialindex(revbox) === -finalindex(box)
