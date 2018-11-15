@@ -20,6 +20,7 @@ using LocalFilters:
     Kernel,
     Neighborhood,
     RectangularBox,
+    axes,
     cartesianregion,
     coefs,
     limits,
@@ -28,11 +29,31 @@ using LocalFilters:
 import LocalFilters:
     cartesianregion,
     convolve!,
+    convolve,
     dilate!,
+    dilate,
     erode!,
+    erode,
     localextrema!,
+    localextrema,
     localfilter!,
+    localmean,
     localmean!
+
+convolve(variant::Val, A::AbstractArray, args...) =
+    convolve!(variant, similar(A), A, args...)
+
+dilate(variant::Val, A::AbstractArray, args...) =
+    dilate!(variant, similar(A), A, args...)
+
+erode(variant::Val, A::AbstractArray, args...) =
+    erode!(variant, similar(A), A, args...)
+
+localmean(variant::Val, A::AbstractArray, args...) =
+    localmean!(variant, similar(A), A, args...)
+
+localextrema(variant::Val, A::AbstractArray, args...) =
+    localextrema!(variant, similar(A), similar(A), A, args...)
 
 # function localfilter!(dst,
 #                       A::AbstractArray{T,N},
@@ -79,14 +100,14 @@ import LocalFilters:
 # part for indexing a neighborhood (apart from using a non-naive algorithm).
 
 # "Base" variant: use constructors and methods provided by the Base package.
-@inline function _cartesianregion(::Type{Val{:Base}},
+@inline function _cartesianregion(::Val{:Base},
                          imin::CartesianIndex{N},
                          imax::CartesianIndex{N},
                          i::CartesianIndex{N},
                          off::CartesianIndex{N}) where N
     cartesianregion(max(imin, i - off), min(imax, i + off))
 end
-@inline function _cartesianregion(::Type{Val{:Base}},
+@inline function _cartesianregion(::Val{:Base},
                          imin::CartesianIndex{N},
                          imax::CartesianIndex{N},
                          i::CartesianIndex{N},
@@ -96,44 +117,44 @@ end
 end
 
 # "NTuple" variant: use `ntuple()` to expand expressions.
-@inline function _cartesianregion(::Type{Val{:NTuple}},
-                         imin::CartesianIndex{N},
-                         imax::CartesianIndex{N},
-                         i::CartesianIndex{N},
-                         off::CartesianIndex{N}) where N
-    cartesianregion(ntuple((k)->(max(imin[k], i[k] - off[k]) :
-                        min(imax[k], i[k] + off[k])), N))
+@inline function _cartesianregion(::Val{:NTuple},
+                                  imin::CartesianIndex{N},
+                                  imax::CartesianIndex{N},
+                                  i::CartesianIndex{N},
+                                  off::CartesianIndex{N}) where N
+    cartesianregion(ntuple(k -> (max(imin[k], i[k] - off[k]) :
+                                 min(imax[k], i[k] + off[k])), N))
 end
-@inline function _cartesianregion(::Type{Val{:NTuple}},
-                         imin::CartesianIndex{N},
-                         imax::CartesianIndex{N},
-                         i::CartesianIndex{N},
-                         kmin::CartesianIndex{N},
-                         kmax::CartesianIndex{N}) where N
-    cartesianregion(ntuple((k)->(max(imin[k], i[k] - kmax[k]) :
-                        min(imax[k], i[k] - kmin[k])), N))
+@inline function _cartesianregion(::Val{:NTuple},
+                                  imin::CartesianIndex{N},
+                                  imax::CartesianIndex{N},
+                                  i::CartesianIndex{N},
+                                  kmin::CartesianIndex{N},
+                                  kmax::CartesianIndex{N}) where N
+    cartesianregion(ntuple(k -> (max(imin[k], i[k] - kmax[k]) :
+                                 min(imax[k], i[k] - kmin[k])), N))
 end
 
 # "NTupleVal" variant: use `ntuple()` to expand expressions and `Val(...)` to
 # force specialized versions.
 for N in (1,2,3,4)
     @eval begin
-        @inline function _cartesianregion(::Type{Val{:NTupleVar}},
-                                 imin::CartesianIndex{$N},
-                                 imax::CartesianIndex{$N},
-                                 i::CartesianIndex{$N},
-                                 off::CartesianIndex{$N})
-            cartesianregion(ntuple((k)->(max(imin[k], i[k] - off[k]) :
-                                min(imax[k], i[k] + off[k])), Val($N)))
+        @inline function _cartesianregion(::Val{:NTupleVar},
+                                          imin::CartesianIndex{$N},
+                                          imax::CartesianIndex{$N},
+                                          i::CartesianIndex{$N},
+                                          off::CartesianIndex{$N})
+            cartesianregion(ntuple(k -> (max(imin[k], i[k] - off[k]) :
+                                         min(imax[k], i[k] + off[k])), Val($N)))
         end
-        @inline function _cartesianregion(::Type{Val{:NTupleVar}},
-                                 imin::CartesianIndex{$N},
-                                 imax::CartesianIndex{$N},
-                                 i::CartesianIndex{$N},
-                                 kmin::CartesianIndex{$N},
-                                 kmax::CartesianIndex{$N})
-            cartesianregion(ntuple((k)->(max(imin[k], i[k] - kmax[k]) :
-                                min(imax[k], i[k] - kmin[k])), Val($N)))
+        @inline function _cartesianregion(::Val{:NTupleVar},
+                                          imin::CartesianIndex{$N},
+                                          imax::CartesianIndex{$N},
+                                          i::CartesianIndex{$N},
+                                          kmin::CartesianIndex{$N},
+                                          kmax::CartesianIndex{$N})
+            cartesianregion(ntuple(k -> (max(imin[k], i[k] - kmax[k]) :
+                                         min(imax[k], i[k] - kmin[k])), Val($N)))
         end
     end
 end
@@ -143,14 +164,14 @@ end
     max(imin, i - off) : min(imax, i + off)
 @inline _range(imin::Int, imax::Int, i::Int, kmin::Int, kmax::Int) =
     max(imin, i - kmax) : min(imax, i - kmin)
-@inline function _cartesianregion(::Type{Val{:Map}},
+@inline function _cartesianregion(::Val{:Map},
                                   imin::CartesianIndex{N},
                                   imax::CartesianIndex{N},
                                   i::CartesianIndex{N},
                                   off::CartesianIndex{N}) where N
     cartesianregion(map(_range, imin.I, imax.I, i.I, off.I))
 end
-@inline function _cartesianregion(::Type{Val{:Map}},
+@inline function _cartesianregion(::Val{:Map},
                                   imin::CartesianIndex{N},
                                   imax::CartesianIndex{N},
                                   i::CartesianIndex{N},
@@ -162,10 +183,10 @@ end
 #------------------------------------------------------------------------------
 # Methods for rectangular boxes (with optimization for centered boxes).
 
-function localmean!(::Type{Op},
+function localmean!(variant::Val,
                     dst::AbstractArray{T,N},
                     A::AbstractArray{T,N},
-                    B::RectangularBox{N}) where {T,N,Op<:Val}
+                    B::RectangularBox{N}) where {T,N}
     @assert axes(dst) == axes(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
@@ -174,7 +195,7 @@ function localmean!(::Type{Op},
         off = kmax
         @inbounds for i in R
             n, s = 0, zero(T)
-            for j in _cartesianregion(Op, imin, imax, i, off)
+            for j in _cartesianregion(variant, imin, imax, i, off)
                 s += A[j]
                 n += 1
             end
@@ -183,7 +204,7 @@ function localmean!(::Type{Op},
     else
         @inbounds for i in R
             n, s = 0, zero(T)
-            for j in _cartesianregion(Op, imin, imax, i, kmin, kmax)
+            for j in _cartesianregion(variant, imin, imax, i, kmin, kmax)
                 s += A[j]
                 n += 1
             end
@@ -193,10 +214,10 @@ function localmean!(::Type{Op},
     return dst
 end
 
-function erode!(::Type{Op},
+function erode!(variant::Val,
                 Amin::AbstractArray{T,N},
                 A::AbstractArray{T,N},
-                B::RectangularBox{N}) where {T,N,Op<:Val}
+                B::RectangularBox{N}) where {T,N}
     @assert size(Amin) == size(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
@@ -206,7 +227,7 @@ function erode!(::Type{Op},
         off = kmax
         @inbounds for i in R
             vmin = tmax
-            for j in _cartesianregion(Op, imin, imax, i, off)
+            for j in _cartesianregion(variant, imin, imax, i, off)
                 vmin = min(vmin, A[j])
             end
             Amin[i] = vmin
@@ -214,7 +235,7 @@ function erode!(::Type{Op},
     else
         @inbounds for i in R
             vmin = tmax
-            for j in _cartesianregion(Op, imin, imax, i, kmin, kmax)
+            for j in _cartesianregion(variant, imin, imax, i, kmin, kmax)
                 vmin = min(vmin, A[j])
             end
             Amin[i] = vmin
@@ -223,10 +244,10 @@ function erode!(::Type{Op},
     return Amin
 end
 
-function dilate!(::Type{Op},
+function dilate!(variant::Val,
                  Amax::AbstractArray{T,N},
                  A::AbstractArray{T,N},
-                 B::RectangularBox{N}) where {T,N,Op<:Val}
+                 B::RectangularBox{N}) where {T,N}
     @assert size(Amax) == size(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
@@ -236,7 +257,7 @@ function dilate!(::Type{Op},
         off = kmax
         @inbounds for i in R
             vmax = tmin
-            for j in _cartesianregion(Op, imin, imax, i, off)
+            for j in _cartesianregion(variant, imin, imax, i, off)
                 vmax = max(vmax, A[j])
             end
             Amax[i] = vmax
@@ -244,7 +265,7 @@ function dilate!(::Type{Op},
     else
         @inbounds for i in R
             vmax = tmin
-            for j in _cartesianregion(Op, imin, imax, i, kmin, kmax)
+            for j in _cartesianregion(variant, imin, imax, i, kmin, kmax)
                 vmax = max(vmax, A[j])
             end
             Amax[i] = vmax
@@ -253,11 +274,11 @@ function dilate!(::Type{Op},
     return Amax
 end
 
-function localextrema!(::Type{Op},
+function localextrema!(variant::Val,
                        Amin::AbstractArray{T,N},
                        Amax::AbstractArray{T,N},
                        A::AbstractArray{T,N},
-                       B::RectangularBox{N}) where {T,N,Op<:Val}
+                       B::RectangularBox{N}) where {T,N}
     @assert size(Amin) == size(Amax) == size(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
@@ -267,7 +288,7 @@ function localextrema!(::Type{Op},
         off = kmax
         @inbounds for i in R
             vmin, vmax = tmax, tmin
-            for j in _cartesianregion(Op, imin, imax, i, off)
+            for j in _cartesianregion(variant, imin, imax, i, off)
                 vmin = min(vmin, A[j])
                 vmax = max(vmax, A[j])
             end
@@ -277,7 +298,7 @@ function localextrema!(::Type{Op},
     else
         @inbounds for i in R
             vmin, vmax = tmax, tmin
-            for j in _cartesianregion(Op, imin, imax, i, kmin, kmax)
+            for j in _cartesianregion(variant, imin, imax, i, kmin, kmax)
                 vmin = min(vmin, A[j])
                 vmax = max(vmax, A[j])
             end
@@ -291,10 +312,10 @@ end
 #------------------------------------------------------------------------------
 # Nethods for kernels of booleans.
 
-function localmean!(::Type{Op},
+function localmean!(variant::Val,
                     dst::AbstractArray{T,N},
                     A::AbstractArray{T,N},
-                    B::Kernel{Bool,N}) where {T,N,Op<:Val}
+                    B::Kernel{Bool,N}) where {T,N}
     @assert size(dst) == size(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
@@ -303,7 +324,7 @@ function localmean!(::Type{Op},
     @inbounds for i in R
         n, s = 0, zero(T)
         k = i + off
-        for j in _cartesianregion(Op, imin, imax, i, kmin, kmax)
+        for j in _cartesianregion(variant, imin, imax, i, kmin, kmax)
             if ker[k-j]
                 n += 1
                 s += A[j]
@@ -314,10 +335,10 @@ function localmean!(::Type{Op},
     return dst
 end
 
-function erode!(::Type{Op},
+function erode!(variant::Val,
                 Amin::AbstractArray{T,N},
                 A::AbstractArray{T,N},
-                B::Kernel{Bool,N}) where {T,N,Op<:Val}
+                B::Kernel{Bool,N}) where {T,N}
     @assert size(Amin) == size(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
@@ -327,7 +348,7 @@ function erode!(::Type{Op},
     @inbounds for i in R
         vmin = tmax
         k = i + off
-        for j in _cartesianregion(Op, imin, imax, i, kmin, kmax)
+        for j in _cartesianregion(variant, imin, imax, i, kmin, kmax)
             #if ker[k-j] && A[j] < vmin
             #    vmin = A[j]
             #end
@@ -338,10 +359,10 @@ function erode!(::Type{Op},
     return Amin
 end
 
-function dilate!(::Type{Op},
+function dilate!(variant::Val,
                  Amax::AbstractArray{T,N},
                  A::AbstractArray{T,N},
-                 B::Kernel{Bool,N}) where {T,N,Op<:Val}
+                 B::Kernel{Bool,N}) where {T,N}
     @assert size(Amax) == size(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
@@ -351,7 +372,7 @@ function dilate!(::Type{Op},
     @inbounds for i in R
         vmax = tmin
         k = i + off
-        for j in _cartesianregion(Op, imin, imax, i, kmin, kmax)
+        for j in _cartesianregion(variant, imin, imax, i, kmin, kmax)
             #if ker[k-j] && A[j] > vmax
             #    vmax = A[j]
             #end
@@ -362,11 +383,11 @@ function dilate!(::Type{Op},
     return Amax
 end
 
-function localextrema!(::Type{Op},
+function localextrema!(variant::Val,
                        Amin::AbstractArray{T,N},
                        Amax::AbstractArray{T,N},
                        A::AbstractArray{T,N},
-                       B::Kernel{Bool,N}) where {T,N,Op<:Val}
+                       B::Kernel{Bool,N}) where {T,N}
     @assert size(Amin) == size(Amax) == size(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
@@ -376,7 +397,7 @@ function localextrema!(::Type{Op},
     @inbounds for i in R
         vmin, vmax = tmax, tmin
         k = i + off
-        for j in _cartesianregion(Op, imin, imax, i, kmin, kmax)
+        for j in _cartesianregion(variant, imin, imax, i, kmin, kmax)
             #if ker[k-j]
             #    vmin = min(vmin, A[j])
             #    vmax = max(vmax, A[j])
@@ -393,10 +414,10 @@ end
 #------------------------------------------------------------------------------
 # Methods for other kernels.
 
-function localmean!(::Type{Op},
+function localmean!(variant::Val,
                     dst::AbstractArray{T,N},
                     A::AbstractArray{T,N},
-                    B::Kernel{T,N}) where {T<:AbstractFloat,N,Op<:Val}
+                    B::Kernel{T,N}) where {T<:AbstractFloat,N}
     @assert size(dst) == size(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
@@ -405,7 +426,7 @@ function localmean!(::Type{Op},
     @inbounds for i in R
         s1, s2 = zero(T), zero(T)
         k = i + off
-        for j in _cartesianregion(Op, imin, imax, i, kmin, kmax)
+        for j in _cartesianregion(variant, imin, imax, i, kmin, kmax)
             w = ker[k-j]
             s1 += w*A[j]
             s2 += w
@@ -415,10 +436,10 @@ function localmean!(::Type{Op},
     return dst
 end
 
-function erode!(::Type{Op},
+function erode!(variant::Val,
                 Amin::AbstractArray{T,N},
                 A::AbstractArray{T,N},
-                B::Kernel{T,N}) where {T<:AbstractFloat,N,Op<:Val}
+                B::Kernel{T,N}) where {T<:AbstractFloat,N}
     @assert size(Amin) == size(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
@@ -428,7 +449,7 @@ function erode!(::Type{Op},
     @inbounds for i in R
         vmin = tmax
         k = i + off
-        for j in _cartesianregion(Op, imin, imax, i, kmin, kmax)
+        for j in _cartesianregion(variant, imin, imax, i, kmin, kmax)
             vmin = min(vmin, A[j] - ker[k-j])
         end
         Amin[i] = vmin
@@ -436,10 +457,10 @@ function erode!(::Type{Op},
     return Amin
 end
 
-function dilate!(::Type{Op},
+function dilate!(variant::Val,
                  Amax::AbstractArray{T,N},
                  A::AbstractArray{T,N},
-                 B::Kernel{T,N}) where {T<:AbstractFloat,N,Op<:Val}
+                 B::Kernel{T,N}) where {T<:AbstractFloat,N}
     @assert size(Amax) == size(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
@@ -449,7 +470,7 @@ function dilate!(::Type{Op},
     @inbounds for i in R
         vmax = tmin
         k = i + off
-        for j in _cartesianregion(Op, imin, imax, i, kmin, kmax)
+        for j in _cartesianregion(variant, imin, imax, i, kmin, kmax)
             vmax = max(vmax, A[j] + ker[k-j])
         end
         Amax[i] = vmax
@@ -457,10 +478,10 @@ function dilate!(::Type{Op},
     return Amax
 end
 
-function convolve!(::Type{Op},
+function convolve!(variant::Val,
                    dst::AbstractArray{T,N},
                    A::AbstractArray{T,N},
-                   B::Kernel{T,N}) where {T<:AbstractFloat,N,Op<:Val}
+                   B::Kernel{T,N}) where {T<:AbstractFloat,N}
     @assert size(dst) == size(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
@@ -469,7 +490,7 @@ function convolve!(::Type{Op},
     @inbounds for i in R
         v = zero(T)
         k = i + off
-        for j in _cartesianregion(Op, imin, imax, i, kmin, kmax)
+        for j in _cartesianregion(variant, imin, imax, i, kmin, kmax)
             v += A[j]*ker[k-j]
         end
         dst[i] = v
@@ -477,11 +498,11 @@ function convolve!(::Type{Op},
     return dst
 end
 
-function localextrema!(::Type{Op},
+function localextrema!(variant::Val,
                        Amin::AbstractArray{T,N},
                        Amax::AbstractArray{T,N},
                        A::AbstractArray{T,N},
-                       B::Kernel{T,N}) where {T<:AbstractFloat,N,Op<:Val}
+                       B::Kernel{T,N}) where {T<:AbstractFloat,N}
     @assert size(Amin) == size(Amax) == size(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
@@ -491,7 +512,7 @@ function localextrema!(::Type{Op},
     @inbounds for i in R
         vmin, vmax = tmax, tmin
         k = i + off
-        for j in _cartesianregion(Op, imin, imax, i, kmin, kmax)
+        for j in _cartesianregion(variant, imin, imax, i, kmin, kmax)
             vmin = min(vmin, A[j] - ker[k-j])
             vmax = max(vmax, A[j] + ker[k-j])
         end

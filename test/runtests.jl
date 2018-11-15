@@ -1,12 +1,19 @@
 isdefined(Main, :LocalFilters) || include("../src/LocalFilters.jl")
+isdefined(Main, :NaiveLocalFilters) || include("NaiveLocalFilters.jl")
 
 module LocalFiltersTests
 
-using Compat
-using LocalFilters, Compat.Test
+using Compat, Compat.Test
+using LocalFilters
 using LocalFilters: Neighborhood, RectangularBox, Kernel,
     axes, initialindex, finalindex, limits, cartesianregion, ball, coefs,
     strictfloor, USE_CARTESIAN_RANGE, _range
+
+# Selector for reference methods.
+const REF = Val(:Base)
+
+const ATOL = 0.0
+const GTOL = 4*eps(Float64)
 
 replicate(a, n::Integer) = ntuple(i->a, n)
 compare(a::AbstractArray, b::AbstractArray) = maximum(abs(a - b))
@@ -20,9 +27,21 @@ identical(a::Kernel{T,N}, b::Kernel{T,N}) where {T,N} =
      samevalues(coefs(a), coefs(b)))
 identical(a::Neighborhood, b::Neighborhood) = false
 
-const trivialerode = erode
-const trivialdilate = dilate
-const triviallocalextrema = localextrema
+function similarvalues(A::AbstractArray{T,N}, B::AbstractArray{T,N};
+                       atol=ATOL, gtol=GTOL) where {T,N}
+    @assert axes(A) == axes(B)
+    local sd2::Float64 = 0.0
+    local sa2::Float64 = 0.0
+    local sb2::Float64 = 0.0
+    @inbounds for i in eachindex(A, B)
+        a = Float64(A[i])
+        b = Float64(B[i])
+        sa2 += a*a
+        sb2 += b*b
+        sd2 += (a - b)^2
+    end
+    return sqrt(sd2) ≤ atol + gtol*sqrt(max(sa2, sb2))
+end
 
 function reversealldims(A::Array{T,N}) where {T,N}
     B = Array{T,N}(undef, size(A))
@@ -208,26 +227,26 @@ f2(x) = x > 0.5
                                ((62,81),   (5,3)),
                                ((23,28,27),(3,7,5)))
         rank = length(arrdims)
-        @testset "$(rank)D test with boxes" begin
+        @testset "$(rank)D test" begin
             a = rand(arrdims...)
             box = RectangularBox(boxdims)
             mask = Kernel(box)
-            kern = Kernel(eltype(a), mask)
+            kern = Kernel(eltype(a), mask) # kernel for morpho math
             @testset "erode" begin
-                result = trivialerode(a, box)
+                result = erode(REF, a, box)
                 @test samevalues(erode(a, box), result)
                 @test samevalues(erode(a, mask), result)
                 @test samevalues(erode(a, kern), result)
             end
             @testset "dilate" begin
-                result = trivialdilate(a, box)
+                result = dilate(REF, a, box)
                 @test samevalues(dilate(a, box), result)
                 @test samevalues(dilate(a, mask), result)
                 @test samevalues(dilate(a, kern), result)
             end
             @testset "localextrema" begin
-                e0, d0 = trivialerode(a, box), trivialdilate(a, box)
-                e1, d1 = triviallocalextrema(a, box)
+                e0, d0 = erode(REF, a, box), dilate(REF, a, box)
+                e1, d1 = localextrema(REF, a, box)
                 @test samevalues(e0, e1) && samevalues(d0, d1)
                 e1, d1 = localextrema(a, box)
                 @test samevalues(e0, e1) && samevalues(d0, d1)
@@ -235,6 +254,17 @@ f2(x) = x > 0.5
                 @test samevalues(e0, e1) && samevalues(d0, d1)
                 e1, d1 = localextrema(a, kern)
                 @test samevalues(e0, e1) && samevalues(d0, d1)
+            end
+            kern = Kernel((1.0, 0.0), mask) # kernel for convolution
+            @testset "localmean" begin
+                result = localmean(REF, a, box)
+                @test similarvalues(localmean(a, box), result)
+                @test similarvalues(localmean(a, mask), result)
+                @test similarvalues(localmean(a, kern), result)
+            end
+            @testset "convolve" begin
+                result = convolve(REF, a, kern)
+                @test similarvalues(convolve(a, kern), result)
             end
         end
     end

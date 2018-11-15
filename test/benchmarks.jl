@@ -16,7 +16,7 @@ const AUTORUN = true
 using Compat
 using Compat.Printf
 using LocalFilters
-using LocalFilters: Kernel, limits, cartesianregion
+using LocalFilters: Kernel, limits, cartesianregion, axes
 
 import Base: eltype, ndims, size, length, first, last, tail,
     getindex, setindex!, convert
@@ -31,6 +31,21 @@ end
 replicate(a, n::Integer) = ntuple(i->a, n)
 compare(a, b) = maximum(abs(a - b))
 samevalues(a, b) = maximum(a == b)
+function similarvalues(A::AbstractArray{T,N}, B::AbstractArray{T,N};
+                       atol=0.0, gtol=0.0) where {T,N}
+    @assert axes(A) == axes(B)
+    local sd2::Float64 = 0.0
+    local sa2::Float64 = 0.0
+    local sb2::Float64 = 0.0
+    @inbounds for i in eachindex(A, B)
+        a = Float64(A[i])
+        b = Float64(B[i])
+        sa2 += a*a
+        sb2 += b*b
+        sd2 += (a - b)^2
+    end
+    return sqrt(sd2) ≤ atol + gtol*sqrt(max(sa2, sb2))
+end
 
 #------------------------------------------------------------------------------
 
@@ -52,7 +67,7 @@ if AUTORUN
     a = rand(62,81)
     box = RectangularBox(3,5)
     mask = Kernel(box)
-    kern = Kernel(eltype(a), mask)
+    kern = Kernel(eltype(a), ones(size(box)))
     a0 = similar(a)
     a1 = similar(a)
     a2 = similar(a)
@@ -61,38 +76,60 @@ if AUTORUN
     a5 = similar(a)
 
     tests = (:Base, :NTuple, :NTupleVar, :Map)
-    for (name, box) in (("RectangularBox", box),
-                        ("boolean kernel", mask),
-                        ("non-boolean kernel", kern))
+    for (name, B) in (("RectangularBox", box),
+                      ("boolean kernel", mask),
+                      ("non-boolean kernel", kern))
         println("\nErosion on a $name (timings on $n iterations):")
-        erode!(Val{:Base}, a0, a, box)
+        erode!(Val(:Base), a0, a, B)
         for v in tests
-            erode!(Val{v}, a1, a, box)
+            erode!(Val(v), a1, a, B)
             @printf "   Variant %-10s (" v
             checkresult(samevalues(a1, a0))
             print("): ")
-            @time for i in 1:n; erode!(Val{v}, a0, a, box); end
+            @time for i in 1:n; erode!(Val(v), a0, a, B); end
         end
 
         println("\nDilation on a $name (timings on $n iterations):")
-        dilate!(Val{:Base}, a0, a, box)
+        dilate!(Val(:Base), a0, a, B)
         for v in tests
-            dilate!(Val{v}, a1, a, box)
+            dilate!(Val(v), a1, a, B)
             @printf "   Variant %-10s (" v
             checkresult(samevalues(a1, a0))
             print("): ")
-            @time for i in 1:n; dilate!(Val{v}, a1, a, box); end
+            @time for i in 1:n; dilate!(Val(v), a1, a, B); end
         end
 
         println("\nErosion and dilation on a $name (timings on $n iterations):")
-        erode!(Val{:Base}, a0, a, box)
-        dilate!(Val{:Base}, a1, a, box)
+        erode!(Val(:Base), a0, a, B)
+        dilate!(Val(:Base), a1, a, B)
         for v in tests
-            localextrema!(Val{v}, a2, a3, a, box)
+            localextrema!(Val(v), a2, a3, a, B)
             @printf "   Variant %-10s (" v
             checkresult(samevalues(a2, a0) && samevalues(a3, a1))
             print("): ")
-            @time for i in 1:n; localextrema!(Val{v}, a2, a3, a, box); end
+            @time for i in 1:n; localextrema!(Val(v), a2, a3, a, B); end
+        end
+
+        println("\nLocal mean on a $name (timings on $n iterations):")
+        localmean!(Val(:Base), a0, a, B)
+        for v in tests
+            localmean!(Val(v), a1, a, B)
+            @printf "   Variant %-10s (" v
+            checkresult(similarvalues(a1, a0; gtol=4*eps(Float64)))
+            print("): ")
+            @time for i in 1:n; localmean!(Val(v), a1, a, B); end
+        end
+
+        if isa(B, Kernel) && eltype(B) != Bool
+            println("\nConvolution by a $name (timings on $n iterations):")
+            convolve!(Val(:Base), a0, a, B)
+            for v in tests
+                convolve!(Val(v), a1, a, B)
+                @printf "   Variant %-10s (" v
+                checkresult(similarvalues(a1, a0; gtol=4*eps(Float64)))
+                print("): ")
+                @time for i in 1:n; convolve!(Val(v), a1, a, B); end
+            end
         end
         println()
     end
