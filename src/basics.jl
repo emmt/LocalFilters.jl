@@ -236,6 +236,8 @@ convert(::Type{Kernel{T,N}}, ker::Kernel{S,N}) where {T,S,N} =
 
 # Outer Neighborhood constructors.
 
+Neighborhood(B::Neighborhood) = B
+
 Neighborhood(A::AbstractArray) = Kernel(A)
 
 Neighborhood{N}(dim::Integer) where {N} = RectangularBox{N}(dim)
