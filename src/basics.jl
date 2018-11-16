@@ -189,6 +189,7 @@ else
 end
 
 #------------------------------------------------------------------------------
+# CONVERSIONS
 
 # To implement variants and out-of-place versions, we define conversion rules
 # to convert various types of arguments into a neighborhood suitable with the
@@ -211,8 +212,11 @@ convert(::Type{Kernel{T}}, x::Kernel{T}) where {T} = x
 convert(::Type{Kernel{T,N}}, x) where {T,N} = Kernel{T,N}(x)
 convert(::Type{Kernel{T,N}}, x::Kernel{T,N}) where {T,N} = x
 
+#------------------------------------------------------------------------------
+# METHODS FOR NEIGHBORHOODS
 
-# Outer Neighborhood constructors.
+# Outer constructors for Neighborhood.  All constructors taking a single
+# argument must account for any explicit parametrization.
 
 Neighborhood(B::Neighborhood) = B
 Neighborhood{N}(B::Neighborhood{N}) where {N} = B
@@ -220,15 +224,19 @@ Neighborhood{N}(B::Neighborhood{N}) where {N} = B
 Neighborhood(A::AbstractArray) = Kernel(A)
 Neighborhood{N}(A::AbstractArray{T,N}) where {T,N} = Kernel(A)
 
+Neighborhood(dim::Integer) = RectangularBox(dim)
+Neighborhood{N}(dim::Integer) where {N} = RectangularBox{N}(dim)
 Neighborhood(dims::Integer...) = RectangularBox(dims)
+Neighborhood{N}(dims::Integer...) where {N} = RectangularBox{N}(dims)
 Neighborhood(dims::Dimensions{N}) where {N} = RectangularBox(dims)
 Neighborhood{N}(dims::Dimensions{N}) where {N} = RectangularBox(dims)
-Neighborhood{N}(dim::Integer) where {N} = RectangularBox{N}(dim)
 
+Neighborhood(rng::UnitIndexRange) = RectangularBox(rng)
+Neighborhood{N}(rng::UnitIndexRange) where {N} = RectangularBox{N}(rng)
 Neighborhood(rngs::UnitIndexRange...) = RectangularBox(rngs)
+Neighborhood{N}(rngs::UnitIndexRange...) where {N} = RectangularBox{N}(rngs)
 Neighborhood(rngs::UnitIndexRanges{N}) where {N} = RectangularBox(rngs)
 Neighborhood{N}(rngs::UnitIndexRanges{N}) where {N} = RectangularBox(rngs)
-Neighborhood{N}(rng::UnitIndexRange) where {N} = RectangularBox{N}(rng)
 
 Neighborhood(R::CartesianIndices) = RectangularBox(R)
 Neighborhood{N}(R::CartesianIndices{N}) where {N} = RectangularBox(R)
@@ -240,37 +248,20 @@ Neighborhood{N}(R::CartesianIndices{N}) where {N} = RectangularBox(R)
 end
 
 #------------------------------------------------------------------------------
-#
 # METHODS FOR RECTANGULAR BOXES
-# =============================
-#
-# A RectangularBox is a neighborhood defined by a rectangular (Cartesian) box,
-# possibly off-centered.
-#
-
-_range(dim::Integer) = _range(Int(dim))
-
-function _range(dim::Int)
-    dim ≥ 1 ||
-        throw(ArgumentError("neighborhood dimension(s) must be at least one"))
-    imin = -(dim >> 1)
-    imax = dim + imin - 1
-    return imin:imax
-end
 
 RectangularBox(B::RectangularBox) = B
 RectangularBox{N}(B::RectangularBox{N}) where {N} = B
 
 RectangularBox(dim::Integer) = RectangularBox{1}(dim)
 RectangularBox{N}(dim::Integer) where {N} = RectangularBox{N}(_range(dim))
-
 RectangularBox(dims::Integer...) = RectangularBox(dims)
 RectangularBox{N}(dims::Integer...) where {N} = RectangularBox{N}(dims)
-
 RectangularBox(dims::Dimensions{N}) where {N} =
     RectangularBox(map(_range, dims))
 RectangularBox{N}(dims::Dimensions{N}) where {N} = RectangularBox(dims)
 
+RectangularBox(rng::UnitIndexRange) = RectangularBox{1}(rng)
 function RectangularBox{N}(rng::UnitIndexRange) where {N}
     imin = Int(first(rng))
     imax = Int(last(rng))
@@ -278,18 +269,14 @@ function RectangularBox{N}(rng::UnitIndexRange) where {N}
     Imax = CartesianIndex(ntuple(d -> imax, Val(N)))
     return RectangularBox{N}(Imin, Imax)
 end
-
 RectangularBox(rngs::UnitIndexRange...) = RectangularBox(rngs)
 RectangularBox{N}(rngs::UnitIndexRange...) where {N} = RectangularBox{N}(rngs)
-
 function RectangularBox(rngs::UnitIndexRanges{N}) where {N}
     I1 = CartesianIndex(map(r -> Int(first(r)), rngs))
     I2 = CartesianIndex(map(r -> Int(last(r)), rngs))
     return RectangularBox{N}(I1, I2)
 end
-
-RectangularBox{N}(rngs::UnitIndexRanges{N}) where {N} =
-    RectangularBox(rngs)
+RectangularBox{N}(rngs::UnitIndexRanges{N}) where {N} = RectangularBox(rngs)
 
 RectangularBox(R::CartesianIndices) =
     RectangularBox(initialindex(R), finalindex(R))
@@ -301,6 +288,16 @@ RectangularBox{N}(R::CartesianIndices{N}) where {N} =
         RectangularBox(initialindex(R), finalindex(R))
     RectangularBox{N}(R::CartesianRange{CartesianIndex{N}}) where {N} =
         RectangularBox(initialindex(R), finalindex(R))
+end
+
+_range(dim::Integer) = _range(Int(dim))
+
+function _range(dim::Int)
+    dim ≥ 1 ||
+        throw(ArgumentError("neighborhood dimension(s) must be at least one"))
+    imin = -(dim >> 1)
+    imax = dim + imin - 1
+    return imin:imax
 end
 
 #------------------------------------------------------------------------------
@@ -319,6 +316,8 @@ setindex!(B::Kernel, val, I::CartesianIndex) =
 `LocalFilters.coefs(B)` yields the array of coefficients embedded in
 kernel `B`.
 
+See also: [`LocalFilters.offset`](@ref).
+
 """
 coefs(B::Kernel) = B.coefs
 
@@ -327,61 +326,48 @@ coefs(B::Kernel) = B.coefs
 `LocalFilters.offset(B)` yields the index offset of the array of coefficients
 embedded in kernel `B`.   That is, `B[k] ≡ coefs(B)[k + offset(B)]`.
 
+See also: [`LocalFilters.coefs`](@ref).
+
 """
 offset(B::Kernel) = B.offset
 
-# This method is to call the inner constructor.
-Kernel(C::AbstractArray{T,N}, off::CartesianIndex{N}) where {T,N} =
-    Kernel{T,N,typeof(C)}(C,off)
-
-# Methods to convert other neighborhoods.  When type of coefficients is
-# converted, boolean to floating-point yields `0` or `-Inf` so as to have a
-# consistent *flat* structuring element.
-
-Kernel(B::RectangularBox) = Kernel(ones(Bool, size(B)), initialindex(B))
-Kernel(::Type{Bool}, B::RectangularBox) = Kernel(B)
+# Kernel constructors given a Kernel instance.
 Kernel(K::Kernel) = K
-Kernel(::Type{T}, K::Kernel{T,N}) where {T,N} = K
-Kernel(::Type{Bool}, K::Kernel{Bool,N}) where {N} = K
-Kernel(::Type{T}, K::Kernel{<:Any,N}) where {T,N} =
-    Kernel{T,N,Array{T,N}}(convert(Array{T,N}, coefs(K)), initialindex(K))
-Kernel(::Type{T}, K::Kernel{Bool,N}) where {T<:AbstractFloat,N} =
-    Kernel((zero(T), -T(Inf)), coefs(K), initialindex(K))
+Kernel{T}(K::Kernel{T}) where {T} = K
+Kernel{T}(K::Kernel{S}) where {S,T} = Kernel(convertcoefs(T, coefs(K)),
+                                             initialindex(K))
+Kernel{T,N}(K::Kernel{T,N}) where {T,N} = K
+Kernel{T,N}(K::Kernel{S,N}) where {S,T,N} = Kernel{T}(K)
 
-# Methods to wrap an array into a kernel (call copy if you do not want to
-# share).
+# Kernel constructors given a RectangularBox instance.
+Kernel(B::RectangularBox{N}) where {N} = Kernel{Bool,N}(B)
+Kernel{T}(B::RectangularBox{N}) where {T,N} = Kernel{T,N}(B)
+Kernel{T,N}(B::RectangularBox{N}) where {T,N} =
+    Kernel{T,N,Array{T,N}}(ones(T, size(B)), initialindex(B))
 
-Kernel(A::AbstractArray) =
-    Kernel(A, defaultstart(A))
+# Kernel constructors given an array of coefficients.
+Kernel(A::AbstractArray) = Kernel(A, defaultstart(A))
+Kernel{T}(A::AbstractArray{T}) where {T} = Kernel(A)
+Kernel{T}(A::AbstractArray{S}) where {S,T} = Kernel(convertcoefs(T, A))
+Kernel{T,N}(A::AbstractArray{T,N}) where {T,N} = Kernel(A)
+Kernel{T,N}(A::AbstractArray{S,N}) where {S,T,N} = Kernel{T}(A)
 
-Kernel(::Type{T}, A::AbstractArray) where {T} =
-    Kernel(T, A, defaultstart(A))
+# Kernel constructors given an array of coefficients and starting indices.
+Kernel(A::AbstractArray{T,N}, start::CartesianIndex{N}) where {T,N} =
+    Kernel{T,N,typeof(A)}(A, start)
+Kernel{T}(A::AbstractArray{T,N}, start::CartesianIndex{N}) where {T,N} =
+    Kernel{T,N,typeof(A)}(A, start)
+Kernel{T,N}(A::AbstractArray{T,N}, start::CartesianIndex{N}) where {T,N} =
+    Kernel{T,N,typeof(A)}(A, start)
 
-Kernel(A::AbstractArray{T,N}, inds::Dimensions{N}) where {T,N} =
-    Kernel(A, CartesianIndex(inds))
-
-Kernel(::Type{T}, A::AbstractArray{<:Any,N},
-       inds::Dimensions{N}) where {T,N} =
-    Kernel(T, A, CartesianIndex(inds))
-
-Kernel(::Type{T}, A::AbstractArray{T,N}, I::CartesianIndex{N}) where {T,N} =
-    Kernel(A, I)
-
-Kernel(::Type{T}, A::AbstractArray{<:Any,N}, I::CartesianIndex{N}) where {T,N} =
-    Kernel(convert(Array{T,N}, A), I)
-
-Kernel(::Type{T}, A::AbstractArray{Bool,N},
-       I::CartesianIndex{N} = defaultstart(A)) where {T<:AbstractFloat,N} =
-    Kernel((zero(T), -T(Inf)), A, I)
-
-Kernel(A::AbstractArray, inds::UnitIndexRange...) =
-    Kernel(A, inds)
+# Kernel constructors given an array of coefficients and any argument
+# suitable to define a Cartesian region.
 
 function Kernel(A::AbstractArray{T,N}, bnds::CartesianRegion{N}) where {T,N}
     # Bounds for indexing the kernel.
     kmin, kmax = limits(bnds)
 
-    # Bounds for indexing the array of coeffcients.
+    # Bounds for indexing the array of coefficients.
     jmin, jmax = limits(A)
 
     # Check size is identical for all dimensions.
@@ -392,10 +378,27 @@ function Kernel(A::AbstractArray{T,N}, bnds::CartesianRegion{N}) where {T,N}
     return Kernel(A, kmin)
 end
 
+Kernel{T}(A::AbstractArray{T,N}, bnds::CartesianRegion{N}) where {T,N} =
+    Kernel(A, bnds)
+Kernel{T}(A::AbstractArray{S,N}, bnds::CartesianRegion{N}) where {S,T,N} =
+    Kernel(convertcoefs(T, A), bnds)
+Kernel{T,N}(A::AbstractArray{S,N}, bnds::CartesianRegion{N}) where {S,T,N} =
+    Kernel{T}(A, bnds)
+
+Kernel(A::AbstractArray, rngs::UnitIndexRange...) = Kernel(A, rngs)
+Kernel{T}(A::AbstractArray{S}, rngs::UnitIndexRange...) where {S,T} =
+    Kernel{T}(A, bnds)
+Kernel{T,N}(A::AbstractArray{S,N}, rngs::UnitIndexRange...) where {S,T,N} =
+    Kernel{T}(A, rngs)
+
+# Another ways to specify the element type of the kernel coefficients is to
+# have their type the first parameter.
+Kernel(::Type{T}, B, args...) where {T} = Kernel{T}(B, args...)
+
 # Methods to convert other neighborhoods.  Beware that booleans mean something
 # specific, i.e. the result is a so-called *flat* structuring element
 # when a kernel whose coefficients are boolean is converted to some
-# floating-point type.
+# floating-point type.  See [`convertcoefs`](@ref).
 
 # Make a flat structuring element from a boolean mask.
 function Kernel(tup::Tuple{T,T},
@@ -414,26 +417,80 @@ Kernel(tup::Tuple{T,T}, B::Kernel{Bool,N}) where {T,N} =
 
 # Make a kernel from a function and anything suitable to define a Cartesian
 # region.  The element type of the kernel coefficients can be imposed.
-function Kernel(::Type{T}, f::Function, bnds::CartesianRegion{N}) where {T,N}
+Kernel(f::Function, bnds::CartesianRegion) =
+    Kernel(map(f, cartesianregion(bnds)), initialindex(bnds))
+function Kernel{T}(f::Function, bnds::CartesianRegion{N}) where {T,N}
     kmin, kmax = limits(bnds)
-    W = Array{T,N}(undef, map(_length, Tuple(kmin), Tuple(kmax)))
+    dims = map(_length, Tuple(kmin), Tuple(kmax))
+    W = Array{T,N}(undef, dims)
     offs = initialindex(W) - kmin
     @inbounds for i in cartesianregion(bnds)
         W[i + offs] = f(i)
     end
     return Kernel{T,N,Array{T,N}}(W, kmin)
 end
-
-# Idem but element type of the kernel if automatically guessed.
-Kernel(f::Function, bnds::CartesianRegion) =
-    Kernel(map(f, cartesianregion(bnds)), initialindex(bnds))
+Kernel{T,N}(f::Function, bnds::CartesianRegion{N}) where {T,N} =
+    Kernel{T}(f, bnds)
 
 # Conversion of the data type of the kernel coefficients.
 for F in (:Float64, :Float32, :Float16)
     @eval begin
-        Base.$F(K::Kernel{$F,N}) where {N} = K
-        Base.$F(K::Kernel{T,N}) where {T,N} = Kernel($F, K)
+        Base.$F(K::Kernel{$F}) = K
+        Base.$F(K::Kernel{T}) where {T} = Kernel{$F}(K)
     end
+end
+
+# Methods to convert other neighborhoods.  When type of coefficients is
+# converted, boolean to floating-point yields `0` or `-Inf` so as to have a
+# consistent *flat* structuring element.
+
+
+"""
+
+```julia
+convertcoefs(T, A)
+```
+
+yields an array of kernel coefficients equivalent to array `A` but whose
+elements have type `T`.
+
+If `T` is a floating-point type and `A` is a boolean array, then the values of
+the result are `0` or `-Inf(T)` to have a so-called *flat* structuring element
+consistent with `A`.  If this is not what you want, you may call:
+
+```julia
+convertcoefs((vtrue, vfalse), A)
+```
+
+with `A` a boolean array to get an array whose elements are equal to `vtrue`
+where `A` is `true` and to `vfalse` otherwise.
+
+"""
+convertcoefs(::Type{T}, A::AbstractArray{T,N}) where {T,N} = A
+
+function convertcoefs(::Type{T}, A::AbstractArray{S,N}) where {S,T,N}
+    B = similar(Array{T,N}, axes(A))
+    @inbounds @simd for i in eachindex(A, B)
+        B[i] = A[i]
+    end
+    return B
+end
+
+convertcoefs(::Type{T}, A::AbstractArray{Bool,N}) where {T<:AbstractFloat,N} =
+    convertcoefs((zero(T), -T(Inf)), A)
+
+function convertcoefs(tup::Tuple{T1,T2}, A::AbstractArray{Bool}) where {T1,T2}
+    T = promote_type(T1, T2)
+    return convertcoefs((convert(T, tup[1]), convert(T, tup[2])), A)
+end
+
+function convertcoefs(tup::Tuple{T,T}, A::AbstractArray{Bool,N}) where {T,N}
+    B = similar(Array{T,N}, axes(A))
+    vtrue, vfalse = tup
+    @inbounds for i in eachindex(A, B)
+        B[i] = A[i] ? vtrue : vfalse
+    end
+    return B
 end
 
 """
