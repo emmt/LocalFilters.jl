@@ -166,7 +166,7 @@ f2(x) = x > 0.5
             # Kernel constructors.
             @test Kernel(ker) === ker
             @test identical(Kernel(box), Kernel(ones(Bool, dims)))
-            @test identical(Kernel(Bool, box), Kernel(ones(Bool, dims)))
+            @test identical(Kernel{Bool}(box), Kernel(ones(Bool, dims)))
             @test Kernel(A, initialindex(ker)) === ker
             @test Kernel(A, rngs) === ker
             @test Kernel(A, rngs...) === ker
@@ -175,12 +175,14 @@ f2(x) = x > 0.5
                 @test Kernel(A, CartesianRange(ker)) === ker
             end
             off = initialindex(A) - initialindex(ker)
-            @test identical(Kernel(eltype(A), i -> f1(A[off + i]),
-                                   CartesianIndices(ker)), Kernel(map(f1, A)))
+            @test identical(Kernel{eltype(A)}(i -> f1(A[off + i]),
+                                              CartesianIndices(ker)),
+                            Kernel(map(f1, A)))
             @test identical(Kernel(i -> f1(A[off + i]),
                                    CartesianIndices(ker)), Kernel(map(f1, A)))
-            @test identical(Kernel(Bool, i -> f2(A[off + i]),
-                                   CartesianIndices(ker)), Kernel(map(f2, A)))
+            @test identical(Kernel{Bool}(i -> f2(A[off + i]),
+                                         CartesianIndices(ker)),
+                            Kernel(map(f2, A)))
             @test identical(Kernel(i -> f2(A[off + i]),
                                    CartesianIndices(ker)), Kernel(map(f2, A)))
 
@@ -231,7 +233,7 @@ f2(x) = x > 0.5
             a = rand(arrdims...)
             box = RectangularBox(boxdims)
             mask = Kernel(box)
-            kern = Kernel(eltype(a), mask) # kernel for morpho math
+            kern = Kernel{eltype(a)}(mask) # kernel for morpho math
             @testset "erode" begin
                 result = erode(REF, a, box)
                 @test samevalues(erode(a, box), result)
@@ -325,7 +327,7 @@ f2(x) = x > 0.5
     @testset "2D test with a 5x5 ball" begin
         a = rand(162,181)
         mask = Kernel(ball5x5)
-        kern = Kernel(eltype(a), mask)
+        kern = Kernel{eltype(a)}(mask)
         @testset "erode" begin
             result = erode(a, mask)
             @test samevalues(erode(a, kern), result)
