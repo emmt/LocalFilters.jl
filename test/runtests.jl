@@ -233,50 +233,51 @@ f2(x) = x > 0.5
             a = rand(arrdims...)
             box = RectangularBox(boxdims)
             mask = Kernel(box)
-            kern = Kernel{eltype(a)}(mask) # kernel for morpho math
+            fse = strel(eltype(a), mask) # flat structuring element
+            kern = Kernel((1.0, 0.0), mask) # kernel for convolution
             @testset "erode" begin
                 result = erode(REF, a, box)
                 @test samevalues(erode(a, box), result)
                 @test samevalues(erode(a, mask), result)
-                @test samevalues(erode(a, kern), result)
+                @test samevalues(erode(a, fse), result)
             end
             @testset "dilate" begin
                 result = dilate(REF, a, box)
                 @test samevalues(dilate(a, box), result)
                 @test samevalues(dilate(a, mask), result)
-                @test samevalues(dilate(a, kern), result)
+                @test samevalues(dilate(a, fse), result)
             end
             @testset "closing" begin
                 result = closing(REF, a, box)
                 @test samevalues(closing(a, box), result)
                 @test samevalues(closing(a, mask), result)
-                @test samevalues(closing(a, kern), result)
+                @test samevalues(closing(a, fse), result)
             end
             @testset "opening" begin
                 result = opening(REF, a, box)
                 @test samevalues(opening(a, box), result)
                 @test samevalues(opening(a, mask), result)
-                @test samevalues(opening(a, kern), result)
+                @test samevalues(opening(a, fse), result)
             end
             @testset "bottom-hat" begin
                 result = bottom_hat(REF, a, box)
                 @test samevalues(bottom_hat(a, box), result)
                 @test samevalues(bottom_hat(a, mask), result)
-                @test samevalues(bottom_hat(a, kern), result)
+                @test samevalues(bottom_hat(a, fse), result)
                 result = bottom_hat(REF, a, box, 3)
                 @test samevalues(bottom_hat(a, box, 3), result)
                 @test samevalues(bottom_hat(a, mask, 3), result)
-                @test samevalues(bottom_hat(a, kern, 3), result)
+                @test samevalues(bottom_hat(a, fse, 3), result)
             end
             @testset "top-hat" begin
                 result = top_hat(REF, a, box)
                 @test samevalues(top_hat(a, box), result)
                 @test samevalues(top_hat(a, mask), result)
-                @test samevalues(top_hat(a, kern), result)
+                @test samevalues(top_hat(a, fse), result)
                 result = top_hat(REF, a, box, 3)
                 @test samevalues(top_hat(a, box,  3), result)
                 @test samevalues(top_hat(a, mask, 3), result)
-                @test samevalues(top_hat(a, kern, 3), result)
+                @test samevalues(top_hat(a, fse, 3), result)
             end
             @testset "localextrema" begin
                 e0, d0 = erode(REF, a, box), dilate(REF, a, box)
@@ -286,10 +287,9 @@ f2(x) = x > 0.5
                 @test samevalues(e0, e1) && samevalues(d0, d1)
                 e1, d1 = localextrema(a, mask)
                 @test samevalues(e0, e1) && samevalues(d0, d1)
-                e1, d1 = localextrema(a, kern)
+                e1, d1 = localextrema(a, fse)
                 @test samevalues(e0, e1) && samevalues(d0, d1)
             end
-            kern = Kernel((1.0, 0.0), mask) # kernel for convolution
             @testset "localmean" begin
                 result = localmean(REF, a, box)
                 @test similarvalues(localmean(a, box), result)
@@ -327,14 +327,16 @@ f2(x) = x > 0.5
     @testset "2D test with a 5x5 ball" begin
         a = rand(162,181)
         mask = Kernel(ball5x5)
-        kern = Kernel{eltype(a)}(mask)
+        fse = strel(eltype(a), mask)
         @testset "erode" begin
-            result = erode(a, mask)
-            @test samevalues(erode(a, kern), result)
+            result = erode(REF, a, mask)
+            @test samevalues(erode(a, mask), result)
+            @test samevalues(erode(a, fse), result)
         end
         @testset "dilate" begin
-            result = dilate(a, mask)
-            @test samevalues(dilate(a, kern), result)
+            result = dilate(REF, a, mask)
+            @test samevalues(dilate(a, mask), result)
+            @test samevalues(dilate(a, fse), result)
         end
     end
 

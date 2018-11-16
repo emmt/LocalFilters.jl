@@ -2,6 +2,8 @@
 
   - Add fast separable filters with the van Herk-Gil-Werman algorithm.
 
+  - New `strel` function to build *structuring* *elements*.
+
   - Constructors for `Kernel` basically takes two arguments: the array of
     coefficients, say `A`, and the initial `CartesianIndex` for indexing the
     kernel.  This simplify the interface, notably when the array of

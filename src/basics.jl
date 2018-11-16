@@ -401,19 +401,11 @@ Kernel(::Type{T}, B, args...) where {T} = Kernel{T}(B, args...)
 # floating-point type.  See [`convertcoefs`](@ref).
 
 # Make a flat structuring element from a boolean mask.
-function Kernel(tup::Tuple{T,T},
-                msk::AbstractArray{Bool,N},
-                start::CartesianIndex{N} = defaultstart(msk)) where {T,N}
-    arr = similar(Array{T}, axes(msk))
-    vtrue, vfalse = tup[1], tup[2]
-    @inbounds for i in eachindex(arr, msk)
-        arr[i] = msk[i] ? vtrue : vfalse
-    end
-    Kernel(arr, start)
-end
+Kernel(tup::Tuple{<:Any,<:Any}, msk::AbstractArray{Bool}, args...) =
+    Kernel(convertcoefs(tup, msk), args...)
 
-Kernel(tup::Tuple{T,T}, B::Kernel{Bool,N}) where {T,N} =
-    Kernel(tup, coefs(B), initialindex(B))
+Kernel(tup::Tuple{<:Any,<:Any}, B::Kernel{Bool}) =
+    Kernel(convertcoefs(tup, coefs(B)), initialindex(B))
 
 # Make a kernel from a function and anything suitable to define a Cartesian
 # region.  The element type of the kernel coefficients can be imposed.
@@ -440,10 +432,30 @@ for F in (:Float64, :Float32, :Float16)
     end
 end
 
-# Methods to convert other neighborhoods.  When type of coefficients is
-# converted, boolean to floating-point yields `0` or `-Inf` so as to have a
-# consistent *flat* structuring element.
+"""
 
+```julia
+strel(T, A)
+```
+
+yields a *structuring element* suitable for mathematical morphology operations.
+The result is a `Kernel` whose elements have type `T` (which can be `Bool` or a
+floating-point type).  Argument `A` can be a rectangular box or a `Kernel`
+with boolean elements.
+
+If `T` is a floating-point type, then the result is a so-called *flat*
+structuring element whose coefficients are `zero(T)` inside the shape defined
+by `A` and `-T(Inf)` elsewhere.
+
+See also: [`convertcoefs`](@ref).
+
+"""
+strel(::Type{Bool}, K::Kernel{Bool,N}) where {N} = K
+strel(::Type{T}, K::Kernel{Bool}) where {T<:AbstractFloat} =
+    Kernel(convertcoefs((zero(T), -T(Inf)), coefs(K)), initialindex(K))
+strel(::Type{Bool}, B::RectangularBox) = Kernel{Bool}(B)
+strel(::Type{T}, B::RectangularBox) where {T<:AbstractFloat} =
+    Kernel(zeros(T, size(B)), initialindex(B))
 
 """
 
@@ -455,8 +467,9 @@ yields an array of kernel coefficients equivalent to array `A` but whose
 elements have type `T`.
 
 If `T` is a floating-point type and `A` is a boolean array, then the values of
-the result are `0` or `-Inf(T)` to have a so-called *flat* structuring element
-consistent with `A`.  If this is not what you want, you may call:
+the result are `one(T)` where `A` is `true` and `zero(T)` elsewhere.  To use
+different values (for instance, to define *flat* *structuring* *elements*), you
+may call:
 
 ```julia
 convertcoefs((vtrue, vfalse), A)
@@ -464,6 +477,8 @@ convertcoefs((vtrue, vfalse), A)
 
 with `A` a boolean array to get an array whose elements are equal to `vtrue`
 where `A` is `true` and to `vfalse` otherwise.
+
+See also: [`strel`](@ref).
 
 """
 convertcoefs(::Type{T}, A::AbstractArray{T,N}) where {T,N} = A
@@ -476,13 +491,8 @@ function convertcoefs(::Type{T}, A::AbstractArray{S,N}) where {S,T,N}
     return B
 end
 
-convertcoefs(::Type{T}, A::AbstractArray{Bool,N}) where {T<:AbstractFloat,N} =
-    convertcoefs((zero(T), -T(Inf)), A)
-
-function convertcoefs(tup::Tuple{T1,T2}, A::AbstractArray{Bool}) where {T1,T2}
-    T = promote_type(T1, T2)
-    return convertcoefs((convert(T, tup[1]), convert(T, tup[2])), A)
-end
+convertcoefs(tup::Tuple{<:Any,<:Any}, A::AbstractArray{Bool}) =
+    convertcoefs(promote(tup...), A)
 
 function convertcoefs(tup::Tuple{T,T}, A::AbstractArray{Bool,N}) where {T,N}
     B = similar(Array{T,N}, axes(A))

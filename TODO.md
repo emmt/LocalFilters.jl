@@ -1,3 +1,5 @@
+* Rename `Kernel` as `FilterKernel` and export.
+
 * Check that the incidence on execution time (`localfilter!` may be faster on
   `CenteredBox`) is negligible.
 
@@ -18,9 +20,9 @@
 
 * Extend this to other types of *kernels* (convolution, median, *etc.*).
 
-* Kernels can be separables of not.
-
 * Implement bound types.
+
+* Implement `correlate`.
 
 * Use `StaticArray` for small kernels.
 

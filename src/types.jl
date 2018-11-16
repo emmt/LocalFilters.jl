@@ -71,10 +71,11 @@ end
 
 """
 
-A `Kernel` can be used to define a versatile type of structuring element.  It
-is a rectangular array of coefficients over a, possibly off-centered,
-rectangular neighborhood.  In general, it is sufficient to specify
-`::Kernel{T,N}` in the signature of methods, with `T` the type of the
+A `Kernel` can be used to define a weighted neighborhood (for weighted local
+average or for convolution) or a structuring element (for mathematical
+morphology).  It is a rectangular array of coefficients over a, possibly
+off-centered, rectangular neighborhood.  In general, it is sufficient to
+specify `::Kernel{T,N}` in the signature of methods, with `T` the type of the
 coefficients and `N` the number of dimensions (the third parameter `A` of the
 type is to fully qualify the type of the array of coefficients).
 
