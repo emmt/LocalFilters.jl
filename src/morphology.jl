@@ -47,7 +47,7 @@ See also [`localmean`](@ref), [`opening`](@ref), [`closing`](@ref),
 erode(A::AbstractArray, args...) = erode!(similar(A), A, args...)
 
 erode!(dst, src::AbstractArray{T,N}, B=3) where {T,N} =
-    erode!(dst, src, convert(Neighborhood{N}, B))
+    erode!(dst, src, Neighborhood{N}(B))
 
 @doc @doc(erode) erode!
 
@@ -85,7 +85,7 @@ dilate(A::AbstractArray, args...) = dilate!(similar(A), A, args...)
 @doc @doc(erode) dilate
 
 dilate!(dst, src::AbstractArray{T,N}, B=3) where {T,N} =
-    dilate!(dst, src, convert(Neighborhood{N}, B))
+    dilate!(dst, src, Neighborhood{N}(B))
 
 @doc @doc(dilate) dilate!
 
@@ -127,7 +127,7 @@ localextrema(A::AbstractArray, args...) =
 function localextrema!(Amin::AbstractArray{T,N},
                        Amax::AbstractArray{T,N},
                        A::AbstractArray{T,N}, B=3) where {T,N}
-    localextrema!(Amin, Amax, A, convert(Neighborhood{N}, B))
+    localextrema!(Amin, Amax, A, Neighborhood{N}(B))
 end
 
 @doc @doc(localextrema) localextrema!
@@ -206,7 +206,7 @@ closing(A::AbstractArray, args...) =
 function closing!(dst::AbstractArray{T,N},
                   wrk::AbstractArray{T,N},
                   src::AbstractArray{T,N}, B=3) where {T,N}
-    closing!(dst, wrk, src, convert(Neighborhood{N}, B))
+    closing!(dst, wrk, src, Neighborhood{N}(B))
 end
 
 function closing!(dst::AbstractArray{T,N},
@@ -222,7 +222,7 @@ opening(A::AbstractArray, args...) =
 function opening!(dst::AbstractArray{T,N},
                   wrk::AbstractArray{T,N},
                   src::AbstractArray{T,N}, B=3) where {T,N}
-    opening!(dst, wrk, src, convert(Neighborhood{N}, B))
+    opening!(dst, wrk, src, Neighborhood{N}(B))
 end
 
 function opening!(dst::AbstractArray{T,N},

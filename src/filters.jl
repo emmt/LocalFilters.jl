@@ -31,7 +31,7 @@ See also [`localfilter!`](@ref).
 localmean(A::AbstractArray, args...) = localmean!(similar(A), A, args...)
 
 localmean!(dst, src::AbstractArray{T,N}, B=3) where {T,N} =
-    localmean!(dst, src, convert(Neighborhood{N}, B))
+    localmean!(dst, src, Neighborhood{N}(B))
 
 @doc @doc(localmean) localmean!
 
@@ -86,7 +86,7 @@ See also [`localfilter!`](@ref).
 convolve(A::AbstractArray, args...) = convolve!(similar(A), A, args...)
 
 convolve!(dst, src::AbstractArray{T,N}, B=3) where {T,N} =
-    convolve!(dst, src, convert(Neighborhood{N}, B))
+    convolve!(dst, src, Neighborhood{N}(B))
 
 @doc @doc(convolve) convolve!
 
@@ -168,7 +168,7 @@ function localfilter!(dst, A::AbstractArray{T,N}, B, initial::Function,
     #        specialized as possible to avoid confusing the dispatcher.  The
     #        purpose of this method is just to convert `B ` into a neighborhood
     #        suitable for `A`.
-    localfilter!(dst, A, convert(Neighborhood{N}, B), initial, update, store)
+    localfilter!(dst, A, Neighborhood{N}(B), initial, update, store)
 end
 
 #
