@@ -28,42 +28,84 @@ localmean!(dst, A, B) -> dst
 See also [`localfilter!`](@ref).
 
 """
-localmean(A::AbstractArray, args...) = localmean!(similar(A), A, args...)
+localmean(A::AbstractArray{T,N}, B=3) where {T,N} =
+    localmean(A, Neighborhood{N}(B))
 
-localmean!(dst, src::AbstractArray{T,N}, B=3) where {T,N} =
-    localmean!(dst, src, Neighborhood{N}(B))
+localmean(A::AbstractArray{T}, B::RectangularBox) where {T} =
+    localmean!(similar(Array{float(T)}, axes(A)), A, B)
+
+localmean(A::AbstractArray{T}, B::Kernel{Bool}) where {T} =
+    localmean!(similar(Array{float(T)}, axes(A)), A, B)
+
+localmean(A::AbstractArray{T}, B::Kernel{K}) where {T,K} =
+    localmean!(similar(Array{float(promote_type(T,K))}, axes(A)), A, B)
+
+function localmean!(dst::AbstractArray{Td,N},
+                    A::AbstractArray{Ts,N}, B=3) where {Td,Ts,N}
+    localmean!(dst, A, Neighborhood{N}(B))
+end
 
 @doc @doc(localmean) localmean!
 
-function localmean!(dst::AbstractArray{T,N},
-                    A::AbstractArray{T,N},
-                    B::RectangularBox{N}) where {T,N}
+function localmean!(dst::AbstractArray{Td,N},
+                    A::AbstractArray{Ts,N},
+                    B::RectangularBox{N}) where {Td,Ts,N}
     @assert size(dst) == size(A)
+    T = _typeofsum(Ts)
     localfilter!(dst, A, B,
                  (a)     -> (zero(T), 0),
                  (v,a,b) -> (v[1] + a, v[2] + 1),
-                 (d,i,v) -> d[i] = v[1]/v[2])
+                 (d,i,v) -> _store!(d, i, v[1]/v[2]))
 end
 
-function localmean!(dst::AbstractArray{T,N},
-                    A::AbstractArray{T,N},
-                    B::Kernel{Bool,N}) where {T,N}
+function localmean!(dst::AbstractArray{Td,N},
+                    A::AbstractArray{Ts,N},
+                    B::Kernel{Bool,N}) where {Td,Ts,N}
     @assert size(dst) == size(A)
+    T = _typeofsum(Ts)
     localfilter!(dst, A, B,
                  (a)     -> (zero(T), 0),
                  (v,a,b) -> b ? (v[1] + a, v[2] + 1) : v,
-                 (d,i,v) -> d[i] = v[1]/v[2])
+                 (d,i,v) -> _store!(d, i, v[1]/v[2]))
 end
 
-function localmean!(dst::AbstractArray{T,N},
-                    A::AbstractArray{T,N},
-                    B::Kernel{T,N}) where {T,N}
+function localmean!(dst::AbstractArray{Td,N},
+                    A::AbstractArray{Ts,N},
+                    B::Kernel{Tk,N}) where {Td,Ts,Tk,N}
     @assert size(dst) == size(A)
+    T = _typeofsum(promote_type(Ts, Tk))
     localfilter!(dst, A, B,
                  (a)     -> (zero(T), zero(T)),
                  (v,a,b) -> (v[1] + a*b, v[2] + b),
-                 (d,i,v) -> d[i] = v[1]/v[2])
+                 (d,i,v) -> _store!(d, i, v[1]/v[2]))
 end
+
+"""
+
+`_store!(arr, idx, val)` stores value `val` in array `arr` at index `idx`,
+taking care of rounding `val` if it is of floating-point type while the
+elements of `arr` are integers.
+
+"""
+@inline function _store!(arr::AbstractArray{T}, idx,
+                         val::AbstractFloat) where {T<:Integer}
+    arr[idx] = round(T, val)
+end
+
+@inline function _store!(arr::AbstractArray, idx, val)
+    arr[idx] = val
+end
+
+
+"""
+
+`_typeofsum(T)` yields a numerical type suitable for storing a sum of elements
+of type `T`.
+
+"""
+_typeofsum(::Type{T}) where {T} = T
+_typeofsum(::Type{T}) where {T<:Integer} =
+    (sizeof(T) < sizeof(Int) ? widen(T) : T)
 
 """
 ```julia
@@ -83,41 +125,56 @@ convolve!(dst, A, B) -> dst
 See also [`localfilter!`](@ref).
 
 """
-convolve(A::AbstractArray, args...) = convolve!(similar(A), A, args...)
+convolve(A::AbstractArray{T,N}, B=3) where {T,N} =
+    convolve(A, Neighborhood{N}(B))
 
-convolve!(dst, src::AbstractArray{T,N}, B=3) where {T,N} =
-    convolve!(dst, src, Neighborhood{N}(B))
+convolve(A::AbstractArray{T}, B::RectangularBox) where {T} =
+    convolve!(similar(Array{_typeofsum(T)}, axes(A)), A, B)
+
+convolve(A::AbstractArray{T}, B::Kernel{Bool}) where {T} =
+    convolve!(similar(Array{_typeofsum(T)}, axes(A)), A, B)
+
+convolve(A::AbstractArray{T}, B::Kernel{K}) where {T,K} =
+    convolve!(similar(Array{_typeofsum(promote_type(T,K))}, axes(A)), A, B)
+
+function convolve!(dst::AbstractArray{Td,N},
+                   A::AbstractArray{Ts,N}, B=3) where {Td,Ts,N}
+    convolve!(dst, A, Neighborhood{N}(B))
+end
 
 @doc @doc(convolve) convolve!
 
-function convolve!(dst::AbstractArray{S,N},
-                   A::AbstractArray{T,N},
-                   B::RectangularBox{N}) where {S,T,N}
+function convolve!(dst::AbstractArray{Td,N},
+                   A::AbstractArray{Ts,N},
+                   B::RectangularBox{N}) where {Td,Ts,N}
     @assert size(dst) == size(A)
+    T = _typeofsum(Ts)
     localfilter!(dst, A, B,
-                 (a)     -> zero(S),
-                 (v,a,b) -> v + S(a),
-                 (d,i,v) -> d[i] = v)
+                 (a)     -> zero(T),
+                 (v,a,b) -> v + a,
+                 _store!)
 end
 
-function convolve!(dst::AbstractArray{T,N},
-                   A::AbstractArray{T,N},
-                   B::Kernel{Bool,N}) where {T,N}
+function convolve!(dst::AbstractArray{Td,N},
+                   A::AbstractArray{Ts,N},
+                   B::Kernel{Bool,N}) where {Td,Ts,N}
     @assert size(dst) == size(A)
+    T = _typeofsum(Ts)
     localfilter!(dst, A, B,
                  (a)     -> zero(T),
                  (v,a,b) -> b ? v + a : v,
-                 (d,i,v) -> d[i] = v)
+                 _store!)
 end
 
-function convolve!(dst::AbstractArray{T,N},
-                   A::AbstractArray{T,N},
-                   B::Kernel{T,N}) where {T,N}
+function convolve!(dst::AbstractArray{Td,N},
+                   A::AbstractArray{Ts,N},
+                   B::Kernel{Tk,N}) where {Td,Ts,Tk,N}
     @assert size(dst) == size(A)
+    T = _typeofsum(promote_type(Ts, Tk))
     localfilter!(dst, A, B,
                  (a)     -> zero(T),
                  (v,a,b) -> v + a*b,
-                 (d,i,v) -> d[i] = v)
+                 _store!)
 end
 
 """

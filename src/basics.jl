@@ -574,39 +574,3 @@ end
         x += 1
     end
 end
-
-
-# Manage to automatically convert the kernel type for some operations.
-convertkernel(::Type{T}, B::Kernel{<:Real,N}) where {T<:AbstractFloat,N} =
-    convert(Kernel{T,N}, B)
-convertkernel(::Type{T}, B::Kernel{<:Integer,N}) where {T<:Integer,N} =
-    convert(Kernel{T,N}, B)
-convertkernel(::Type{T}, B::Kernel{K,N}) where {T,K,N} =
-    throw(ArgumentError("cannot convert kernel of type $K into type $T"))
-
-for f in (:localmean!, :convolve!)
-    @eval begin
-        function $f(dst::AbstractArray{T,N},
-                    A::AbstractArray{T,N},
-                    B::Kernel{K,N}) where {T,K,N}
-            $f(dst, A, convertkernel(T, B))
-        end
-    end
-end
-
-for f in (:erode!, :dilate!)
-    @eval begin
-        function $f(dst::AbstractArray{T,N},
-                    A::AbstractArray{T,N},
-                    B::Kernel{K,N}) where {T,K,N}
-            $f(dst, A, convertkernel(T, B))
-        end
-    end
-end
-
-function localextrema!(Amin::AbstractArray{T,N},
-                       Amax::AbstractArray{T,N},
-                       A::AbstractArray{T,N},
-                       B::Kernel{K,N}) where {T,K,N}
-    localextrema!(Amin, Amax, A, convertkernel(T, B))
-end

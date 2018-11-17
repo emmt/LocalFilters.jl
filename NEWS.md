@@ -4,6 +4,11 @@
 
   - New `strel` function to build *structuring* *elements*.
 
+  - The type of the result of operations like local mean and convolution is
+    more consistent (*e.g.*, local mean yields a floating-point type result).
+    Rounding to the nearest integer is automatically used when the
+    floating-point result of an operation is stored into a array of integers.
+
   - Constructors for `Kernel` basically takes two arguments: the array of
     coefficients, say `A`, and the initial `CartesianIndex` for indexing the
     kernel.  This simplify the interface, notably when the array of

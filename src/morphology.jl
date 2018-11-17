@@ -73,11 +73,18 @@ end
 
 function erode!(dst::AbstractArray{T,N},
                 A::AbstractArray{T,N},
-                B::Kernel{T,N}) where {T,N}
+                B::Kernel{T,N}) where {T<:AbstractFloat,N}
     localfilter!(dst, A, B,
                  (a)     -> typemax(T),
                  (v,a,b) -> min(v, a - b),
                  (d,i,v) -> d[i] = v)
+end
+
+function erode!(dst::AbstractArray{T,N},
+                A::AbstractArray{T,N},
+                B::Kernel{K,N}) where {T<:AbstractFloat,
+                                       K<:AbstractFloat,N}
+    erode!(dst, A, Kernel{T}(B))
 end
 
 dilate(A::AbstractArray, args...) = dilate!(similar(A), A, args...)
@@ -111,12 +118,19 @@ end
 
 function dilate!(dst::AbstractArray{T,N},
                  A::AbstractArray{T,N},
-                 B::Kernel{T,N}) where {T,N}
+                 B::Kernel{T,N}) where {T<:AbstractFloat,N}
     @assert size(dst) == size(A)
     localfilter!(dst, A, B,
                  (a)     -> typemin(T),
                  (v,a,b) -> max(v, a + b),
                  (d,i,v) -> d[i] = v)
+end
+
+function dilate!(dst::AbstractArray{T,N},
+                 A::AbstractArray{T,N},
+                 B::Kernel{K,N}) where {T<:AbstractFloat,
+                                        K<:AbstractFloat,N}
+    dilate!(dst, A, Kernel{T}(B))
 end
 
 localextrema(A::AbstractArray, args...) =
@@ -161,7 +175,7 @@ end
 function localextrema!(Amin::AbstractArray{T,N},
                        Amax::AbstractArray{T,N},
                        A::AbstractArray{T,N},
-                       B::Kernel{T,N}) where {T,N}
+                       B::Kernel{T,N}) where {T<:AbstractFloat,N}
     @assert size(Amin) == size(Amax) == size(A)
     localfilter!((Amin, Amax), A, B,
                  (a)     -> (typemax(T),
@@ -169,6 +183,14 @@ function localextrema!(Amin::AbstractArray{T,N},
                  (v,a,b) -> (min(v[1], a - b),
                              max(v[2], a + b)),
                  (d,i,v) -> (Amin[i], Amax[i]) = v)
+end
+
+function localextrema!(Amin::AbstractArray{T,N},
+                       Amax::AbstractArray{T,N},
+                       A::AbstractArray{T,N},
+                       B::Kernel{K,N}) where {T<:AbstractFloat,
+                                              K<:AbstractFloat,N}
+    localextrema!(Amin, Amax, A, Kernel{T}(B))
 end
 
 #------------------------------------------------------------------------------

@@ -20,6 +20,8 @@ using LocalFilters:
     Kernel,
     Neighborhood,
     RectangularBox,
+    _store!,
+    _typeofsum,
     axes,
     cartesianregion,
     coefs,
@@ -44,8 +46,31 @@ import LocalFilters:
     opening,
     top_hat
 
-convolve(variant::Val, A::AbstractArray, args...) =
-    convolve!(variant, similar(A), A, args...)
+localmean(variant::Val, A::AbstractArray{T,N}, B=3) where {T,N} =
+    localmean(variant, A, Neighborhood{N}(B))
+
+localmean(variant::Val, A::AbstractArray{T}, B::RectangularBox) where {T} =
+    localmean!(variant, similar(Array{float(T)}, axes(A)), A, B)
+
+localmean(variant::Val, A::AbstractArray{T}, B::Kernel{Bool}) where {T} =
+    localmean!(variant, similar(Array{float(T)}, axes(A)), A, B)
+
+localmean(variant::Val, A::AbstractArray{T}, B::Kernel{K}) where {T,K} =
+    localmean!(variant, similar(Array{float(promote_type(T,K))},
+                                axes(A)), A, B)
+
+convolve(variant::Val, A::AbstractArray{T,N}, B=3) where {T,N} =
+    convolve(variant, A, Neighborhood{N}(B))
+
+convolve(variant::Val, A::AbstractArray{T}, B::RectangularBox) where {T} =
+    convolve!(variant, similar(Array{_typeofsum(T)}, axes(A)), A, B)
+
+convolve(variant::Val, A::AbstractArray{T}, B::Kernel{Bool}) where {T} =
+    convolve!(variant, similar(Array{_typeofsum(T)}, axes(A)), A, B)
+
+convolve(variant::Val, A::AbstractArray{T}, B::Kernel{K}) where {T,K} =
+    convolve!(variant, similar(Array{_typeofsum(promote_type(T,K))},
+                               axes(A)), A, B)
 
 dilate(variant::Val, A::AbstractArray, args...) =
     dilate!(variant, similar(A), A, args...)
@@ -72,9 +97,6 @@ top_hat(variant::Val, a, r, s) =
 bottom_hat(variant::Val, a, r=3) = closing(variant, a, r) .- a
 bottom_hat(variant::Val, a, r, s) =
     bottom_hat(variant, opening(variant, a, s), r)
-
-localmean(variant::Val, A::AbstractArray, args...) =
-    localmean!(variant, similar(A), A, args...)
 
 localextrema(variant::Val, A::AbstractArray, args...) =
     localextrema!(variant, similar(A), similar(A), A, args...)
@@ -125,18 +147,18 @@ localextrema(variant::Val, A::AbstractArray, args...) =
 
 # "Base" variant: use constructors and methods provided by the Base package.
 @inline function _cartesianregion(::Val{:Base},
-                         imin::CartesianIndex{N},
-                         imax::CartesianIndex{N},
-                         i::CartesianIndex{N},
-                         off::CartesianIndex{N}) where N
+                                  imin::CartesianIndex{N},
+                                  imax::CartesianIndex{N},
+                                  i::CartesianIndex{N},
+                                  off::CartesianIndex{N}) where N
     cartesianregion(max(imin, i - off), min(imax, i + off))
 end
 @inline function _cartesianregion(::Val{:Base},
-                         imin::CartesianIndex{N},
-                         imax::CartesianIndex{N},
-                         i::CartesianIndex{N},
-                         kmin::CartesianIndex{N},
-                         kmax::CartesianIndex{N}) where N
+                                  imin::CartesianIndex{N},
+                                  imax::CartesianIndex{N},
+                                  i::CartesianIndex{N},
+                                  kmin::CartesianIndex{N},
+                                  kmax::CartesianIndex{N}) where N
     cartesianregion(max(imin, i - kmax), min(imax, i - kmin))
 end
 
@@ -169,7 +191,8 @@ for N in (1,2,3,4)
                                           i::CartesianIndex{$N},
                                           off::CartesianIndex{$N})
             cartesianregion(ntuple(k -> (max(imin[k], i[k] - off[k]) :
-                                         min(imax[k], i[k] + off[k])), Val($N)))
+                                         min(imax[k], i[k] + off[k])),
+                                   Val($N)))
         end
         @inline function _cartesianregion(::Val{:NTupleVar},
                                           imin::CartesianIndex{$N},
@@ -178,7 +201,8 @@ for N in (1,2,3,4)
                                           kmin::CartesianIndex{$N},
                                           kmax::CartesianIndex{$N})
             cartesianregion(ntuple(k -> (max(imin[k], i[k] - kmax[k]) :
-                                         min(imax[k], i[k] - kmin[k])), Val($N)))
+                                         min(imax[k], i[k] - kmin[k])),
+                                   Val($N)))
         end
     end
 end
@@ -208,13 +232,14 @@ end
 # Methods for rectangular boxes (with optimization for centered boxes).
 
 function localmean!(variant::Val,
-                    dst::AbstractArray{T,N},
-                    A::AbstractArray{T,N},
-                    B::RectangularBox{N}) where {T,N}
+                    dst::AbstractArray{Td,N},
+                    A::AbstractArray{Ts,N},
+                    B::RectangularBox{N}) where {Td,Ts,N}
     @assert axes(dst) == axes(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
+    T = _typeofsum(Ts)
     if kmin === -kmax
         off = kmax
         @inbounds for i in R
@@ -223,7 +248,7 @@ function localmean!(variant::Val,
                 s += A[j]
                 n += 1
             end
-            dst[i] = s/n
+            _store!(dst, i, s/n)
         end
     else
         @inbounds for i in R
@@ -232,7 +257,7 @@ function localmean!(variant::Val,
                 s += A[j]
                 n += 1
             end
-            dst[i] = s/n
+            _store!(dst, i, s/n)
         end
     end
     return dst
@@ -337,14 +362,15 @@ end
 # Nethods for kernels of booleans.
 
 function localmean!(variant::Val,
-                    dst::AbstractArray{T,N},
-                    A::AbstractArray{T,N},
-                    B::Kernel{Bool,N}) where {T,N}
+                    dst::AbstractArray{Td,N},
+                    A::AbstractArray{Ts,N},
+                    B::Kernel{Bool,N}) where {Td,Ts,N}
     @assert size(dst) == size(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     ker, off = coefs(B), offset(B)
+    T = _typeofsum(Ts)
     @inbounds for i in R
         n, s = 0, zero(T)
         k = i + off
@@ -354,7 +380,7 @@ function localmean!(variant::Val,
                 s += A[j]
             end
         end
-        dst[i] = s/n
+        _store!(dst, i, s/n)
     end
     return dst
 end
@@ -439,14 +465,15 @@ end
 # Methods for other kernels.
 
 function localmean!(variant::Val,
-                    dst::AbstractArray{T,N},
-                    A::AbstractArray{T,N},
-                    B::Kernel{T,N}) where {T<:AbstractFloat,N}
+                    dst::AbstractArray{Td,N},
+                    A::AbstractArray{Ts,N},
+                    B::Kernel{Tk,N}) where {Td,Ts,Tk,N}
     @assert size(dst) == size(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     ker, off = coefs(B), offset(B)
+    T = _typeofsum(promote_type(Ts, Tk))
     @inbounds for i in R
         s1, s2 = zero(T), zero(T)
         k = i + off
@@ -455,7 +482,7 @@ function localmean!(variant::Val,
             s1 += w*A[j]
             s2 += w
         end
-        dst[i] = s1/s2
+        _store!(dst, i, s1/s2)
     end
     return dst
 end
@@ -503,21 +530,22 @@ function dilate!(variant::Val,
 end
 
 function convolve!(variant::Val,
-                   dst::AbstractArray{T,N},
-                   A::AbstractArray{T,N},
-                   B::Kernel{T,N}) where {T<:AbstractFloat,N}
+                   dst::AbstractArray{Td,N},
+                   A::AbstractArray{Ts,N},
+                   B::Kernel{Tk,N}) where {Td,Ts,Tk,N}
     @assert size(dst) == size(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     ker, off = coefs(B), offset(B)
+    T = _typeofsum(promote_type(Ts, Tk))
     @inbounds for i in R
         v = zero(T)
         k = i + off
         for j in _cartesianregion(variant, imin, imax, i, kmin, kmax)
             v += A[j]*ker[k-j]
         end
-        dst[i] = v
+        _store!(dst, i, v)
     end
     return dst
 end
