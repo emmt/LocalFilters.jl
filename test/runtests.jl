@@ -21,11 +21,26 @@ samevalues(a::AbstractArray, b::AbstractArray) = minimum(a .== b)
 identical(a::RectangularBox{N}, b::RectangularBox{N}) where {N} =
     (initialindex(a) === initialindex(b) &&
      finalindex(a) === finalindex(b))
-identical(a::Kernel{T,N}, b::Kernel{T,N}) where {T,N} =
-    (initialindex(a) === initialindex(b) &&
-     finalindex(a) === finalindex(b) &&
-     samevalues(coefs(a), coefs(b)))
+identical(a::Kernel{Ta,N}, b::Kernel{Tb,N}) where {Ta,Tb,N} =
+    nearlysame(a, b; atol=0, gtol=0)
 identical(a::Neighborhood, b::Neighborhood) = false
+
+function nearlysame(a::Kernel{Ta,N}, b::Kernel{Tb,N};
+                    atol=ATOL, gtol=GTOL) where {Ta,Tb,N}
+    initialindex(a) == initialindex(b) || return false
+    finalindex(a) == finalindex(b) || return false
+    if atol == 0 && gtol == 0
+        for i in cartesianregion(a)
+            a[i] == b[i] || return false
+        end
+    else
+        for i in cartesianregion(a)
+            ai, bi = a[i], b[i]
+            abs(ai - bi) ≤ atol + gtol*max(abs(ai), abs(bi)) || return false
+        end
+    end
+    return true
+end
 
 function similarvalues(A::AbstractArray{T,N}, B::AbstractArray{T,N};
                        atol=ATOL, gtol=GTOL) where {T,N}
@@ -53,6 +68,57 @@ function reversealldims(A::Array{T,N}) where {T,N}
     return B
 end
 
+function checkindexing!(ker::Kernel{T,1}) where {T}
+    Imin, Imax = limits(ker)
+    i1min, i1max = Imin[1], Imax[1]
+    tmp = zero(T)
+    for i1 in i1min:i1max
+        I = CartesianIndex(i1)
+        val = ker[I]
+        ker[i1] == val || return false
+        ker[i1] = tmp
+        ker[i1] == ker[I] == tmp || return false
+        ker[I] = val
+    end
+    return true
+end
+
+function checkindexing!(ker::Kernel{T,2}) where {T}
+    Imin, Imax = limits(ker)
+    i1min, i1max = Imin[1], Imax[1]
+    i2min, i2max = Imin[2], Imax[2]
+    tmp = zero(T)
+    for i2 in i2min:i2max,
+        i1 in i1min:i1max
+        I = CartesianIndex(i1,i2)
+        val = ker[I]
+        ker[i1,i2] == val || return false
+        ker[i1,i2] = tmp
+        ker[i1,i2] == ker[I] == tmp || return false
+        ker[I] = val
+    end
+    return true
+end
+
+function checkindexing!(ker::Kernel{T,3}) where {T}
+    Imin, Imax = limits(ker)
+    i1min, i1max = Imin[1], Imax[1]
+    i2min, i2max = Imin[2], Imax[2]
+    i3min, i3max = Imin[3], Imax[3]
+    tmp = zero(T)
+    for i3 in i3min:i3max,
+        i2 in i2min:i2max,
+        i1 in i1min:i1max
+        I = CartesianIndex(i1,i2,i3)
+        val = ker[I]
+        ker[i1,i2,i3] == val || return false
+        ker[i1,i2,i3] = tmp
+        ker[i1,i2,i3] == ker[I] == tmp || return false
+        ker[I] = val
+    end
+    return true
+end
+
 f1(x) = 1 + x*x
 f2(x) = x > 0.5
 
@@ -75,22 +141,24 @@ f2(x) = x > 0.5
                              ((3, 4, 5), (-1:1, -2:1, -2:2)))
             N = length(dims)
             box = Neighborhood(dims)
-            I1, I2 = limits(box)
+            fse = strel(Bool, box) # flat structuring element
+            Imin, Imax = limits(box)
             A = rand(dims...)
+            msk = rand(Bool, dims)
             ker = Kernel(A)
 
             # Test limits(), initialindex() and finalindex().
-            @test initialindex(CartesianIndices(rngs)) === I1
-            @test finalindex(CartesianIndices(rngs)) === I2
-            @test limits(CartesianIndices(rngs)) === (I1, I2)
+            @test initialindex(CartesianIndices(rngs)) === Imin
+            @test finalindex(CartesianIndices(rngs)) === Imax
+            @test limits(CartesianIndices(rngs)) === (Imin, Imax)
             @static if USE_CARTESIAN_RANGE
-                @test initialindex(CartesianRange(rngs)) === I1
-                @test finalindex(CartesianRange(rngs)) === I2
-                @test limits(CartesianRange(rngs)) === (I1, I2)
+                @test initialindex(CartesianRange(rngs)) === Imin
+                @test finalindex(CartesianRange(rngs)) === Imax
+                @test limits(CartesianRange(rngs)) === (Imin, Imax)
             end
-            @test initialindex(box) === I1
-            @test finalindex(box) === I2
-            @test limits(box) === (I1, I2)
+            @test initialindex(box) === Imin
+            @test finalindex(box) === Imax
+            @test limits(box) === (Imin, Imax)
             @test initialindex(A) === one(CartesianIndex{N})
             @test finalindex(A) === CartesianIndex(size(A))
             @test limits(A) === (one(CartesianIndex{N}),
@@ -99,14 +167,14 @@ f2(x) = x > 0.5
             # Test cartesianregion().
             @static if USE_CARTESIAN_RANGE
                 region = CartesianRange(rngs)
-                @test cartesianregion(I1,I2) === region
+                @test cartesianregion(Imin,Imax) === region
                 @test cartesianregion(CartesianRange(rngs)) === region
                 @test cartesianregion(CartesianIndices(rngs)) === region
                 @test cartesianregion(box) === region
                 @test cartesianregion(A) === CartesianRange(size(A))
             else
                 region = CartesianIndices(rngs)
-                @test cartesianregion(I1,I2) === region
+                @test cartesianregion(Imin,Imax) === region
                 @test cartesianregion(CartesianIndices(rngs)) === region
                 @test cartesianregion(box) === region
                 @test cartesianregion(A) === CartesianIndices(A)
@@ -122,8 +190,10 @@ f2(x) = x > 0.5
             @test Neighborhood(CartesianIndices(rngs)) === box
             @static if USE_CARTESIAN_RANGE
                 @test Neighborhood(CartesianRange(rngs)) === box
-                @test Neighborhood(CartesianRange(I1, I2)) === box
+                @test Neighborhood(CartesianRange(Imin, Imax)) === box
             end
+            @test convert(Neighborhood, box) === box
+            @test convert(Neighborhood, ker) === ker
             @test convert(Neighborhood, rngs) === box
             @test convert(Neighborhood, dims) === box
 
@@ -135,8 +205,9 @@ f2(x) = x > 0.5
             @test RectangularBox(rngs...) === box
             @static if USE_CARTESIAN_RANGE
                 @test CartesianRange(box) === CartesianRange(rngs)
-                @test CartesianRange(box) === CartesianRange(I1, I2)
+                @test CartesianRange(box) === CartesianRange(Imin, Imax)
             end
+            @test convert(RectangularBox, box) === box
             @test convert(RectangularBox, rngs) === box
             @test convert(RectangularBox, dims) === box
             dim = dims[end]
@@ -185,6 +256,16 @@ f2(x) = x > 0.5
                             Kernel(map(f2, A)))
             @test identical(Kernel(i -> f2(A[off + i]),
                                    CartesianIndices(ker)), Kernel(map(f2, A)))
+            @test identical(convert(Kernel, box), fse)
+            @test identical(Kernel((0,-Inf), msk), strel(Float64, Kernel(msk)))
+            @test identical(strel(Bool, box), Kernel(box))
+            @test convert(Kernel, fse) === fse
+            @test convert(Kernel, ker) === ker
+
+            @test nearlysame(Float32(ker), ker; atol=0, gtol=eps(Float32))
+            @test nearlysame(Float32(ker), Float64(ker);
+                             atol=0, gtol=eps(Float32))
+            @test checkindexing!(ker)
 
             # Conversion Neighborhood <-> CartesianIndices.
             @test Neighborhood(CartesianIndices(rngs)) === box
