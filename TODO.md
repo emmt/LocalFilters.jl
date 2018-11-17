@@ -1,3 +1,7 @@
+* Use `@simd`.
+
+* Add more rules to automatically convert type of kernel coefficients.
+
 * Rename `Kernel` as `FilterKernel` and export.
 
 * Check that the incidence on execution time (`localfilter!` may be faster on
