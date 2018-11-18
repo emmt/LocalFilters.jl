@@ -29,10 +29,10 @@ end
 
 """
 ```julia
-bilateralfilter!([T,] dst, A, Fr, Gs, ...)
+bilateralfilter([T,] A, Fr, Gs, ...)
 ```
 
-stores in `dst` the result of applying the bilateral filter on array `A`.
+yields the result of applying the bilateral filter on array `A`.
 
 Argument `Fr` specifies the range kernel for smoothing differences in
 intensities, it is a function which takes two values from `A` as arguments and
@@ -44,6 +44,14 @@ coordinates.
 Optional argument `T` can be used to force the floating-point type used for
 (most) computations.
 
+The in-place version is:
+
+```julia
+bilateralfilter!([T,] dst, A, Fr, Gs, ...)
+```
+
+which stores in `dst` the result of applying the bilateral filter on array `A`.
+
 See [wikipedia](https://en.wikipedia.org/wiki/Bilateral_filter).
 
 """
@@ -53,6 +61,8 @@ function bilateralfilter!(dst::AbstractArray{Td,N},
     # Provide type for computations.
     return bilateralfilter!(float(Td), dst, A, args...)
 end
+
+@doc @doc(bilateralfilter!) bilateralfilter
 
 function bilateralfilter!(::Type{T},
                           dst::AbstractArray{Td,N},
