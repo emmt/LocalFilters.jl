@@ -50,7 +50,7 @@ end
 function localmean!(dst::AbstractArray{Td,N},
                     A::AbstractArray{Ts,N},
                     B::RectangularBox{N}) where {Td,Ts,N}
-    @assert size(dst) == size(A)
+    @assert axes(dst) == axes(A)
     T = _typeofsum(Ts)
     localfilter!(dst, A, B,
                  (a)     -> (zero(T), 0),
@@ -61,7 +61,7 @@ end
 function localmean!(dst::AbstractArray{Td,N},
                     A::AbstractArray{Ts,N},
                     B::Kernel{Bool,N}) where {Td,Ts,N}
-    @assert size(dst) == size(A)
+    @assert axes(dst) == axes(A)
     T = _typeofsum(Ts)
     localfilter!(dst, A, B,
                  (a)     -> (zero(T), 0),
@@ -72,7 +72,7 @@ end
 function localmean!(dst::AbstractArray{Td,N},
                     A::AbstractArray{Ts,N},
                     B::Kernel{Tk,N}) where {Td,Ts,Tk,N}
-    @assert size(dst) == size(A)
+    @assert axes(dst) == axes(A)
     T = _typeofsum(promote_type(Ts, Tk))
     localfilter!(dst, A, B,
                  (a)     -> (zero(T), zero(T)),
@@ -147,7 +147,7 @@ end
 function convolve!(dst::AbstractArray{Td,N},
                    A::AbstractArray{Ts,N},
                    B::RectangularBox{N}) where {Td,Ts,N}
-    @assert size(dst) == size(A)
+    @assert axes(dst) == axes(A)
     T = _typeofsum(Ts)
     localfilter!(dst, A, B,
                  (a)     -> zero(T),
@@ -158,7 +158,7 @@ end
 function convolve!(dst::AbstractArray{Td,N},
                    A::AbstractArray{Ts,N},
                    B::Kernel{Bool,N}) where {Td,Ts,N}
-    @assert size(dst) == size(A)
+    @assert axes(dst) == axes(A)
     T = _typeofsum(Ts)
     localfilter!(dst, A, B,
                  (a)     -> zero(T),
@@ -169,7 +169,7 @@ end
 function convolve!(dst::AbstractArray{Td,N},
                    A::AbstractArray{Ts,N},
                    B::Kernel{Tk,N}) where {Td,Ts,Tk,N}
-    @assert size(dst) == size(A)
+    @assert axes(dst) == axes(A)
     T = _typeofsum(promote_type(Ts, Tk))
     localfilter!(dst, A, B,
                  (a)     -> zero(T),

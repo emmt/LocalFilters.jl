@@ -124,7 +124,7 @@ localextrema(variant::Val, A::AbstractArray, args...) =
 # function erode!(dst::AbstractArray{T,N},
 #                 A::AbstractArray{T,N},
 #                 B::RectangularBox{N}) where {T,N}
-#     @assert size(dst) == size(A)
+#     @assert axes(dst) == axes(A)
 #     localfilter!(dst, A, B,
 #                  (a)     -> typemax(T),
 #                  (v,a,b) -> min(v, a),
@@ -134,7 +134,7 @@ localextrema(variant::Val, A::AbstractArray, args...) =
 # function dilate!(dst::AbstractArray{T,N},
 #                  A::AbstractArray{T,N},
 #                  B::RectangularBox{N}) where {T,N}
-#     @assert size(dst) == size(A)
+#     @assert axes(dst) == axes(A)
 #     localfilter!(dst, A, B,
 #                  (a)     -> typemin(T),
 #                  (v,a,b) -> max(v, a),
@@ -267,7 +267,7 @@ function erode!(variant::Val,
                 Amin::AbstractArray{T,N},
                 A::AbstractArray{T,N},
                 B::RectangularBox{N}) where {T,N}
-    @assert size(Amin) == size(A)
+    @assert axes(Amin) == axes(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -297,7 +297,7 @@ function dilate!(variant::Val,
                  Amax::AbstractArray{T,N},
                  A::AbstractArray{T,N},
                  B::RectangularBox{N}) where {T,N}
-    @assert size(Amax) == size(A)
+    @assert axes(Amax) == axes(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -328,7 +328,7 @@ function localextrema!(variant::Val,
                        Amax::AbstractArray{T,N},
                        A::AbstractArray{T,N},
                        B::RectangularBox{N}) where {T,N}
-    @assert size(Amin) == size(Amax) == size(A)
+    @assert axes(Amin) == axes(Amax) == axes(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -365,7 +365,7 @@ function localmean!(variant::Val,
                     dst::AbstractArray{Td,N},
                     A::AbstractArray{Ts,N},
                     B::Kernel{Bool,N}) where {Td,Ts,N}
-    @assert size(dst) == size(A)
+    @assert axes(dst) == axes(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -389,7 +389,7 @@ function erode!(variant::Val,
                 Amin::AbstractArray{T,N},
                 A::AbstractArray{T,N},
                 B::Kernel{Bool,N}) where {T,N}
-    @assert size(Amin) == size(A)
+    @assert axes(Amin) == axes(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -413,7 +413,7 @@ function dilate!(variant::Val,
                  Amax::AbstractArray{T,N},
                  A::AbstractArray{T,N},
                  B::Kernel{Bool,N}) where {T,N}
-    @assert size(Amax) == size(A)
+    @assert axes(Amax) == axes(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -438,7 +438,7 @@ function localextrema!(variant::Val,
                        Amax::AbstractArray{T,N},
                        A::AbstractArray{T,N},
                        B::Kernel{Bool,N}) where {T,N}
-    @assert size(Amin) == size(Amax) == size(A)
+    @assert axes(Amin) == axes(Amax) == axes(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -468,7 +468,7 @@ function localmean!(variant::Val,
                     dst::AbstractArray{Td,N},
                     A::AbstractArray{Ts,N},
                     B::Kernel{Tk,N}) where {Td,Ts,Tk,N}
-    @assert size(dst) == size(A)
+    @assert axes(dst) == axes(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -491,7 +491,7 @@ function erode!(variant::Val,
                 Amin::AbstractArray{T,N},
                 A::AbstractArray{T,N},
                 B::Kernel{T,N}) where {T<:AbstractFloat,N}
-    @assert size(Amin) == size(A)
+    @assert axes(Amin) == axes(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -512,7 +512,7 @@ function dilate!(variant::Val,
                  Amax::AbstractArray{T,N},
                  A::AbstractArray{T,N},
                  B::Kernel{T,N}) where {T<:AbstractFloat,N}
-    @assert size(Amax) == size(A)
+    @assert axes(Amax) == axes(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -533,7 +533,7 @@ function convolve!(variant::Val,
                    dst::AbstractArray{Td,N},
                    A::AbstractArray{Ts,N},
                    B::Kernel{Tk,N}) where {Td,Ts,Tk,N}
-    @assert size(dst) == size(A)
+    @assert axes(dst) == axes(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -555,7 +555,7 @@ function localextrema!(variant::Val,
                        Amax::AbstractArray{T,N},
                        A::AbstractArray{T,N},
                        B::Kernel{T,N}) where {T<:AbstractFloat,N}
-    @assert size(Amin) == size(Amax) == size(A)
+    @assert axes(Amin) == axes(Amax) == axes(A)
     R = cartesianregion(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
