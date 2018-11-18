@@ -42,15 +42,16 @@ function nearlysame(a::Kernel{Ta,N}, b::Kernel{Tb,N};
     return true
 end
 
-function similarvalues(A::AbstractArray{T,N}, B::AbstractArray{T,N};
-                       atol=ATOL, gtol=GTOL) where {T,N}
+function similarvalues(A::AbstractArray{Ta,N}, B::AbstractArray{Tb,N};
+                       atol=ATOL, gtol=GTOL) where {Ta,Tb,N}
     @assert axes(A) == axes(B)
-    local sd2::Float64 = 0.0
-    local sa2::Float64 = 0.0
-    local sb2::Float64 = 0.0
+    T = float(promote_type(Ta, Tb))
+    local sd2::T = 0
+    local sa2::T = 0
+    local sb2::T = 0
     @inbounds for i in eachindex(A, B)
-        a = Float64(A[i])
-        b = Float64(B[i])
+        a = T(A[i])
+        b = T(B[i])
         sa2 += a*a
         sb2 += b*b
         sd2 += (a - b)^2
@@ -421,6 +422,14 @@ f2(x) = x > 0.5
         end
     end
 
+    # Bilateral filter.
+    @testset "Bilateral filter" begin
+        A = randn(Float64, 128, 200)
+        box = RectangularBox{2}(5)
+        B1 = bilateralfilter(A, 5, 3, box)
+        B2 = bilateralfilter(Float32, A, 5, 3, box)
+        @test similarvalues(B1, B2; atol=0, gtol=8*eps(Float32))
+    end
 end
 
 end # module

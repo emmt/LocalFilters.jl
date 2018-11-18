@@ -11,8 +11,20 @@
 # Copyright (C) 2018, Éric Thiébaut.
 #
 
-function bilateralfilter(::Type{T}, A::AbstractArray, args...) where {T}
-    return bilateralfilter!(similar(Array{T}, axes(A)), A, args...)
+module BilateralFilter
+
+export bilateralfilter!, bilateralfilter!
+
+using ..LocalFilters
+using ..LocalFilters: Neighborhood, RectangularBox, Kernel, axes, _store!
+
+bilateralfilter(A::AbstractArray{T}, args...) where {T<:Real} =
+    # Provide type for computations and result.
+    bilateralfilter(float(T), A, args...)
+
+function bilateralfilter(::Type{T}, A::AbstractArray,
+                         args...) where {T<:AbstractFloat}
+    return bilateralfilter!(T, similar(Array{T}, axes(A)), A, args...)
 end
 
 """
@@ -35,6 +47,13 @@ Optional argument `T` can be used to force the floating-point type used for
 See [wikipedia](https://en.wikipedia.org/wiki/Bilateral_filter).
 
 """
+function bilateralfilter!(dst::AbstractArray{Td,N},
+                          A::AbstractArray{Ta,N},
+                          args...) where {Td<:Real, Ta, N}
+    # Provide type for computations.
+    return bilateralfilter!(float(Td), dst, A, args...)
+end
+
 function bilateralfilter!(::Type{T},
                           dst::AbstractArray{Td,N},
                           A::AbstractArray{Ta,N},
@@ -52,7 +71,8 @@ function bilateralfilter!(::Type{T},
     # The state is the tuple: (central_value, numerator, denominator).
     return localfilter!(dst, A, Gs,
                         (val) -> (val, zero(T), zero(T)),
-                        (v, val, ker) -> _update(v, val, ker, Fr(val, v[1])),
+                        (v, val, ker) -> _update(v, val, ker,
+                                                 convert(T, Fr(val, v[1]))),
                         _final!)
 end
 
@@ -89,25 +109,11 @@ function bilateralfilter!(::Type{T},
                                           Td<:Real, Ta<:Real, N}
     @assert isfinite(σr) && σr > 0
     qr = _gaussfactor(T, σr)
-    return bilateralfilter!(dst, A,
+    return bilateralfilter!(T, dst, A,
                             (v, v0) -> _gausswindow(qr, v - v0), args...)
 end
 
-function bilateralfilter!(dst::AbstractArray{Td,N},
-                          A::AbstractArray{Ta,N},
-                          σr::Real,
-                          args...) where {Td<:Real, Ta<:Real, N}
-    return bilateralfilter!(Float64, dst, A, σr, args...)
-end
-
 # Distance filter specifed by its standard deviation and the size of the ROI.
-function bilateralfilter!(dst::AbstractArray{Td,N},
-                          A::AbstractArray{Ta,N},
-                          Fr::Function,
-                          σs::Real, B) where {Td<:Real, Ta<:Real, N}
-    return bilateralfilter!(Float64, dst, A, Fr, σs, B)
-end
-
 function bilateralfilter!(::Type{T},
                           dst::AbstractArray{Td,N},
                           A::AbstractArray{Ta,N},
@@ -134,15 +140,11 @@ _gausswindow(η::T, x::Real) where {T<:AbstractFloat} =
 
 function _update(v::Tuple{V,T,T}, val::V,
                  ws::T, wr::T) where {V, T<:AbstractFloat}
-    w = convert(T, wr)*ws
+    w = wr*ws
     return (v[1], v[2] + convert(T, val)*w, v[3] + w)
 end
 
-_store!(dst::AbstractArray{T,N}, i, val) where {T<:AbstractFloat,N} =
-    dst[i] = val
-
-_store!(dst::AbstractArray{T,N}, i, val) where {T<:Integer,N} =
-    dst[i] = round(T, val)
-
 _final!(dst, i, v::Tuple{V,T,T}) where {T<:AbstractFloat,V} =
     _store!(dst, i, (v[3] > zero(T) ? v[2]/v[3] : zero(T)))
+
+end # module

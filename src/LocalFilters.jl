@@ -68,5 +68,6 @@ include("filters.jl")
 include("separable.jl")
 include("morphology.jl")
 include("bilateral.jl")
+import .BilateralFilter: bilateralfilter!, bilateralfilter
 
 end
