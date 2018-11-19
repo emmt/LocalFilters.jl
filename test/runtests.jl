@@ -433,14 +433,24 @@ f2(x) = x > 0.5
             C = Array{eltype(A),ndims(A)}(undef, size(A))
             box = RectangularBox{N}(5)
             rng = -2:2
-            @test samevalues( erode(A, :, rng),  erode(REF, A, box))
-            @test samevalues(dilate(A, :, rng), dilate(REF, A, box))
-            @test samevalues( erode!(B, A, :, rng),  erode(REF, A, box))
-            @test samevalues(dilate!(B, A, :, rng), dilate(REF, A, box))
-            @test samevalues( erode!(copyto!(B, A), :, rng),
-                              erode(REF, A, box))
-            @test samevalues(dilate!(copyto!(B, A), :, rng),
-                             dilate(REF, A, box))
+            result = erode(REF, A, box)
+            @test samevalues(erode(A, :, rng), result)
+            @test samevalues(erode!(B, A, :, rng), result)
+            @test samevalues(erode!(copyto!(B, A), :, rng), result)
+            @test samevalues(localfilter!(B, A, 1:N, min, rng), result)
+            if N > 1
+                # Reverse order of dimensions.
+                @test samevalues(localfilter!(B, A, N:-1:1, min, rng), result)
+            end
+            result = dilate(REF, A, box)
+            @test samevalues(dilate(A, :, rng), result)
+            @test samevalues(dilate!(B, A, :, rng), result)
+            @test samevalues(dilate!(copyto!(B, A), :, rng), result)
+            @test samevalues(localfilter!(B, A, 1:N, max, rng), result)
+            if N > 1
+                # Reverse order of dimensions.
+                @test samevalues(localfilter!(B, A, N:-1:1, max, rng), result)
+            end
         end
 
         # Test shifts.
@@ -484,7 +494,9 @@ f2(x) = x > 0.5
         box = RectangularBox{2}(5)
         B1 = bilateralfilter(A, 5, 3, box)
         B2 = bilateralfilter(Float32, A, 5, 3, box)
+        B3 = bilateralfilter!(similar(Array{Float32}, axes(A)), A, 5, 3, box)
         @test similarvalues(B1, B2; atol=0, gtol=8*eps(Float32))
+        @test similarvalues(B2, B3; atol=0, gtol=4*eps(Float32))
     end
 end
 
