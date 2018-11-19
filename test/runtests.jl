@@ -422,6 +422,19 @@ f2(x) = x > 0.5
         end
     end
 
+    # Test van Herk / Gil & Werman algorithm.
+    @testset "van Herk / Gil & Werman algorithm" begin
+        for dims in ((45,), (30, 21), (7, 8, 9)),
+            T in (Float32, Int32)
+            N = length(dims)
+            A = rand(T, dims)
+            box = RectangularBox{N}(5)
+            rng = -2:2
+            @test samevalues( erode(A, :, rng),  erode(REF, A, box))
+            @test samevalues(dilate(A, :, rng), dilate(REF, A, box))
+        end
+    end
+
     # Bilateral filter.
     @testset "Bilateral filter" begin
         A = randn(Float64, 128, 200)
