@@ -342,13 +342,10 @@ function localfilter!(dst::AbstractArray{T,N},
                       rng::IndexInterval,
                       w::Vector{T} = workspace(T, A, :, rng)) where {T,N}
     kmin, kmax = Int(first(rng)), Int(last(rng))
-    if N ≥ 1
-        localfilter!(dst, A, 1, op, kmin, kmax, w)
-        for d in 2:N
-            localfilter!(dst, d, op, kmin, kmax, w)
-        end
-    else
-        copyto!(dst, A)
+    N ≥ 1 || return copyto!(dst, A)
+    localfilter!(dst, A, 1, op, kmin, kmax, w)
+    for d in 2:N
+        localfilter!(dst, d, op, kmin, kmax, w)
     end
     return dst
 end
@@ -361,13 +358,10 @@ function localfilter!(dst::AbstractArray{T,N},
                                   Tuple{Vararg{IndexInterval}}},
                       w::Vector{T} = workspace(T, A, :, rngs)) where {T,N}
     length(rngs) == N || throw(DimensionMismatch("there must be as many intervals as dimensions"))
-    if N ≥ 1
-        localfilter!(dst, A, 1, op, rngs[1], w)
-        for d in 2:N
-            localfilter!(dst, d, op, rngs[d], w)
-        end
-    else
-        copyto!(dst, A)
+    N ≥ 1 || return copyto!(dst, A)
+    localfilter!(dst, A, 1, op, rngs[1], w)
+    for d in 2:N
+        localfilter!(dst, d, op, rngs[d], w)
     end
     return dst
 end
@@ -379,13 +373,11 @@ function localfilter!(dst::AbstractArray{T,N},
                       op::Function,
                       rng::IndexInterval,
                       w::Vector{T} = workspace(T, A, dims, rng)) where {T,N}
-    if (m = length(dims)) ≥ 1
-        localfilter!(dst, A, dims[1], op, rng, w)
-        for d in 2:m
-            localfilter!(dst, dims[d], op, rng, w)
-        end
-    else
-        copyto!(dst, A)
+    m = length(dims)
+    m ≥ 1 || return copyto!(dst, A)
+    localfilter!(dst, A, dims[1], op, rng, w)
+    for d in 2:m
+        localfilter!(dst, dims[d], op, rng, w)
     end
     return dst
 end
@@ -398,14 +390,12 @@ function localfilter!(dst::AbstractArray{T,N},
                       rngs::Union{AbstractVector{<:IndexInterval},
                                   Tuple{Vararg{IndexInterval}}},
                       w::Vector{T} = workspace(T, A, dims, rngs)) where {T,N}
-    (m = length(dims)) == length(rngs) || throw(DimensionMismatch("list of dimensions and list of intervals must have the same length"))
-    if m ≥ 1
-        localfilter!(dst, A, dims[1], op, rngs[1], w)
-        for d in 2:m
-            localfilter!(dst, dims[d], op, rngs[d], w)
-        end
-    else
-        copyto!(dst, A)
+    m = length(dims)
+    length(rngs) == m || throw(DimensionMismatch("list of dimensions and list of intervals must have the same length"))
+    m ≥ 1 || return copyto!(dst, A)
+    localfilter!(dst, A, dims[1], op, rngs[1], w)
+    for d in 2:m
+        localfilter!(dst, dims[d], op, rngs[d], w)
     end
     return dst
 end
@@ -425,7 +415,7 @@ for (f, op) in ((:erode, min), (:dilate, max))
             return localfilter(T, A, dims, $op, rngs, args...)
         end
 
-        function $fp(A::AbstractArray{T,N}, d::Integer,
+        function $fp(A::AbstractArray{T,N},
                      dims::Union{Colon, Integer, Tuple{Vararg{Integer}},
                                  AbstractVector{<:Integer}},
                      rngs::Union{IndexInterval, Tuple{Vararg{IndexInterval}},
@@ -435,7 +425,7 @@ for (f, op) in ((:erode, min), (:dilate, max))
         end
 
         function $fp(dst::AbstractArray{T,N},
-                     A::AbstractArray{T,N}, d::Integer,
+                     A::AbstractArray{T,N},
                      dims::Union{Colon, Integer, Tuple{Vararg{Integer}},
                                  AbstractVector{<:Integer}},
                      rngs::Union{IndexInterval, Tuple{Vararg{IndexInterval}},
@@ -472,69 +462,66 @@ workspacelength(n::Int, p::Int) = (n < 1 || p ≤ 1 ? 0 : n + 2*(p - 1))
 
 function workspacelength(A::AbstractArray{<:Any,N},
                          d::Integer,
-                         rng::IndexInterval) where {N}
-    if 1 ≤ d ≤ N
-        n = length(axes(A, d))
-        p = length(rng)
-        return workspacelength(n, p)
-    end
-    return 0
+                         rng::IndexInterval)::Int where {N}
+    1 ≤ d ≤ N || return 0
+    n = length(axes(A, d))
+    p = length(rng)
+    return workspacelength(n, p)
 end
 
 function workspacelength(A::AbstractArray{<:Any,N},
                          ::Colon,
-                         rng::IndexInterval) where {N}
-    if N ≥ 1
-        p = length(rng)
-        n = reduce(max, map(length, axes(A)))
-        return workspacelength(n, p)
-    end
-    return 0
+                         rng::IndexInterval)::Int where {N}
+    N ≥ 1 || return 0
+    p = length(rng)
+    n = reduce(max, map(length, axes(A)))
+    return workspacelength(n, p)
 end
 
 function workspacelength(A::AbstractArray{<:Any,N},
                          ::Colon,
                          rngs::Union{AbstractVector{<:IndexInterval},
-                                     Tuple{Vararg{IndexInterval}}}) where {N}
-    numb = 0
+                                     Tuple{Vararg{IndexInterval}}})::Int where {N}
+    len = 0
     if length(rngs) == N
         for d in 1:N
             n = length(axes(A, d))
             p = length(rngs[d])
-            numb = max(numb, workspacelength(n, p))
+            len = max(len, workspacelength(n, p))
         end
     end
-    return numb
+    return len
 end
 
 function workspacelength(A::AbstractArray{<:Any,N},
                          dims::Union{AbstractVector{<:Integer},
                                      Tuple{Vararg{Integer}}},
-                         rng::IndexInterval) where {N}
-    numb = 0
+                         rng::IndexInterval)::Int where {N}
+    len = 0
     p = length(rng)
     for dim in dims
         n = length(axes(A, dim))
-        numb = max(numb, workspacelength(n, p))
+        len = max(len, workspacelength(n, p))
     end
-    return numb
+    return len
 end
 
 function workspacelength(A::AbstractArray{<:Any,N},
                          dims::Union{AbstractVector{<:Integer},
                                      Tuple{Vararg{Integer}}},
                          rngs::Union{AbstractVector{<:IndexInterval},
-                                     Tuple{Vararg{IndexInterval}}}) where {N}
-    numb = 0
+                                     Tuple{Vararg{IndexInterval}}})::Int where {N}
+    len = 0
     if (m = length(dims)) == length(rngs)
         for d in 1:m
             n = length(axes(A, dims[d]))
             p = length(rngs[d])
-            numb = max(numb, workspacelength(n, p))
+            len = max(len, workspacelength(n, p))
         end
     end
-    return numb
+    return len
 end
+
 """
 
 ```julia
