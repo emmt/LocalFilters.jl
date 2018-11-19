@@ -7,7 +7,9 @@ using Compat, Compat.Test
 using LocalFilters
 using LocalFilters: Neighborhood, RectangularBox, Kernel,
     axes, initialindex, finalindex, limits, cartesianregion, ball, coefs,
-    strictfloor, USE_CARTESIAN_RANGE, _range
+    ismmbox, strictfloor, USE_CARTESIAN_RANGE, _range
+
+struct Empty{N} <: Neighborhood{N} end
 
 # Selector for reference methods.
 const REF = Val(:Base)
@@ -295,6 +297,13 @@ f2(x) = x > 0.5
             @test size(ker) === size(A)
             @test size(ker) === ntuple(d -> size(ker, d), N)
             @test axes(ker) === ntuple(d -> axes(ker, d), N)
+            @test ismmbox(fse) == true
+            @test ismmbox(box) == true
+            boolker = Neighborhood(ones(Bool,dims))
+            @test ismmbox(boolker) == true
+            boolker[zero(CartesianIndex{N})] = false
+            @test ismmbox(boolker) == false
+            @test ismmbox(Empty{N}()) == false
 
             # Test reverse().
             revbox = reverse(box)
