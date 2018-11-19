@@ -68,18 +68,10 @@ function bilateralfilter!(::Type{T},
                           dst::AbstractArray{Td,N},
                           A::AbstractArray{Ta,N},
                           Fr::Function,
-                          Gs::Kernel{Tg,N}
-                          ) where {T<:AbstractFloat, Tg<:Real, Td, Ta, N}
-    return bilateralfilter!(T, dst, A, Fr, T(Gs))
-end
-
-function bilateralfilter!(::Type{T},
-                          dst::AbstractArray{Td,N},
-                          A::AbstractArray{Ta,N},
-                          Fr::Function,
-                          Gs::Kernel{T,N}) where {T<:AbstractFloat, Td, Ta, N}
+                          Gs::Kernel{Tg,N}) where {T<:AbstractFloat, Td, Ta,
+                                                   Tg<:Real, N}
     # The state is the tuple: (central_value, numerator, denominator).
-    return localfilter!(dst, A, Gs,
+    return localfilter!(dst, A, Kernel{T}(Gs),
                         (val) -> (val, zero(T), zero(T)),
                         (v, val, ker) -> _update(v, val, ker,
                                                  convert(T, Fr(val, v[1]))),
