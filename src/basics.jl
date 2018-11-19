@@ -287,6 +287,26 @@ RectangularBox{N}(R::CartesianIndices{N}) where {N} =
         RectangularBox(initialindex(R), finalindex(R))
 end
 
+
+"""
+```julia
+ismmbox(B)
+```
+
+yields whether neighborhood `B` has the same effect as a rectangular box for
+mathematical morphology operations.  This may be used to use fast separable
+versions of mathematical morphology operations like the van Herk-Gil-Werman
+algorithm.
+
+See also: [`LocalFilters.RectangularBox`](@ref).
+"""
+ismmbox(::RectangularBox) = true
+ismmbox(B::Kernel{Bool}) = all(identity, coefs(B))
+ismmbox(B::Kernel{T}) where {T<:AbstractFloat} =
+    all(x -> x == zero(T), coefs(B))
+ismmbox(::Neighborhood) = false
+
+
 _range(dim::Integer) = _range(Int(dim))
 
 function _range(dim::Int)

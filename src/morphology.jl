@@ -66,7 +66,7 @@ end
 function erode!(dst::AbstractArray{T,N},
                 A::AbstractArray{T,N},
                 B::Kernel{Bool,N}) where {T,N}
-    if all(identity, coefs(B))
+    if ismmbox(B)
         localfilter!(dst, A, :, min, axes(B))
     else
         @assert axes(dst) == axes(A)
@@ -82,7 +82,7 @@ function erode!(dst::AbstractArray{T,N},
                 A::AbstractArray{T,N},
                 B::Kernel{K,N}) where {T<:AbstractFloat,
                                        K<:AbstractFloat,N}
-    if all(x -> x == zero(K), coefs(B))
+    if ismmbox(B)
         localfilter!(dst, A, :, min, axes(B))
     else
         @assert axes(dst) == axes(A)
@@ -117,7 +117,7 @@ end
 function dilate!(dst::AbstractArray{T,N},
                  A::AbstractArray{T,N},
                  B::Kernel{Bool,N}) where {T,N}
-    if all(identity, coefs(B))
+    if ismmbox(B)
         localfilter!(dst, A, :, max, axes(B))
     else
         @assert axes(dst) == axes(A)
@@ -133,7 +133,7 @@ function dilate!(dst::AbstractArray{T,N},
                  A::AbstractArray{T,N},
                  B::Kernel{K,N}) where {T<:AbstractFloat,
                                         K<:AbstractFloat,N}
-    if all(x -> x == zero(K), coefs(B))
+    if ismmbox(B)
         localfilter!(dst, A, :, max, axes(B))
     else
         @assert axes(dst) == axes(A)
