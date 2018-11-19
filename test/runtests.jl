@@ -322,12 +322,14 @@ f2(x) = x > 0.5
                 @test samevalues(erode(a, box), result)
                 @test samevalues(erode(a, mask), result)
                 @test samevalues(erode(a, fse), result)
+                @test samevalues(erode!(copy(a), box), result)
             end
             @testset "dilate" begin
                 result = dilate(REF, a, box)
                 @test samevalues(dilate(a, box), result)
                 @test samevalues(dilate(a, mask), result)
                 @test samevalues(dilate(a, fse), result)
+                @test samevalues(dilate!(copy(a), box), result)
             end
             @testset "closing" begin
                 result = closing(REF, a, box)
@@ -366,6 +368,8 @@ f2(x) = x > 0.5
                 e1, d1 = localextrema(REF, a, box)
                 @test samevalues(e0, e1) && samevalues(d0, d1)
                 e1, d1 = localextrema(a, box)
+                @test samevalues(e0, e1) && samevalues(d0, d1)
+                e1, d1 = localextrema!(similar(a), similar(a), a, box)
                 @test samevalues(e0, e1) && samevalues(d0, d1)
                 e1, d1 = localextrema(a, mask)
                 @test samevalues(e0, e1) && samevalues(d0, d1)
