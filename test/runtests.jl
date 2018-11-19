@@ -424,6 +424,7 @@ f2(x) = x > 0.5
 
     # Test van Herk / Gil & Werman algorithm.
     @testset "van Herk / Gil & Werman algorithm" begin
+        # Test erode and dilate.
         for dims in ((45,), (30, 21), (7, 8, 9)),
             T in (Float32, Int32)
             N = length(dims)
@@ -432,6 +433,38 @@ f2(x) = x > 0.5
             rng = -2:2
             @test samevalues( erode(A, :, rng),  erode(REF, A, box))
             @test samevalues(dilate(A, :, rng), dilate(REF, A, box))
+        end
+
+        # Test shifts.
+        A = rand(30)
+        B = Array{eltype(A),ndims(A)}(undef, size(A))
+        n = length(A)
+        for k in (2, 0, -3)
+            for i in 1:n
+                j = clamp(i - k, 1, n)
+                B[i] = A[j]
+            end
+            @test samevalues(B, localfilter(A,1,min,k:k))
+            C = copy(A)
+            @test samevalues(B, localfilter!(C,1,min,k:k))
+        end
+        A = rand(12,13)
+        B = Array{eltype(A),ndims(A)}(undef, size(A))
+        n1, n2 = size(A)
+        for k1 in (2, 0, -3),
+            k2 in (1, 0, -2)
+            for i2 in 1:n2
+                j2 = clamp(i2 - k2, 1, n2)
+                for i1 in 1:n1
+                    j1 = clamp(i1 - k1, 1, n1)
+                    B[i1,i2] = A[j1,j2]
+                end
+            end
+            @test samevalues(B, localfilter(A,:,min,(k1:k1,k2:k2)))
+            @test samevalues(B, localfilter(A,[1,2],min,(k1:k1,k2:k2)))
+            @test samevalues(B, localfilter(A,(2,1),min,(k2:k2,k1:k1)))
+            C = copy(A)
+            @test samevalues(B, localfilter!(C,:,min,(k1:k1,k2:k2)))
         end
     end
 
