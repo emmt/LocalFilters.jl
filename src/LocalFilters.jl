@@ -62,11 +62,14 @@ end
     Base.Tuple(index::CartesianIndex) = index.I
 end
 
+function localfilter end
+function localfilter! end
+
 include("types.jl")
 include("basics.jl")
 include("filters.jl")
-include("separable.jl")
 include("morphology.jl")
+include("separable.jl")
 include("bilateral.jl")
 import .BilateralFilter: bilateralfilter!, bilateralfilter
 

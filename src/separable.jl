@@ -12,6 +12,26 @@
 # Copyright (C) 2018, Éric Thiébaut.
 #
 
+module Separable
+
+using Compat
+
+using ..LocalFilters
+
+using ..LocalFilters:
+    IndexInterval,
+    axes,
+    cartesianregion
+
+import ..LocalFilters:
+    dilate!,
+    dilate,
+    erode!,
+    erode,
+    localfilter!,
+    localfilter
+
+
 """
 # Local filter by the van Herk-Gil-Werman algorithm
 
@@ -535,3 +555,5 @@ function workspace(::Type{T},
                                Tuple{Vararg{IndexInterval}}}) where {T,N}
     return Array{T}(undef, workspacelength(A, dims, rngs))
 end
+
+end # module
