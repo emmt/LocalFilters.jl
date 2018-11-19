@@ -429,10 +429,18 @@ f2(x) = x > 0.5
             T in (Float32, Int32)
             N = length(dims)
             A = rand(T, dims)
+            B = Array{eltype(A),ndims(A)}(undef, size(A))
+            C = Array{eltype(A),ndims(A)}(undef, size(A))
             box = RectangularBox{N}(5)
             rng = -2:2
             @test samevalues( erode(A, :, rng),  erode(REF, A, box))
             @test samevalues(dilate(A, :, rng), dilate(REF, A, box))
+            @test samevalues( erode!(B, A, :, rng),  erode(REF, A, box))
+            @test samevalues(dilate!(B, A, :, rng), dilate(REF, A, box))
+            @test samevalues( erode!(copyto!(B, A), :, rng),
+                              erode(REF, A, box))
+            @test samevalues(dilate!(copyto!(B, A), :, rng),
+                             dilate(REF, A, box))
         end
 
         # Test shifts.
@@ -450,6 +458,7 @@ f2(x) = x > 0.5
         end
         A = rand(12,13)
         B = Array{eltype(A),ndims(A)}(undef, size(A))
+        C = Array{eltype(A),ndims(A)}(undef, size(A))
         n1, n2 = size(A)
         for k1 in (2, 0, -3),
             k2 in (1, 0, -2)
@@ -463,8 +472,9 @@ f2(x) = x > 0.5
             @test samevalues(B, localfilter(A,:,min,(k1:k1,k2:k2)))
             @test samevalues(B, localfilter(A,[1,2],min,(k1:k1,k2:k2)))
             @test samevalues(B, localfilter(A,(2,1),min,(k2:k2,k1:k1)))
-            C = copy(A)
-            @test samevalues(B, localfilter!(C,:,min,(k1:k1,k2:k2)))
+            @test samevalues(B, localfilter!(copyto!(C,A),:,min,(k1:k1,k2:k2)))
+            @test samevalues(B, localfilter!(copyto!(C,A),(1,2),min,(k1:k1,k2:k2)))
+            @test samevalues(B, localfilter!(copyto!(C,A),[2,1],min,(k2:k2,k1:k1)))
         end
     end
 
