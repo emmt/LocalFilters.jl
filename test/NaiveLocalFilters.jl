@@ -101,45 +101,27 @@ bottom_hat(variant::Val, a, r, s) =
 localextrema(variant::Val, A::AbstractArray, args...) =
     localextrema!(variant, similar(A), similar(A), A, args...)
 
-# function localfilter!(dst,
-#                       A::AbstractArray{T,N},
-#                       B::RectangularBox{N},
-#                       initial::Function,
-#                       update::Function,
-#                       store::Function) where {T,N}
-#     R = cartesianregion(A)
-#     imin, imax = limits(R)
-#     kmin, kmax = limits(B)
-#     @inbounds for i in R
-#         v = initial(A[i])
-#         @simd for j in cartesianregion(max(imin, i - kmax),
-#                                        min(imax, i - kmin))
-#             v = update(v, A[j], true)
-#         end
-#         store(dst, i, v)
-#     end
-#     return dst
-# end
-#
-# function erode!(dst::AbstractArray{T,N},
-#                 A::AbstractArray{T,N},
-#                 B::RectangularBox{N}) where {T,N}
-#     @assert axes(dst) == axes(A)
-#     localfilter!(dst, A, B,
-#                  (a)     -> typemax(T),
-#                  (v,a,b) -> min(v, a),
-#                  (d,i,v) -> d[i] = v)
-# end
-#
-# function dilate!(dst::AbstractArray{T,N},
-#                  A::AbstractArray{T,N},
-#                  B::RectangularBox{N}) where {T,N}
-#     @assert axes(dst) == axes(A)
-#     localfilter!(dst, A, B,
-#                  (a)     -> typemin(T),
-#                  (v,a,b) -> max(v, a),
-#                  (d,i,v) -> d[i] = v)
-# end
+function erode!(::Val{:Naive},
+                dst::AbstractArray{T,N},
+                A::AbstractArray{T,N},
+                B::RectangularBox{N}) where {T,N}
+    @assert axes(dst) == axes(A)
+    localfilter!(dst, A, B,
+                 (a)     -> typemax(T),
+                 (v,a,b) -> min(v, a),
+                 (d,i,v) -> d[i] = v)
+end
+
+function dilate!(::Val{:Naive},
+                 dst::AbstractArray{T,N},
+                 A::AbstractArray{T,N},
+                 B::RectangularBox{N}) where {T,N}
+    @assert axes(dst) == axes(A)
+    localfilter!(dst, A, B,
+                 (a)     -> typemin(T),
+                 (v,a,b) -> max(v, a),
+                 (d,i,v) -> d[i] = v)
+end
 
 #------------------------------------------------------------------------------
 # Variants for computing interesecting regions.  This is the most critical

@@ -66,6 +66,7 @@ if AUTORUN
     n = 1000
     a = rand(62,81)
     box = RectangularBox(3,5)
+    rngs = (-1:1, -2:2)
     mask = Kernel(box)
     kern = Kernel(eltype(a), ones(size(box)))
     a0 = similar(a)
@@ -81,22 +82,36 @@ if AUTORUN
                       ("non-boolean kernel", kern))
         println("\nErosion on a $name (timings on $n iterations):")
         erode!(Val(:Base), a0, a, B)
-        for v in tests
+        for v in (B === box ? (tests..., :Naive) : tests)
             erode!(Val(v), a1, a, B)
             @printf "   Variant %-10s (" v
             checkresult(samevalues(a1, a0))
             print("): ")
             @time for i in 1:n; erode!(Val(v), a0, a, B); end
         end
+        if B === box
+            erode!(a1, a, :, rngs)
+            @printf "   Variant %-10s (" "vHGW"
+            checkresult(samevalues(a1, a0))
+            print("): ")
+            @time for i in 1:n; erode!(a1, a, :, rngs); end
+        end
 
         println("\nDilation on a $name (timings on $n iterations):")
         dilate!(Val(:Base), a0, a, B)
-        for v in tests
+        for v in (B === box ? (tests..., :Naive) : tests)
             dilate!(Val(v), a1, a, B)
             @printf "   Variant %-10s (" v
             checkresult(samevalues(a1, a0))
             print("): ")
             @time for i in 1:n; dilate!(Val(v), a1, a, B); end
+        end
+        if B === box
+            dilate!(a1, a, :, rngs)
+            @printf "   Variant %-10s (" "vHGW"
+            checkresult(samevalues(a1, a0))
+            print("): ")
+            @time for i in 1:n; dilate!(a1, a, :, rngs); end
         end
 
         println("\nErosion and dilation on a $name (timings on $n iterations):")
