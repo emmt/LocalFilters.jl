@@ -74,6 +74,7 @@ end
 function erode!(dst::AbstractArray{T,N},
                 A::AbstractArray{T,N},
                 B::Kernel{T,N}) where {T<:AbstractFloat,N}
+    @assert axes(dst) == axes(A)
     localfilter!(dst, A, B,
                  (a)     -> typemax(T),
                  (v,a,b) -> min(v, a - b),
