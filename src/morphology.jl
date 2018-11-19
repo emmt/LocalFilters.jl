@@ -187,22 +187,15 @@ end
 function localextrema!(Amin::AbstractArray{T,N},
                        Amax::AbstractArray{T,N},
                        A::AbstractArray{T,N},
-                       B::Kernel{T,N}) where {T<:AbstractFloat,N}
+                       B::Kernel{K,N}) where {T<:AbstractFloat,
+                                              K<:AbstractFloat,N}
     @assert axes(Amin) == axes(Amax) == axes(A)
-    localfilter!((Amin, Amax), A, B,
+    localfilter!((Amin, Amax), A, Kernel{T}(B),
                  (a)     -> (typemax(T),
                              typemin(T)),
                  (v,a,b) -> (min(v[1], a - b),
                              max(v[2], a + b)),
                  (d,i,v) -> (Amin[i], Amax[i]) = v)
-end
-
-function localextrema!(Amin::AbstractArray{T,N},
-                       Amax::AbstractArray{T,N},
-                       A::AbstractArray{T,N},
-                       B::Kernel{K,N}) where {T<:AbstractFloat,
-                                              K<:AbstractFloat,N}
-    localextrema!(Amin, Amax, A, Kernel{T}(B))
 end
 
 #------------------------------------------------------------------------------
