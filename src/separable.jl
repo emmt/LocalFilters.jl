@@ -59,8 +59,11 @@ effects if `k = 0`.  This can be exploited to not filter some dimension(s).
 The out-place version, allocates the destination array and is called as:
 
 ```julia
-localfilter(A, dims, op, rngs [, w])
+localfilter([T,] A, dims, op, rngs [, w])
 ```
+
+with `T` the element type of the result (by default `T = eltype(A)`).
+
 
 ## Examples
 
@@ -121,7 +124,7 @@ workspace array.
 
 """
 function localfilter!(dst::AbstractArray{T,N},
-                      A::AbstractArray{T,N}, d::Int,
+                      A::AbstractArray{<:Any,N}, d::Int,
                       op::Function, kmin::Int, kmax::Int,
                       w::Vector{T}) where {T,N}
     #
@@ -208,8 +211,8 @@ end
 
 # Private methods to break type uncertainty.
 
-function _shiftarray!(dst::AbstractArray{T,N}, A::AbstractArray{T,N}, R1,
-                      rng::AbstractRange{Int}, R2, k::Int) where {T,N}
+function _shiftarray!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N},
+                      R1, rng::AbstractRange{Int}, R2, k::Int) where {N}
     jmin, jmax = minimum(rng), maximum(rng)
     @inbounds for J2 in R2, J1 in R1
         @simd for j in rng
@@ -221,7 +224,7 @@ function _shiftarray!(dst::AbstractArray{T,N}, A::AbstractArray{T,N}, R1,
 end
 
 function _localfilter!(dst::AbstractArray{T,N},
-                       A::AbstractArray{T,N},
+                       A::AbstractArray{<:Any,N},
                        R1, jmin::Int, jmax::Int, R2,
                        op::Function, kmin::Int, kmax::Int,
                        w::Vector{T}) where {T,N}
@@ -276,6 +279,13 @@ function localfilter(A::AbstractArray{T,N},
                      dims::Union{Colon, Integer, Tuple{Vararg{Integer}},
                                  AbstractVector{<:Integer}},
                      op::Function, args...) where {T,N}
+    return localfilter(T, A, dims, op, args...)
+end
+
+function localfilter(::Type{T}, A::AbstractArray{<:Any,N},
+                     dims::Union{Colon, Integer, Tuple{Vararg{Integer}},
+                                 AbstractVector{<:Integer}},
+                     op::Function, args...) where {T,N}
     return localfilter!(similar(Array{T,N}, axes(A)), A, dims, op, args...)
 end
 
@@ -286,27 +296,31 @@ end
 function localfilter!(A::AbstractArray{T,N},
                       dims::Union{Colon, Integer, Tuple{Vararg{Integer}},
                                   AbstractVector{<:Integer}},
-                      op::Function, args...) where {T,N}
-    return localfilter!(A, A, dims, op, args...)
+                      op::Function,
+                      rngs::Union{IndexInterval, Integer,
+                                  AbstractVector{<:IndexInterval},
+                                  Tuple{Vararg{IndexInterval}}},
+                      args...) where {T,N}
+    return localfilter!(A, A, dims, op, rngs, args...)
 end
 
 # Wrapper methods when destination is specified.
 
 function localfilter!(dst::AbstractArray{T,N},
-                      A::AbstractArray{T,N},
+                      A::AbstractArray{<:Any,N},
                       d::Integer,
                       op::Function,
                       rng::IndexInterval,
-                      w::Vector{T} = workspace(A, d, rng)) where {T,N}
+                      w::Vector{T} = workspace(T, A, d, rng)) where {T,N}
     return localfilter!(dst, A, Int(d), op, Int(first(rng)), Int(last(rng)), w)
 end
 
 function localfilter!(dst::AbstractArray{T,N},
-                      A::AbstractArray{T,N},
+                      A::AbstractArray{<:Any,N},
                       ::Colon,
                       op::Function,
                       rng::IndexInterval,
-                      w::Vector{T} = workspace(A, :, rng)) where {T,N}
+                      w::Vector{T} = workspace(T, A, :, rng)) where {T,N}
     kmin, kmax = Int(first(rng)), Int(last(rng))
     if N ≥ 1
         localfilter!(dst, A, 1, op, kmin, kmax, w)
@@ -320,12 +334,12 @@ function localfilter!(dst::AbstractArray{T,N},
 end
 
 function localfilter!(dst::AbstractArray{T,N},
-                      A::AbstractArray{T,N},
+                      A::AbstractArray{<:Any,N},
                       ::Colon,
                       op::Function,
                       rngs::Union{AbstractVector{<:IndexInterval},
                                   Tuple{Vararg{IndexInterval}}},
-                      w::Vector{T} = workspace(A, :, rngs)) where {T,N}
+                      w::Vector{T} = workspace(T, A, :, rngs)) where {T,N}
     length(rngs) == N || throw(DimensionMismatch("there must be as many intervals as dimensions"))
     if N ≥ 1
         localfilter!(dst, A, 1, op, rngs[1], w)
@@ -339,12 +353,12 @@ function localfilter!(dst::AbstractArray{T,N},
 end
 
 function localfilter!(dst::AbstractArray{T,N},
-                      A::AbstractArray{T,N},
+                      A::AbstractArray{<:Any,N},
                       dims::Union{AbstractVector{<:Integer},
                                   Tuple{Vararg{Integer}}},
                       op::Function,
                       rng::IndexInterval,
-                      w::Vector{T} = workspace(A, dims, rng)) where {T,N}
+                      w::Vector{T} = workspace(T, A, dims, rng)) where {T,N}
     if (m = length(dims)) ≥ 1
         localfilter!(dst, A, dims[1], op, rng, w)
         for d in 2:m
@@ -357,13 +371,13 @@ function localfilter!(dst::AbstractArray{T,N},
 end
 
 function localfilter!(dst::AbstractArray{T,N},
-                      A::AbstractArray{T,N},
+                      A::AbstractArray{<:Any,N},
                       dims::Union{AbstractVector{<:Integer},
                                   Tuple{Vararg{Integer}}},
                       op::Function,
                       rngs::Union{AbstractVector{<:IndexInterval},
                                   Tuple{Vararg{IndexInterval}}},
-                      w::Vector{T} = workspace(A, dims, rngs)) where {T,N}
+                      w::Vector{T} = workspace(T, A, dims, rngs)) where {T,N}
     (m = length(dims)) == length(rngs) || throw(DimensionMismatch("list of dimensions and list of intervals must have the same length"))
     if m ≥ 1
         localfilter!(dst, A, dims[1], op, rngs[1], w)
@@ -388,7 +402,7 @@ for (f, op) in ((:erode, min), (:dilate, max))
                     rngs::Union{IndexInterval, Tuple{Vararg{IndexInterval}},
                                 AbstractVector{<:IndexInterval}},
                     args...) where {T,N}
-            return localfilter(A, dims, $op, rngs, args...)
+            return localfilter(T, A, dims, $op, rngs, args...)
         end
 
         function $fp(A::AbstractArray{T,N}, d::Integer,
@@ -504,7 +518,7 @@ end
 """
 
 ```julia
-workspace([T,] A, dims, rngs)
+workspace(T, A, dims, rngs)
 ```
 
 yields a workspace array for applying the van Herk-Gil-Werman algorithm along
@@ -513,14 +527,6 @@ interval(s) `rngs`.  The element type of the workspace is `T` which is that of
 `A` by default.
 
 """
-function workspace(A::AbstractArray{T,N},
-                   dims::Union{Colon, Integer, AbstractVector{<:Integer},
-                               Tuple{Vararg{Integer}}},
-                   rngs::Union{IndexInterval, AbstractVector{<:IndexInterval},
-                               Tuple{Vararg{IndexInterval}}}) where {T,N}
-    return workspace(T, A, dims, rngs)
-end
-
 function workspace(::Type{T},
                    A::AbstractArray{<:Any,N},
                    dims::Union{Colon, Integer, AbstractVector{<:Integer},
