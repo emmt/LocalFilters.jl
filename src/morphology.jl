@@ -51,41 +51,47 @@ erode!(dst, src::AbstractArray{T,N}, B=3) where {T,N} =
 
 @doc @doc(erode) erode!
 
+
 function erode!(dst::AbstractArray{T,N},
                 A::AbstractArray{T,N},
                 B::RectangularBox{N}) where {T,N}
-    @assert axes(dst) == axes(A)
-    localfilter!(dst, A, B,
-                 (a)     -> typemax(T),
-                 (v,a,b) -> min(v, a),
-                 (d,i,v) -> d[i] = v)
+    localfilter!(dst, A, :, min, axes(B))
+end
+
+function erode!(A::AbstractArray{T,N},
+                B::RectangularBox{N}) where {T,N}
+    localfilter!(A, :, min, axes(B))
 end
 
 function erode!(dst::AbstractArray{T,N},
                 A::AbstractArray{T,N},
                 B::Kernel{Bool,N}) where {T,N}
-    @assert axes(dst) == axes(A)
-    localfilter!(dst, A, B,
-                 (a)     -> typemax(T),
-                 (v,a,b) -> b && a < v ? a : v,
-                 (d,i,v) -> d[i] = v)
-end
-
-function erode!(dst::AbstractArray{T,N},
-                A::AbstractArray{T,N},
-                B::Kernel{T,N}) where {T<:AbstractFloat,N}
-    @assert axes(dst) == axes(A)
-    localfilter!(dst, A, B,
-                 (a)     -> typemax(T),
-                 (v,a,b) -> min(v, a - b),
-                 (d,i,v) -> d[i] = v)
+    if all(identity, coefs(B))
+        localfilter!(dst, A, :, min, axes(B))
+    else
+        @assert axes(dst) == axes(A)
+        localfilter!(dst, A, B,
+                     (a)     -> typemax(T),
+                     (v,a,b) -> b && a < v ? a : v,
+                     (d,i,v) -> d[i] = v)
+    end
+    return dst
 end
 
 function erode!(dst::AbstractArray{T,N},
                 A::AbstractArray{T,N},
                 B::Kernel{K,N}) where {T<:AbstractFloat,
                                        K<:AbstractFloat,N}
-    erode!(dst, A, Kernel{T}(B))
+    if all(x -> x == zero(K), coefs(B))
+        localfilter!(dst, A, :, min, axes(B))
+    else
+        @assert axes(dst) == axes(A)
+        localfilter!(dst, A, Kernel{T}(B),
+                     (a)     -> typemax(T),
+                     (v,a,b) -> min(v, a - b),
+                     (d,i,v) -> d[i] = v)
+    end
+    return dst
 end
 
 dilate(A::AbstractArray, args...) = dilate!(similar(A), A, args...)
@@ -100,38 +106,43 @@ dilate!(dst, src::AbstractArray{T,N}, B=3) where {T,N} =
 function dilate!(dst::AbstractArray{T,N},
                  A::AbstractArray{T,N},
                  B::RectangularBox{N}) where {T,N}
-    @assert axes(dst) == axes(A)
-    localfilter!(dst, A, B,
-                 (a)     -> typemin(T),
-                 (v,a,b) -> max(v, a),
-                 (d,i,v) -> d[i] = v)
+    localfilter!(dst, A, :, max, axes(B))
+end
+
+function dilate!(A::AbstractArray{T,N},
+                 B::RectangularBox{N}) where {T,N}
+    localfilter!(A, :, max, axes(B))
 end
 
 function dilate!(dst::AbstractArray{T,N},
                  A::AbstractArray{T,N},
                  B::Kernel{Bool,N}) where {T,N}
-    @assert axes(dst) == axes(A)
-    localfilter!(dst, A, B,
-                 (a)     -> typemin(T),
-                 (v,a,b) -> b && a > v ? a : v,
-                 (d,i,v) -> d[i] = v)
-end
-
-function dilate!(dst::AbstractArray{T,N},
-                 A::AbstractArray{T,N},
-                 B::Kernel{T,N}) where {T<:AbstractFloat,N}
-    @assert axes(dst) == axes(A)
-    localfilter!(dst, A, B,
-                 (a)     -> typemin(T),
-                 (v,a,b) -> max(v, a + b),
-                 (d,i,v) -> d[i] = v)
+    if all(identity, coefs(B))
+        localfilter!(dst, A, :, max, axes(B))
+    else
+        @assert axes(dst) == axes(A)
+        localfilter!(dst, A, B,
+                     (a)     -> typemin(T),
+                     (v,a,b) -> b && a > v ? a : v,
+                     (d,i,v) -> d[i] = v)
+    end
+    return dst
 end
 
 function dilate!(dst::AbstractArray{T,N},
                  A::AbstractArray{T,N},
                  B::Kernel{K,N}) where {T<:AbstractFloat,
                                         K<:AbstractFloat,N}
-    dilate!(dst, A, Kernel{T}(B))
+    if all(x -> x == zero(K), coefs(B))
+        localfilter!(dst, A, :, max, axes(B))
+    else
+        @assert axes(dst) == axes(A)
+        localfilter!(dst, A, Kernel{T}(B),
+                     (a)     -> typemin(T),
+                     (v,a,b) -> max(v, a + b),
+                     (d,i,v) -> d[i] = v)
+    end
+    return dst
 end
 
 localextrema(A::AbstractArray, args...) =

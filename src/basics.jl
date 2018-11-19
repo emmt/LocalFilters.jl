@@ -21,11 +21,8 @@
         return CartesianRange(B)
     end
 end
-CartesianIndices(B::Neighborhood) =
-    CartesianIndices(map((i,j) -> i:j,
-                         Tuple(initialindex(B)), Tuple(finalindex(B))))
-convert(::Type{CartesianIndices}, B::Neighborhood) =
-    CartesianIndices(B)
+CartesianIndices(B::Neighborhood) = CartesianIndices(axes(B))
+convert(::Type{CartesianIndices}, B::Neighborhood) = CartesianIndices(B)
 convert(::Type{CartesianIndices{N}}, B::Neighborhood{N}) where N =
     CartesianIndices(B)
 
@@ -35,7 +32,7 @@ length(B::Neighborhood) = prod(size(B))
 size(B::Neighborhood) =
     map(_length, Tuple(initialindex(B)), Tuple(finalindex(B)))
 size(B::Neighborhood, d) = _length(initialindex(B)[d], finalindex(B)[d])
-axes(B::Neighborhood) =
+@inline axes(B::Neighborhood) =
     map((i,j) -> i:j, Tuple(initialindex(B)), Tuple(finalindex(B)))
 axes(B::Neighborhood, d) = (initialindex(B)[d]:finalindex(B)[d])
 getindex(B::Neighborhood, inds::Union{Integer,CartesianIndex}...) =

@@ -10,8 +10,15 @@
 * A union being slower to dispatch (check this?), consider suppressing
   `CartesianRegion` and `IndexInterval`.
 
-* Use van Herk / Gil & Werman algorithm whenever possible (for
-  `RectangularBox`, or `Kernel` whose elements are all equal to 1).
+* Rewrite methods for van Herk / Gil & Werman algorithm so that the out-place
+  version is called as:
+
+  ```julia
+  localfilter([T,] A, dims, op, rngs [, w])
+  ```
+
+  with `T` the element type of the result (by default `T = eltype(A)` or `T =
+  eltype(w)` if `w` is provided).
 
 * Add a repeat count to a basic operation, or even better: use `B^n` to repeat
   `n` times basic operations with structuring element, or `...*B2*B1` to apply

@@ -1,6 +1,8 @@
 * Version 0.2.0:
 
-  - Add fast separable filters with the van Herk-Gil-Werman algorithm.
+  - Add fast separable filters with the van Herk-Gil-Werman algorithm.  This
+    algorithm is applied whenever possible (for `RectangularBox`, or flat
+    `Kernel` whose elements are all valid).
 
   - New `strel` function to build *structuring* *elements*.
 
