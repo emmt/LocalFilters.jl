@@ -1,42 +1,43 @@
-* Version 0.2.0:
+# New features and changes in version 1.0.0
 
-  - Add fast separable filters with the van Herk-Gil-Werman algorithm.  This
-    algorithm is applied whenever possible (for `RectangularBox`, or flat
-    `Kernel` whose elements are all valid).
+- Compatibility with Julia 0.6 to 1.1
 
-  - New `strel` function to build *structuring* *elements*.
+- Add fast separable filters with the van Herk-Gil-Werman algorithm.  This
+  algorithm is applied whenever possible (for `RectangularBox`, or flat
+  `Kernel` whose elements are all valid).
 
-  - The type of the result of operations like local mean and convolution is
-    more consistent (*e.g.*, local mean yields a floating-point type result).
-    Rounding to the nearest integer is automatically used when the
-    floating-point result of an operation is stored into a array of integers.
+- New `strel` function to build *structuring elements*.
 
-  - Constructors for `Kernel` basically takes two arguments: the array of
-    coefficients, say `A`, and the initial `CartesianIndex` for indexing the
-    kernel.  This simplify the interface, notably when the array of
-    coefficients `A` has not 1-based indexing.
+- The type of the result of operations like local mean and convolution is more
+  consistent (*e.g.*, local mean yields a floating-point type result).
+  Rounding to the nearest integer is automatically used when the floating-point
+  result of an operation is stored into a array of integers.
 
-  - Compatibility with Julia versions 0.6, 0.7 and 1.0 without loss of
-    performances.  This has been achieved thanks to the new `cartesianregion()`
-    method (see below).
+- Constructors for `Kernel` basically takes two arguments: the array of
+  coefficients, say `A`, and the initial `CartesianIndex` for indexing the
+  kernel.  This simplify the interface, notably when the array of coefficients
+  `A` has not 1-based indexing.
 
-  - The method `cartesianregion()` is provided to return either a
-    `CartesianIndices{N}` or a `CartesianRange{CartesianIndex{N}}` (whichever
-    is most efficient depending on Julia version) to loop over the
-    `N`-dimensional indices of anything whose type belongs to
-    `CartesianRegion{N}`.  Type `CartesianRegion{N}` is an union of the types
-    of anything suitable to define a Cartesian region of indices.
+- Compatibility with Julia versions 0.6, 0.7 and 1.0 without loss of
+  performances.  This has been achieved thanks to the new `cartesianregion()`
+  method (see below).
 
-  - Methods `initialindex` and `finalindex` are provided to retrieve the
-    first and last `CartesianIndex` for indexing their argument.
+- The method `cartesianregion()` is provided to return either a
+  `CartesianIndices{N}` or a `CartesianRange{CartesianIndex{N}}` (whichever is
+  the most efficient depending on Julia version) to loop over the
+  `N`-dimensional indices of anything whose type belongs to
+  `CartesianRegion{N}`.  Type `CartesianRegion{N}` is an union of the types of
+  anything suitable to define a Cartesian region of indices.
 
-  - Types `CartesianBox` and `CenteredBox` have been merged in a single type
-    named `RectangularBox` (to avoid conflicts with the
-    [CartesianBoxes](https://github.com/emmt/CartesianBoxes.jl) package).
-    Hence, `Neighborhood` has two concrete subtypes: `RectangularBox` and
-    `Kernel`.
+- Methods `initialindex` and `finalindex` are provided to retrieve the first
+  and last `CartesianIndex` for indexing their argument.
 
-  - Method `anchor` has been removed because its result depends on the indexing
-    of the embedded array of kernel coefficients.
+- Types `CartesianBox` and `CenteredBox` have been merged in a single type
+  named `RectangularBox` (to avoid conflicts with the
+  [CartesianBoxes](https://github.com/emmt/CartesianBoxes.jl) package).  Hence,
+  `Neighborhood` has two concrete subtypes: `RectangularBox` and `Kernel`.
 
-  - Add [bilateral filter](https://en.wikipedia.org/wiki/Bilateral_filter).
+- Method `anchor` has been removed because its result depends on the indexing
+  of the embedded array of kernel coefficients.
+
+- Add [bilateral filter](https://en.wikipedia.org/wiki/Bilateral_filter).
