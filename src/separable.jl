@@ -39,15 +39,15 @@ import ..LocalFilters:
 localfilter!([dst = A,] A, dims, op, rngs [, w])
 ```
 
-overwrite the contents of `dst` with the result of applying van Herk-Gil-Werman
-algorithm to filter array `A` along dimension(s) `dims` with (associative)
-binary operation `op` and contiguous structuring element(s) defined by the
-interval(s) `rngs`.  Optional argument `w` is a workspace array which is
-automatically allocated if not provided; otherwise, it must be a vector of same
-element type as `A` which is resized (with [`resize!`](@ref)) as needed.  The
-destination `dst` must have the same indices as the source `A` (see
-[`axes`](@ref)).  Operation can be done in-place; that is, `dst` and `A` can be
-the same.
+overwrites the contents of `dst` with the result of applying van
+Herk-Gil-Werman algorithm to filter array `A` along dimension(s) `dims` with
+(associative) binary operation `op` and contiguous structuring element(s)
+defined by the interval(s) `rngs`.  Optional argument `w` is a workspace array
+which is automatically allocated if not provided; otherwise, it must be a
+vector of same element type as `A` which is resized (with [`resize!`](@ref)) as
+needed.  The destination `dst` must have the same indices as the source `A`
+(see [`axes`](@ref)).  Operation can be done in-place; that is, `dst` and `A`
+can be the same.
 
 Argument `dims` specifies along which dimension(s) of `A` the filter is to be
 applied, it can be a single integer, several integers or a colon `:` to specify
@@ -94,17 +94,16 @@ centered structuring element of width 7 in every dimension can be applied by:
 localfilter!(A, :, min, -3:3)
 ```
 
-One can specify index interval `0` to do nothing along the corresponding
-dimension.  For instance:
+Index interval `0` may be specified to do nothing along the corresponding
+dimension.  For instance, assuming `A` is a three-dimensional array:
 
 ```julia
 localfilter!(A, :, max, (-3:3, 0, -4:4))
 ```
 
-will overwrite `A` with the local maxima (a.k.a. *morphological dilation*) of
-the three-dimensional array `A` in a centered local neighborhood of size
-`7×1×9` (nothing is done along the second dimension).  The same result may be
-obtained with:
+overwrites `A` its *morphological dilation* (*i.e.* local maximum) in a
+centered local neighborhood of size `7×1×9` (nothing is done along the second
+dimension).  The same result may be obtained with:
 
 ```julia
 localfilter!(A, (1,3), max, (-3:3, -4:4))
@@ -138,7 +137,7 @@ words, the algorithm is only applicable for `N`-dimensional rectangular
 neighborhoods.  The structuring element may however be off-centered by
 arbitrary offsets along each dimension.
 
-To take into account boundary conditions (for now only least neighborhood is
+To take into account boundary conditions (for now only nearest neighborhood is
 implemented) and allow for in-place operation, the algorithm allocates a
 workspace array.
 
@@ -325,6 +324,11 @@ function localfilter!(A::AbstractArray{T,N},
 end
 
 # Wrapper methods when destination is specified.
+#
+# The filter is applied along all chosen dimensions.  To reduce page memory
+# faults, the operation is performed out-of-place (unless dst and A are the
+# same) for the first chosen dimension and the operation is performed in-place
+# for the other chosen dimensions.
 
 function localfilter!(dst::AbstractArray{T,N},
                       A::AbstractArray{<:Any,N},
