@@ -1,3 +1,9 @@
+* Use `@checkbounds` etc. for bound checking when indexing neighborhoods
+  (cf. doc. in "Methods on a neighborhood").
+
+* Bump to version 2.  Provide `Project.toml`, drop compatibility with Julia <
+  0.7 and dependency on `Compat`, remove `REQUIRE` file.
+
 * Use `@simd`.
 
 * Add more rules to automatically convert type of kernel coefficients.
