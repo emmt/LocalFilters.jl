@@ -82,6 +82,8 @@ and many more to come...
 
 ## Implementation
 
+### General local filters
+
 The pseudo-code for a local filtering operation `C = filter(A, B)` writes:
 
 ```julia
@@ -96,9 +98,10 @@ end
 
 where `A` is the source of the operation, `B` is the neighborhood, `C` is the
 result of the operation.  Here `Sup(A)` denotes the support of `A` (that is the
-set of indices in `A`).  The methods `initial`, `update` and `store` are
-specific to the considered operation.  To execute the filter, call the
-`localfilter!` method as:
+set of indices in `A`).  The methods `initial`, `update` and `store` and the
+type of the variable `v` are specific to the considered operation.  For maximum
+efficiency, the methods `initial` and `update` shall return the same type of
+result.  To execute the filter, call the `localfilter!` method as:
 
 ```julia
 localfilter!(dst, A, B, initial, update, store)
@@ -106,25 +109,25 @@ localfilter!(dst, A, B, initial, update, store)
 
 `localfilter!` applies the local filter defined by the neighborhood `B` and
 methods `initial`, `update` and `store` to the source array `A` and stores the
-reseult in the destination `dst` which is then returned.
+result in the destination `dst` which is then returned.
 
 For instance, to compute a local maximum (*i.e.* a **dilation** in mathematical
 morphology terms):
 
 ```julia
-initial(a) = typemin(T)
+initial(a) = typemin(typeof(a))
 update(v,a,b) = (b && v < a ? a : v)
-store(c,i,v) = c[i] = v
+store(C,i,v) = C[i] = v
 ```
 
-with `T` the type of the elements of `A`.  Of course, anonymous functions can
+with `typeof(a)` the type of the elements of `A`.  Of course, anonymous functions can
 be exploited to implement this filter in a single call:
 
 ```julia
 localfilter!(dst, A, B,
-             (a)     -> typemin(T),           # initial method
+             (a)     -> typemin(typeof(a)),   # initial method
              (v,a,b) -> (b && v < a ? a : v), # update method
-             (c,i,v) -> c[i] = v)             # store method
+             (C,i,v) -> C[i] = v)             # store method
 ```
 
 Below is another example of the methods needed to implement a local average:
@@ -132,16 +135,107 @@ Below is another example of the methods needed to implement a local average:
 ```julia
 initial(a) = (0, zero(T))
 update(v,a,b) = v[1] + 1, v[2] + (b ? a : zero(T))
-store(c,i,v) = c[i] = v[2]/v[1]
+store(C,i,v) = C[i] = v[2]/v[1]
 ```
+
+with `T = typeof(a)`.
 
 The same mechanism can be used to implement other operations such as
 convolution, median filtering, *etc.* via the `localfilter!` driver.
 
 
+### Fast separable local filters
+
+When the filter amounts to combining all elements in a rectangular neighborhood
+by an associative binary operation (`+`, `min`, `max`, *etc.*), the van
+Herk-Gil-Werman algorithm can be used to implement the filter.  This algorithm
+is much faster than a naive implementation (about `3N` operations per element
+for a `N`-dimensional array whatever the the size of the neighborhood instead
+of of `p^N - 1` operations for a neighborhood of lenght `p` along all the `N`
+dimensions).  Another advantage of the van Herk-Gil-Werman algorithm is that it
+can be applied in-place.  Such a filter is said to be *separable* and can be
+applied along one dimension at a time.
+
+The syntax to apply a separable local filter is:
+
+```julia
+localfilter!([dst = A,] A, dims, op, rngs [, w])
+```
+
+which overwrites the contents of `dst` with the result of applying van
+Herk-Gil-Werman algorithm to filter array `A` along dimension(s) `dims` with
+(associative) binary operation `op` and contiguous structuring element(s)
+defined by the interval(s) `rngs`.  Optional argument `w` is a workspace array
+which is automatically allocated if not provided; otherwise, it must be a
+vector of same element type as `A` which is automatically resized as needed.
+The destination `dst` must have the same indices as the source `A` (*i.e.*
+`axes(dst) == axes(A)` must hold).  Operation can be done in-place; that is,
+`dst` and `A` can be the same (this is the implemented behavior if `dst` is not
+supplied).
+
+Argument `dims` specifies along which dimension(s) of `A` the filter is to be
+applied, it can be a single integer, several integers or a colon `:` to specify
+all dimensions.  Dimensions are processed in the order given by `dims` (the
+same dimension may appear several times) and there must be a matching interval
+in `rngs` to specify the structuring element (except that if `rngs` is a single
+interval, it is used for every dimension in `dims`).  An interval is either an
+integer or an integer unit range in the form `kmin:kmax` (an interval specified
+as a single integer, say `k`, is the same as specifying `k:k`).
+
+Assuming mono-dimensional arrays `A` and `dst`, the single filtering pass:
+
+```julia
+localfilter!(dst, A, :, op, rng)
+```
+
+yields:
+
+```
+dst[j] = A[j-kmax] ⋄ A[j-kmax+1] ⋄ A[j-kmax+2] ⋄ ... ⋄ A[j-kmin]
+```
+
+for all `j ∈ [first(axes(A,1)):last(axes(A,1))]`, with `x ⋄ y = op(x, y)`,
+`kmin = first(rng)` and `kmax = last(rng)`.  Note that if `kmin = kmax = k`
+(which occurs if `rng` is a simple integer), the result of the filter is to
+operate a simple shift by `k` along the corresponding dimension and has no
+effects if `k = 0`.  This can be exploited to not filter some dimension(s).
+
+For instance:
+
+```julia
+localfilter!(A, :, min, -3:3)
+```
+
+overwrites `A` with its *morphological erosion* (local minimum) on a
+centered structuring element of width 7 in every dimension.
+
+Another example, assuming `A` is a three-dimensional array:
+
+```julia
+localfilter!(A, :, max, (-3:3, 0, -4:4))
+```
+
+overwrites `A` its *morphological dilation* (*i.e.* local maximum) in a
+centered local neighborhood of size `7×1×9` (nothing is done along the second
+dimension).  The same result may be obtained with:
+
+```julia
+localfilter!(A, (1,3), max, (-3:3, -4:4))
+```
+
+where the second dimension is omitted from the list of dimensions.
+The out-place version, allocates the destination array and is called as:
+
+```julia
+localfilter([T,] A, dims, op, rngs [, w])
+```
+
+with `T` the element type of the result (by default `T = eltype(A)`).
+
+
 ## Neighborhoods
 
-`Neighborhood` (a.k.a. *structuring element* for the fans of mathematical
+`Neighborhood` (a.k.a. *structuring element* for the adepts of mathematical
 morphology) is a central concept in `LocalFilters`.  The neighborhood defines
 which values are involved in a local operation for each component of the source
 array.  Neighborhoods are assumed to be shift invariant but may have any
@@ -163,8 +257,8 @@ From the user point of view, there are three kinds of neighborhoods:
   `LocalFilters.Kernel` with boolean element type.  These neighborhoods are
   constructed from an array of booleans and an optional starting index.
 
-* **Kernels** are neighborhoods whose elements are weights and which be may
-  have arbitrary offset.  These neighborhoods are represented by instances of
+* **Kernels** are neighborhoods whose elements are weights and which may have
+  arbitrary offset.  These neighborhoods are represented by instances of
   `LocalFilters.Kernel` with numerical element type.  These neighborhoods are
   constructed from an array of weights and an optional starting index.
 
@@ -188,9 +282,9 @@ From the user point of view, there are three kinds of neighborhoods:
   values of `A` and whose neighborhood is the centered bounding-box of `A`.
 
 * A *Cartesian range* `R` (an instance of `CartesianIndices` or of
-  `CartesianRange`) yields a `LocalFilters.RectangularBox` which is a
-  rectangular neighborhood whose support contains all relative positions within
-  `first(R)` and `last(R)`.
+  `CartesianRange` for Julia versions older than 0.7) yields a
+  `LocalFilters.RectangularBox` which is a rectangular neighborhood whose
+  support contains all relative positions within `first(R)` and `last(R)`.
 
 * A rectangular box neighborhood created by calling
   `LocalFilters.RectangularBox` as:
@@ -202,11 +296,11 @@ From the user point of view, there are three kinds of neighborhoods:
   LocalFilters.RectangularBox(inds)
   ```
 
-  where `R` is an instance of`CartesianIndices` (or of `CartesianRange` for old
-  Julia version), `I1` and `I2` are two `CartesianIndex` specifying the first
-  and last relative position within the neighborhood, `dims` and `offs` are
-  tuples of integers specifying the dimensions of the neighborhood and its
-  offsets, `inds` are unit ranges.
+  where `R` is an instance of`CartesianIndices` (or of `CartesianRange` for
+  Julia versions older than 0.7), `I1` and `I2` are two `CartesianIndex`
+  specifying the first and last relative position within the neighborhood,
+  `dims` and `offs` are tuples of integers specifying the dimensions of the
+  neighborhood and its offsets, `inds` are unit ranges.
 
   Assuming `dim` is an integer, then:
 
@@ -230,7 +324,7 @@ From the user point of view, there are three kinds of neighborhoods:
 
 ### Methods on a neighborhood
 
-The following methods make sense on a neighborhood `B`:
+The following statements make sense on a neighborhood `B`:
 
 ```julia
 eltype(B) -> element type of B
