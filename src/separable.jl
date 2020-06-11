@@ -139,6 +139,16 @@ To take into account boundary conditions (for now only nearest neighborhood is
 implemented) and allow for in-place operation, the algorithm allocates a
 workspace array.
 
+## References
+
+* Marcel van Herk, "*A fast algorithm for local minimum and maximum filters on
+  rectangular and octagonal kernels*" in Pattern Recognition Letters **13**,
+  517-521 (1992).
+
+* Joseph Gil and Michael Werman, "*Computing 2-D Min, Median, and Max Filters*"
+  in IEEE Transactions on Pattern Analysis and Machine Intelligence **15**,
+  504-507 (1993).
+
 """
 function localfilter!(dst::AbstractArray{T,N},
                       A::AbstractArray{<:Any,N}, d::Int,
@@ -457,7 +467,7 @@ workspacelength(A, dims, rngs)
 yields the minimal length of the workspace array for applying the van
 Herk-Gil-Werman algorithm along the dimension(s) `dims` of array `A` with a
 structuring element defined by the interval(s) `rngs`.  If arguments are not
-compatible, ero is returned because there is no needs for a workspace array.
+compatible, zero is returned because there is no needs for a workspace array.
 
 """
 workspacelength(n::Int, p::Int) = (n < 1 || p ≤ 1 ? 0 : n + 2*(p - 1))

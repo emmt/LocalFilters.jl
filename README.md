@@ -39,7 +39,7 @@ Packages with overlapping functionalities:
 
 ## Summary
 
-**LocalFilters** implements local filtering operations which combine the values
+`LocalFilters` implements local filtering operations which combine the values
 of an array in a neighborhood of each elements of the array (and possibly the
 values of a kernel associated with the neighborhood).  The neighborhood is
 defined relatively to a given position by an instance of a type derived from
@@ -150,11 +150,11 @@ When the filter amounts to combining all elements in a rectangular neighborhood
 by an associative binary operation (`+`, `min`, `max`, *etc.*), the van
 Herk-Gil-Werman algorithm can be used to implement the filter.  This algorithm
 is much faster than a naive implementation (about `3N` operations per element
-for a `N`-dimensional array whatever the the size of the neighborhood instead
-of of `p^N - 1` operations for a neighborhood of lenght `p` along all the `N`
+for a `N`-dimensional array whatever the size of the neighborhood instead of
+`p^N - 1` operations for a neighborhood of lenght `p` along all the `N`
 dimensions).  Another advantage of the van Herk-Gil-Werman algorithm is that it
 can be applied in-place.  Such a filter is said to be *separable* and can be
-applied along one dimension at a time.
+applied along each dimension, one at a time.
 
 The syntax to apply a separable local filter is:
 
@@ -232,6 +232,15 @@ localfilter([T,] A, dims, op, rngs [, w])
 
 with `T` the element type of the result (by default `T = eltype(A)`).
 
+### References
+
+* Marcel van Herk, "*A fast algorithm for local minimum and maximum filters on
+  rectangular and octagonal kernels*" in Pattern Recognition Letters **13**,
+  517-521 (1992).
+
+* Joseph Gil and Michael Werman, "*Computing 2-D Min, Median, and Max Filters*"
+  in IEEE Transactions on Pattern Analysis and Machine Intelligence **15**,
+  504-507 (1993).
 
 ## Neighborhoods
 
@@ -281,8 +290,7 @@ From the user point of view, there are three kinds of neighborhoods:
 * An *array* `A` yields a `LocalFilters.Kernel` whose coefficients are the
   values of `A` and whose neighborhood is the centered bounding-box of `A`.
 
-* A *Cartesian range* `R` (an instance of `CartesianIndices` or of
-  `CartesianRange` for Julia versions older than 0.7) yields a
+* A *Cartesian region* `R` (an instance of `CartesianIndices`) yields a
   `LocalFilters.RectangularBox` which is a rectangular neighborhood whose
   support contains all relative positions within `first(R)` and `last(R)`.
 
@@ -296,11 +304,10 @@ From the user point of view, there are three kinds of neighborhoods:
   LocalFilters.RectangularBox(inds)
   ```
 
-  where `R` is an instance of`CartesianIndices` (or of `CartesianRange` for
-  Julia versions older than 0.7), `I1` and `I2` are two `CartesianIndex`
-  specifying the first and last relative position within the neighborhood,
-  `dims` and `offs` are tuples of integers specifying the dimensions of the
-  neighborhood and its offsets, `inds` are unit ranges.
+  where `R` is an instance of`CartesianIndices`, `I1` and `I2` are two
+  `CartesianIndex` specifying the first and last relative position within the
+  neighborhood, `dims` and `offs` are tuples of integers specifying the
+  dimensions of the neighborhood and its offsets, `inds` are unit ranges.
 
   Assuming `dim` is an integer, then:
 
@@ -346,10 +353,10 @@ Note that the index `i` in `B[i]` is assumed to be between `first(B)` and
 element type of its kernel otherwise.
 
 ```julia
-CartesianRange(B)
+CartesianIndices(B)
 ```
 
-yields the Cartesian range of relative positions of the bounding-box of
+yields the Cartesian indices of relative positions of the bounding-box of
 neighborhood `B`.
 
 If the argument `B` which defines a neighborhood (see previous section) is not
@@ -372,11 +379,12 @@ using Pkg
 Pkg.add("LocalFilters")
 ```
 
-To use the last development version:
+To use the last development version, install with Pkg, the Julia package
+manager, as an unregistered Julia package (press the ] key to enter the Pkg
+REPL mode):
 
 ```julia
-using Pkg
-Pkg.clone("https://github.com/emmt/LocalFilters.jl.git")
+... pkg> add https://github.com/emmt/LocalFilters.jl.git
 ```
 
 The `LocalFilters` package is pure Julia code and there is nothing to build.
