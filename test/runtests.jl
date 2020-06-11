@@ -3,11 +3,11 @@ isdefined(Main, :NaiveLocalFilters) || include("NaiveLocalFilters.jl")
 
 module LocalFiltersTests
 
-using Compat, Compat.Test
+using Test
 using LocalFilters
 using LocalFilters: Neighborhood, RectangularBox, Kernel,
     axes, initialindex, finalindex, limits, cartesianregion, ball, coefs,
-    ismmbox, strictfloor, USE_CARTESIAN_RANGE, _range
+    ismmbox, strictfloor, _range
 
 struct Empty{N} <: Neighborhood{N} end
 
@@ -154,11 +154,6 @@ f2(x) = x > 0.5
             @test initialindex(CartesianIndices(rngs)) === Imin
             @test finalindex(CartesianIndices(rngs)) === Imax
             @test limits(CartesianIndices(rngs)) === (Imin, Imax)
-            @static if USE_CARTESIAN_RANGE
-                @test initialindex(CartesianRange(rngs)) === Imin
-                @test finalindex(CartesianRange(rngs)) === Imax
-                @test limits(CartesianRange(rngs)) === (Imin, Imax)
-            end
             @test initialindex(box) === Imin
             @test finalindex(box) === Imax
             @test limits(box) === (Imin, Imax)
@@ -168,20 +163,11 @@ f2(x) = x > 0.5
                                  CartesianIndex(size(A)))
 
             # Test cartesianregion().
-            @static if USE_CARTESIAN_RANGE
-                region = CartesianRange(rngs)
-                @test cartesianregion(Imin,Imax) === region
-                @test cartesianregion(CartesianRange(rngs)) === region
-                @test cartesianregion(CartesianIndices(rngs)) === region
-                @test cartesianregion(box) === region
-                @test cartesianregion(A) === CartesianRange(size(A))
-            else
-                region = CartesianIndices(rngs)
-                @test cartesianregion(Imin,Imax) === region
-                @test cartesianregion(CartesianIndices(rngs)) === region
-                @test cartesianregion(box) === region
-                @test cartesianregion(A) === CartesianIndices(A)
-            end
+            region = CartesianIndices(rngs)
+            @test cartesianregion(Imin,Imax) === region
+            @test cartesianregion(CartesianIndices(rngs)) === region
+            @test cartesianregion(box) === region
+            @test cartesianregion(A) === CartesianIndices(A)
 
             # Neighborhood constructors.
             @test Neighborhood(box) === box
@@ -191,10 +177,6 @@ f2(x) = x > 0.5
             @test Neighborhood(rngs) === box
             @test Neighborhood(rngs...) === box
             @test Neighborhood(CartesianIndices(rngs)) === box
-            @static if USE_CARTESIAN_RANGE
-                @test Neighborhood(CartesianRange(rngs)) === box
-                @test Neighborhood(CartesianRange(Imin, Imax)) === box
-            end
             @test convert(Neighborhood, box) === box
             @test convert(Neighborhood, ker) === ker
             @test convert(Neighborhood, rngs) === box
@@ -206,10 +188,6 @@ f2(x) = x > 0.5
             @test RectangularBox(dims...) === box
             @test RectangularBox(rngs) === box
             @test RectangularBox(rngs...) === box
-            @static if USE_CARTESIAN_RANGE
-                @test CartesianRange(box) === CartesianRange(rngs)
-                @test CartesianRange(box) === CartesianRange(Imin, Imax)
-            end
             @test convert(RectangularBox, box) === box
             @test convert(RectangularBox, rngs) === box
             @test convert(RectangularBox, dims) === box
@@ -226,16 +204,6 @@ f2(x) = x > 0.5
             @test CartesianIndices(box) === CartesianIndices(rngs)
             @test convert(CartesianIndices, box) === CartesianIndices(rngs)
             @test convert(CartesianIndices{N}, box) === CartesianIndices(rngs)
-            @static if USE_CARTESIAN_RANGE
-                # Conversion RectangularBox <-> CartesianRange.
-                @test RectangularBox(CartesianRange(rngs)) === box
-                @test convert(RectangularBox, CartesianRange(rngs)) === box
-                @test convert(RectangularBox{N}, CartesianRange(rngs)) === box
-                @test CartesianRange(box) === CartesianRange(rngs)
-                @test convert(CartesianRange, box) === CartesianRange(rngs)
-                @test convert(CartesianRange{CartesianIndex{N}}, box) ===
-                    CartesianRange(rngs)
-            end
 
             # Kernel constructors.
             @test Kernel(ker) === ker
@@ -245,9 +213,6 @@ f2(x) = x > 0.5
             @test Kernel(A, rngs) === ker
             @test Kernel(A, rngs...) === ker
             @test Kernel(A, CartesianIndices(ker)) === ker
-            @static if USE_CARTESIAN_RANGE
-                @test Kernel(A, CartesianRange(ker)) === ker
-            end
             off = initialindex(A) - initialindex(ker)
             @test identical(Kernel{eltype(A)}(i -> f1(A[off + i]),
                                               CartesianIndices(ker)),
@@ -277,16 +242,6 @@ f2(x) = x > 0.5
             @test CartesianIndices(box) === CartesianIndices(rngs)
             @test convert(CartesianIndices, box) === CartesianIndices(rngs)
             @test convert(CartesianIndices{N}, box) === CartesianIndices(rngs)
-            @static if USE_CARTESIAN_RANGE
-                # Conversion Neighborhood <-> CartesianRange
-                @test Neighborhood(CartesianRange(rngs)) === box
-                @test convert(Neighborhood, CartesianRange(rngs)) === box
-                @test convert(Neighborhood{N}, CartesianRange(rngs)) === box
-                @test CartesianRange(box) === CartesianRange(rngs)
-                @test convert(CartesianRange, box) === CartesianRange(rngs)
-                @test convert(CartesianRange{CartesianIndex{N}}, box) ===
-                    CartesianRange(rngs)
-            end
 
             # Other basic methods.
             @test length(box) === length(CartesianIndices(rngs))

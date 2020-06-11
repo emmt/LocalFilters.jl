@@ -8,10 +8,8 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2017-2018, Éric Thiébaut.
+# Copyright (C) 2017-2020, Éric Thiébaut.
 #
-
-isdefined(Base, :__precompile__) && __precompile__(true)
 
 module LocalFilters
 
@@ -40,27 +38,9 @@ export
     strel,
     top_hat
 
-import Base: eltype, ndims, size, length, first, last, tail,
+import Base: CartesianIndices,
+    axes, eltype, ndims, size, length, first, last, tail,
     getindex, setindex!, convert, reverse
-
-# Deal with compatibility issues.
-using Compat
-const USE_CARTESIAN_RANGE = !isdefined(Base, :CartesianIndices)
-@static if USE_CARTESIAN_RANGE
-    import Base: CartesianRange
-    import Compat: CartesianIndices
-else
-    import Base: CartesianIndices
-end
-@static if isdefined(Base, :axes)
-    import Base: axes
-else
-    import Base: indices
-    const axes = indices
-end
-@static if VERSION < v"0.7.0-alpha"
-    Base.Tuple(index::CartesianIndex) = index.I
-end
 
 function localfilter end
 function localfilter! end

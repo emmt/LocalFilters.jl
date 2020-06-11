@@ -8,19 +8,10 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2017-2018, Éric Thiébaut.
+# Copyright (C) 2017-2020, Éric Thiébaut.
 #
 
-# Extend `CartesianIndices` and, maybe, `CartesianRange` which have been
-# imported from where they are.
-@static if USE_CARTESIAN_RANGE
-    CartesianRange(B::Neighborhood) = CartesianRange(limits(B)...)
-    convert(::Type{CartesianRange}, B::Neighborhood) = CartesianRange(B)
-    function convert(::Type{CartesianRange{CartesianIndex{N}}},
-                     B::Neighborhood{N}) where N
-        return CartesianRange(B)
-    end
-end
+# Extend `CartesianIndices`.
 CartesianIndices(B::Neighborhood) = CartesianIndices(axes(B))
 convert(::Type{CartesianIndices}, B::Neighborhood) = CartesianIndices(B)
 convert(::Type{CartesianIndices{N}}, B::Neighborhood{N}) where N =
@@ -43,9 +34,8 @@ setindex!(B::Neighborhood, val, inds::Union{Integer,CartesianIndex}...) =
 @inline _length(start::Int, stop::Int) = max(Int(stop) - Int(start) + 1, 0)
 
 """
-```julia
-defaultstart(A) -> I::CartesianIndex
-```
+
+    defaultstart(A) -> I::CartesianIndex
 
 yields the initial (multi-dimensional) index of a rectangular region which has
 the same size as the array `A` but whose origin (that is, index
@@ -58,10 +48,8 @@ defaultstart(A::AbstractArray) =
 
 """
 
-```
-initialindex(B) -> Imin::CartesianIndex{N}
-finalindex(B)   -> Imax::CartesianIndex{N}
-```
+    initialindex(B) -> Imin::CartesianIndex{N}
+    finalindex(B)   -> Imax::CartesianIndex{N}
 
 respectively yield the initial and final multi-dimensional index for indexing
 the Cartesian region defined by `B`.  A Cartesian region defines a rectangular
@@ -93,24 +81,14 @@ finalindex(inds::UnitIndexRanges{N}) where {N} =
 initialindex(inds::NTuple{2,CartesianIndex{N}}) where {N} = inds[1]
 finalindex(inds::NTuple{2,CartesianIndex{N}}) where {N} = inds[2]
 
-@static if USE_CARTESIAN_RANGE
-    # For compatibility with Julia ≤ 0.6
-    initialindex(R::CartesianRange) = first(R)
-    finalindex(R::CartesianRange) = last(R)
-end
-
 """
 
-```julia
-limits(T::DataType) -> typemin(T), typemax(T)
-```
+    limits(T::DataType) -> typemin(T), typemax(T)
 
 yields the infimum and supremum of a type `T`.
 
 
-```julia
-limits(B) -> Imin, Imax
-```
+    limits(B) -> Imin, Imax
 
 yields the corners (as a tuple of 2 `CartesianIndex`) of the Cartesian
 region defined by `B`.
@@ -125,19 +103,13 @@ limits(R::CartesianIndices) = initialindex(R), finalindex(R)
 limits(inds::UnitIndexRanges{N}) where {N} =
     initialindex(inds), finalindex(inds)
 limits(inds::NTuple{2,CartesianIndex{N}}) where {N} = inds
-@static if USE_CARTESIAN_RANGE
-    limits(R::CartesianRange) = initialindex(R), finalindex(R)
-end
 
 """
 
-```julia
-cartesianregion(args...) -> R
-```
+    cartesianregion(args...) -> R
 
-yields the rectangular region (as an instance of `CartesianIndices` or
-`CartesianRange` depending on Julia version) specified by the arguments which
-can be:
+yields the rectangular region (as an instance of `CartesianIndices`) specified
+by the arguments which can be:
 
 * an abstract array whose axes define the region (see [`axes`](@ref));
 
@@ -148,13 +120,11 @@ can be:
 
 * a neighborhood (see [`Neighborhood`](@ref));
 
-* an instance of `CartesianIndices` or `CartesianRange`.
+* an instance of `CartesianIndices.
 
-This method is a workaround to deal with optimization issues between different
-versions of Julia.  In recent Julia versions (≥ 0.7),
-`cartesianregion(args...)` yields an instance of `CartesianIndices`; while in
-Julia version 0.6, `cartesianregion(args...)` yields a `CartesianRange` which
-appears to be faster than `CartesianIndices` as provided by `Compat`.
+This method is mostly similar to `CartesianIndices`, it is introduced in
+`LocalFilters` to avoid type-piracy when dealing with arguments not handled
+`CartesianIndices`.
 
 See also: [`initialindex`](@ref), [`finalindex`](@ref) and [`limits`](@ref).
 
@@ -162,27 +132,14 @@ See also: [`initialindex`](@ref), [`finalindex`](@ref) and [`limits`](@ref).
 cartesianregion(B::Neighborhood) =
     cartesianregion(initialindex(B), finalindex(B))
 cartesianregion(A::AbstractArray) = cartesianregion(axes(A))
+cartesianregion(R::CartesianIndices) = R
+cartesianregion(inds::UnitIndexRanges) = CartesianIndices(inds)
+
 # The most critical version of `cartesianregion` is the one which takes the
 # first and last indices of the region and which is inlined.
-@static if USE_CARTESIAN_RANGE
-    # Favor CartesianRange.
-    cartesianregion(R::CartesianRange) = R
-    cartesianregion(R::CartesianIndices) = cartesianregion(R.indices)
-    @inline function cartesianregion(start::CartesianIndex{N},
-                                     stop::CartesianIndex{N}) where N
-	return CartesianRange(start, stop)
-    end
-    cartesianregion(inds::UnitIndexRanges{N}) where N =
-        CartesianRange(initialindex(inds), finalindex(inds))
-else
-    # Favor CartesianIndices.
-    cartesianregion(R::CartesianIndices) = R
-    @inline function cartesianregion(start::CartesianIndex{N},
-                                     stop::CartesianIndex{N}) where N
-	return CartesianIndices(map((i,j) -> i:j, Tuple(start), Tuple(stop)))
-    end
-    cartesianregion(inds::UnitIndexRanges{N}) where N =
-        CartesianIndices(inds)
+@inline function cartesianregion(start::CartesianIndex{N},
+                                 stop::CartesianIndex{N}) where N
+    return CartesianIndices(map((i,j) -> i:j, Tuple(start), Tuple(stop)))
 end
 
 #------------------------------------------------------------------------------
@@ -238,12 +195,6 @@ Neighborhood{N}(rngs::UnitIndexRanges{N}) where {N} = RectangularBox(rngs)
 Neighborhood(R::CartesianIndices) = RectangularBox(R)
 Neighborhood{N}(R::CartesianIndices{N}) where {N} = RectangularBox(R)
 
-@static if USE_CARTESIAN_RANGE
-    Neighborhood(R::CartesianRange) = RectangularBox(R)
-    Neighborhood{N}(R::CartesianRange{CartesianIndex{N}}) where {N} =
-        RectangularBox(R)
-end
-
 #------------------------------------------------------------------------------
 # METHODS FOR RECTANGULAR BOXES
 
@@ -280,18 +231,10 @@ RectangularBox(R::CartesianIndices) =
 RectangularBox{N}(R::CartesianIndices{N}) where {N} =
     RectangularBox(initialindex(R), finalindex(R))
 
-@static if USE_CARTESIAN_RANGE
-    RectangularBox(R::CartesianRange) =
-        RectangularBox(initialindex(R), finalindex(R))
-    RectangularBox{N}(R::CartesianRange{CartesianIndex{N}}) where {N} =
-        RectangularBox(initialindex(R), finalindex(R))
-end
-
 
 """
-```julia
-ismmbox(B)
-```
+
+    ismmbox(B)
 
 yields whether neighborhood `B` has the same effect as a rectangular box for
 mathematical morphology operations.  This may be used to use fast separable
@@ -451,9 +394,7 @@ end
 
 """
 
-```julia
-strel(T, A)
-```
+    strel(T, A)
 
 yields a *structuring element* suitable for mathematical morphology operations.
 The result is a `Kernel` whose elements have type `T` (which can be `Bool` or a
@@ -476,9 +417,7 @@ strel(::Type{T}, B::RectangularBox) where {T<:AbstractFloat} =
 
 """
 
-```julia
-convertcoefs(T, A)
-```
+    convertcoefs(T, A)
 
 yields an array of kernel coefficients equivalent to array `A` but whose
 elements have type `T`.
@@ -488,9 +427,7 @@ the result are `one(T)` where `A` is `true` and `zero(T)` elsewhere.  To use
 different values (for instance, to define *flat* *structuring* *elements*), you
 may call:
 
-```julia
-convertcoefs((vtrue, vfalse), A)
-```
+    convertcoefs((vtrue, vfalse), A)
 
 with `A` a boolean array to get an array whose elements are equal to `vtrue`
 where `A` is `true` and to `vfalse` otherwise.
@@ -522,9 +459,7 @@ end
 
 """
 
-```julia
-reverse(B::LocalFilters.Neighborhood)
-```
+    reverse(B::LocalFilters.Neighborhood)
 
 yields neighborhood `B` reversed along all its dimensions.  This can be used
 to correlate by `B` rather than convolving by `B`.
@@ -549,9 +484,8 @@ function strictfloor(::Type{T}, x)::T where {T}
 end
 
 """
-```julia
-LocalFilters.ball(N, r)
-```
+
+    LocalFilters.ball(N, r)
 
 yields a boolean mask which is a `N`-dimensional array with all dimensions odd
 and equal and set to true where position is inside a `N`-dimesional ball of

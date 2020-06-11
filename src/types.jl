@@ -8,7 +8,7 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2017-2018, Éric Thiébaut.
+# Copyright (C) 2017-2020, Éric Thiébaut.
 #
 
 """
@@ -18,9 +18,7 @@ abstract type Neighborhood{N} end
 
 """
 
-```julia
-RectangularBox(start, stop)
-```
+    RectangularBox(start, stop)
 
 yields a neighborhood which is a rectangular (Cartesian) box defined by the
 bounds of the multi-dimensional indices in the box.
@@ -28,9 +26,7 @@ bounds of the multi-dimensional indices in the box.
 Another possibility is to specify the dimensions of the box and the offsets of
 its central element:
 
-```julia
-RectangularBox(dims, offs)
-```
+    RectangularBox(dims, offs)
 
 with `dims` a `N`-tuple of dimensions and `offs` either a `N`-tuple of indices
 of an instance of `CartesianIndex{N}`.
@@ -38,11 +34,8 @@ of an instance of `CartesianIndex{N}`.
 A `RectangularBox` can also be defined by the index ranges along all the
 dimensions.  For example:
 
-```julia
-RectangularBox(-3:3, 0, -2:1)
-RectangularBox((-3:3, 0, -2:1))
-
-```
+    RectangularBox(-3:3, 0, -2:1)
+    RectangularBox((-3:3, 0, -2:1))
 
 both yield a 3-dimensional `RectangularBox` of size `7×1×4` and whose first
 index varies on `-3:3`, its second index is `0` while its third index varies on
@@ -50,12 +43,9 @@ index varies on `-3:3`, its second index is `0` while its third index varies on
 
 Finally, a `RectangularBox` can be defined as:
 
-```julia
-RectangularBox(R)
-```
+    RectangularBox(R)
 
-where `R` is an instance of `CartesianIndices` or, on version of Julia ≤ 0.6,
-`CartesianRange`.
+where `R` is an instance of `CartesianIndices`.
 
 """
 struct RectangularBox{N} <: Neighborhood{N}
@@ -63,10 +53,6 @@ struct RectangularBox{N} <: Neighborhood{N}
     # this is what we store.
     start::CartesianIndex{N}
     stop::CartesianIndex{N}
-end
-
-@static if length(Compat.InteractiveUtils.subtypes(CartesianIndex)) != 0
-    error("CartesianIndex is assumed to be a concrete type")
 end
 
 """
@@ -81,9 +67,7 @@ type is to fully qualify the type of the array of coefficients).
 
 A kernel is built as:
 
-```julia
-B = Kernel([T,] C, start=defaultstart(C))
-```
+    B = Kernel([T,] C, start=defaultstart(C))
 
 where `C` is the array of coefficients (which can be retrieved by `coefs(B)`)
 and `start` the initial `CartesianIndex` for indexing the kernel (which can be
@@ -91,9 +75,7 @@ retrieved by `initialindex(B)`).  The `start` parameter let the caller choose
 an arbitrary origin for the kernel coefficients; when a filter is applied, the
 following mapping is assumed:
 
-```julia
-B[k] ≡ C[k + off]
-```
+    B[k] ≡ C[k + off]
 
 where `off = initialindex(C) - initialindex(B)`.
 
@@ -105,9 +87,7 @@ type of the coefficients.
 
 To convert the element type of the coefficients of an existing kernel, do:
 
-```julia
-Kernel(T, K)
-```
+    Kernel(T, K)
 
 which yields a kernel whose coefficients are those of the kernel `K`
 converted to type `T`.
@@ -115,9 +95,7 @@ converted to type `T`.
 It is also possible to convert instances of [`RectangularBox`](@ref) into a
 kernel with boolean coefficients by calling:
 
-```julia
-Kernel(B)
-```
+    Kernel(B)
 
 where `B` is the neighborhood to convert into an instance of `Kernel`.
 
@@ -199,16 +177,7 @@ in `N` dimensions.  Methods [`initialindex`](@ref), [`finalindex`](@ref),
 whose type belongs to `CartesianRegion`.
 
 """
-CartesianRegion
-@static if USE_CARTESIAN_RANGE
-    const CartesianRegion{N} = Union{NTuple{2,CartesianIndex{N}},
-                                     UnitIndexRanges{N},
-                                     Neighborhood{N},
-                                     CartesianIndices{N},
-                                     CartesianRange{CartesianIndex{N}}}
-else
-    const CartesianRegion{N} = Union{NTuple{2,CartesianIndex{N}},
-                                     UnitIndexRanges{N},
-                                     Neighborhood{N},
-                                     CartesianIndices{N}}
-end
+const CartesianRegion{N} = Union{NTuple{2,CartesianIndex{N}},
+                                 UnitIndexRanges{N},
+                                 Neighborhood{N},
+                                 CartesianIndices{N}}

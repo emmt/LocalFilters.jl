@@ -9,12 +9,11 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2017-2018, Éric Thiébaut.
+# Copyright (C) 2017-2020, Éric Thiébaut.
 #
 
 module NaiveLocalFilters
 
-using Compat
 using LocalFilters
 using LocalFilters:
     Kernel,

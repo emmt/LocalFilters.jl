@@ -1,4 +1,9 @@
-# New features and changes in version 1.0.0
+# New features and user visible changes in version 1.1.0
+
+- Drop compatibility with Julia versions < 1.0; no needs for `Compat`.
+
+
+# New features and user visible changes in version 1.0.0
 
 - Compatibility with Julia 0.6 to 1.1
 
