@@ -1,7 +1,7 @@
 # LocalFilters.jl
 
 [![License](http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](LICENSE.md)
-[![Build Status](https://travis-ci.org/emmt/LocalFilters.jl.svg?branch=master)](https://travis-ci.org/emmt/LocalFilters.jl)
+[![Build Status](https://travis-ci.com/emmt/LocalFilters.jl.svg?branch=master)](https://travis-ci.com/emmt/LocalFilters.jl)
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/emmt/LocalFilters.jl?branch=master)](https://ci.appveyor.com/project/emmt/LocalFilters-jl/branch/master)
 [![Coverage Status](https://coveralls.io/repos/emmt/LocalFilters.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/emmt/LocalFilters.jl?branch=master)
 [![codecov.io](http://codecov.io/github/emmt/LocalFilters.jl/coverage.svg?branch=master)](http://codecov.io/github/emmt/LocalFilters.jl?branch=master)
