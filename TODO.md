@@ -4,6 +4,9 @@
 * Bump to version 2.  Provide `Project.toml`, drop compatibility with Julia <
   0.7 and dependency on `Compat`, remove `REQUIRE` file.
 
+* Automatically use van Herk / Gil & Werman algorithm for separable
+  (rectangular) neighborhood and suitable operations (min, max, mean, ...).
+
 * Use `@simd`.
 
 * Add more rules to automatically convert type of kernel coefficients.
