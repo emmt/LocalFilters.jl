@@ -3,6 +3,7 @@ isdefined(Main, :NaiveLocalFilters) || include("NaiveLocalFilters.jl")
 
 module LocalFiltersTests
 
+using Compat
 using Test
 using LocalFilters
 using LocalFilters: Neighborhood, RectangularBox, Kernel,
@@ -157,9 +158,9 @@ f2(x) = x > 0.5
             @test initialindex(box) === Imin
             @test finalindex(box) === Imax
             @test limits(box) === (Imin, Imax)
-            @test initialindex(A) === one(CartesianIndex{N})
+            @test initialindex(A) === oneunit(CartesianIndex{N})
             @test finalindex(A) === CartesianIndex(size(A))
-            @test limits(A) === (one(CartesianIndex{N}),
+            @test limits(A) === (oneunit(CartesianIndex{N}),
                                  CartesianIndex(size(A)))
 
             # Test cartesianregion().

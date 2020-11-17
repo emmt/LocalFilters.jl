@@ -1,6 +1,7 @@
 # New features and user visible changes in version 1.1.0
 
-- Drop compatibility with Julia versions < 1.0; no needs for `Compat`.
+- Drop compatibility with Julia versions < 1.0; `Compat` only needed to run
+  tests.
 
 
 # New features and user visible changes in version 1.0.0
