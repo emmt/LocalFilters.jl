@@ -1,5 +1,5 @@
 name = "LocalFilters"
-authors = ["Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>"]
+authors = ["Éric Thiébaut <https://github.com/emmt>"]
 uuid = "085fde7c-5f94-55e4-8448-8bbb5db6dde9"
 version = "1.1.0"
 
