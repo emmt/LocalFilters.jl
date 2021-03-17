@@ -72,8 +72,10 @@ filters are:
 
 * `bilateralfilter(A, Fr, Gs)` performs a bilateral filtering of array `A` with
   `Fr` the range kernel for smoothing differences in intensities and `Gs` the
-  spatial kernel for smoothing differences in coordinates (see:
-  https://en.wikipedia.org/wiki/Bilateral_filter).
+  spatial kernel for smoothing differences in coordinates.
+  Alternatively one can specify the range and spatial parameters
+  `bilateralfilter(A, σr, σs)` for default Gaussian kernels.
+  (See: https://en.wikipedia.org/wiki/Bilateral_filter.)
 
 and many more to come...
 
