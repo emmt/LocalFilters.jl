@@ -12,12 +12,14 @@
 #
 
 """
-All neighborhoods are instances of a type derived from `Neighborhood`.
+    Neighborhood
+
+is the abstract type of which all neighborhood types inherit.
+
 """
 abstract type Neighborhood{N} end
 
 """
-
     RectangularBox(start, stop)
 
 yields a neighborhood which is a rectangular (Cartesian) box defined by the
@@ -49,7 +51,7 @@ where `R` is an instance of `CartesianIndices`.
 
 """
 struct RectangularBox{N} <: Neighborhood{N}
-    # For a RectangularBox, the most used operation is getting its limits, so
+    # For a RectangularBox, the most common operation is getting its limits, so
     # this is what we store.
     start::CartesianIndex{N}
     stop::CartesianIndex{N}

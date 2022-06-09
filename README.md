@@ -50,35 +50,34 @@ Denoting `A` the source array and `B` the neighborhood or the kernel (by
 default `B` is a centered box of size 3 along every dimension), the available
 filters are:
 
-* `erode(A, B=3)` performs an erosion (local minimum) of `A` by `B`;
+* `erode(A,B=3)` performs an erosion (local minimum) of `A` by `B`;
 
-* `dilate(A, B=3)` performs a dilation (local maximum) of `A` by `B`;
+* `dilate(A,B=3)` performs a dilation (local maximum) of `A` by `B`;
 
-* `localextrema(A, B=3)` yields the erosion and the dilation of `A` by `B`;
+* `localextrema(A,B=3)` yields the erosion and the dilation of `A` by `B`;
 
-* `opening(A, B=3)` performs an erosion followed by a dilation;
+* `opening(A,B=3)` performs an erosion followed by a dilation;
 
-* `closing(A, B=3)` performs a dilation followed by an erosion;
+* `closing(A,B=3)` performs a dilation followed by an erosion;
 
-* `top_hat(A, B=3 [, S])` performs a summit detection (an optional third
+* `top_hat(A,B=3[,S])` performs a summit detection (an optional third argument
+  `S` may be supplied to pre-smooth `A` by `S`);
+
+* `bottom_hat(A,B=3[,S])` performs a valley detection (an optional third
   argument `S` may be supplied to pre-smooth `A` by `S`);
 
-* `bottom_hat(A, B=3 [, S])` performs a valley detection (an optional third
-  argument `S` may be supplied to pre-smooth `A` by `S`);
+* `localmean(A,B=3)` performs a local averaging;
 
-* `localmean(A, B=3)` performs a local averaging;
-
-* `convolve(A, B=3)` performs a convolution by the kernel `B` or by the support
+* `convolve(A,B=3)` performs a convolution by the kernel `B` or by the support
   of `B` is `eltype(B)` is `Bool`;
 
-* `bilateralfilter(A, Fr, Gs)` performs a bilateral filtering of array `A` with
-  `Fr` the range kernel for smoothing differences in intensities and `Gs` the
-  spatial kernel for smoothing differences in coordinates.
-  Alternatively one can specify the range and spatial parameters
-  `bilateralfilter(A, σr, σs)` for default Gaussian kernels.
-  (See: https://en.wikipedia.org/wiki/Bilateral_filter.)
-
-and many more to come...
+* `bilateralfilter(A,F,G,B)` performs a bilateral filtering of array `A` with
+  `F` the range kernel for smoothing differences in values, `G` the
+  spatial kernel for smoothing differences in coordinates, and `B` the
+  neighborhood.  Alternatively one can specify the range and spatial parameters
+  `bilateralfilter(A,σr,σs,B)` for using Gaussian kernels with standard
+  deviations `σr` and `σs`.  (See:
+  https://en.wikipedia.org/wiki/Bilateral_filter.)
 
 
 ## Implementation
