@@ -1,9 +1,9 @@
 # LocalFilters.jl
 
-[![License][license-img]][license-url] |
+[![License][license-img]][license-url]
 [![Build Status][github-ci-img]][github-ci-url]
-[![Build Status][appveyor-img]][appveyor-url] |
-[![Coverage][codecov-img]][codecov-url] |
+[![Build Status][appveyor-img]][appveyor-url]
+[![Coverage][codecov-img]][codecov-url]
 
 This package implements multi-dimensional local filters for
 [Julia](http://julialang.org/) (convolution, mathematical morphology, etc.).
@@ -16,15 +16,17 @@ This document is structured as follows:
 
 * [Summary](#summary) provides a quick introduction.
 
-* [Implementation](#implementation) explains how to implement you own filter.
+* [Neighborhoods](#neighborhoods) describes the concept of *neighborhoods*,
+  also known as *moving windows* in image processing or *structuring element*
+  in mathematical morphology.
 
-* [Neighborhoods](#neighborhoods) describes the concept of neighborhoods.
+* [Implementation](#implementation) explains how to implement your own filters.
 
 * [Installation](#installation) to install the package.
 
 Note that this is a first implementation to define the API.  It is is
-reasonably fast (see [benchmarks.jl](src/benchmarks.jl)) but separable kernels
-can be made faster.
+reasonably fast (see [src/benchmarks.jl](src/benchmarks.jl)) but separable
+kernels can be made faster.
 
 Packages with overlapping functionalities:
 
@@ -46,9 +48,9 @@ defined relatively to a given position by an instance of a type derived from
 [mathematical morphology](https://en.wikipedia.org/wiki/Mathematical_morphology)
 operations, a neighborhood is called a *structuring element*.
 
-Denoting `A` the source array and `B` the neighborhood or the kernel (by
-default `B` is a centered box of size 3 along every dimension), the available
-filters are:
+Denoting `A` the source array and `B` the neighborhood or the kernel (for most
+filters, `B` is by default a centered box of size 3 along every dimension), the
+available filters are:
 
 * `erode(A,B=3)` performs an erosion (local minimum) of `A` by `B`;
 
@@ -89,7 +91,7 @@ The pseudo-code for a local filtering operation `C = filter(A, B)` writes:
 ```julia
 for i ∈ Sup(A)
     v = initial(A[i])
-    for j ∈ Sup(B) and such that i-j ∈ Sup(A)
+    for j ∈ Sup(B) and such that (i - j) ∈ Sup(A)
         v = update(v, A[i-j], B[j])
     end
     store(C, i, v)
@@ -98,10 +100,10 @@ end
 
 where `A` is the source of the operation, `B` is the neighborhood, `C` is the
 result of the operation.  Here `Sup(A)` denotes the support of `A` (that is the
-set of indices in `A`).  The methods `initial`, `update` and `store` and the
-type of the variable `v` are specific to the considered operation.  For maximum
-efficiency, the methods `initial` and `update` shall return the same type of
-result.  To execute the filter, call the `localfilter!` method as:
+set of indices in `A`).  The type of the state variable `v`, the methods
+`initial`, `update`, and `store` are specific to the considered operation.  For
+maximum efficiency, the methods `initial` and `update` shall return the same
+type of result.  To execute the filter, call the `localfilter!` method as:
 
 ```julia
 localfilter!(dst, A, B, initial, update, store)
@@ -232,6 +234,7 @@ localfilter([T,] A, dims, op, rngs [, w])
 
 with `T` the element type of the result (by default `T = eltype(A)`).
 
+
 ### References
 
 * Marcel van Herk, "*A fast algorithm for local minimum and maximum filters on
@@ -241,6 +244,7 @@ with `T` the element type of the result (by default `T = eltype(A)`).
 * Joseph Gil and Michael Werman, "*Computing 2-D Min, Median, and Max Filters*"
   in IEEE Transactions on Pattern Analysis and Machine Intelligence **15**,
   504-507 (1993).
+
 
 ## Neighborhoods
 
@@ -272,8 +276,7 @@ From the user point of view, there are three kinds of neighborhoods:
   constructed from an array of weights and an optional starting index.
 
 
-### Syntax for neighborhoods
-
+### Syntaxes for neighborhoods
 
 * The *default neighborhood* is a centered rectangular box of width 3 in each
   of its dimensions.
@@ -376,7 +379,7 @@ To install the last official version:
 
 ```julia
 using Pkg
-Pkg.add("LocalFilters")
+pkg"add LocalFilters"
 ```
 
 To use the last development version, install with Pkg, the Julia package
@@ -384,10 +387,12 @@ manager, as an unregistered Julia package (press the ] key to enter the Pkg
 REPL mode):
 
 ```julia
-... pkg> add https://github.com/emmt/LocalFilters.jl.git
+using Pkg
+pkg"add https://github.com/emmt/LocalFilters.jl"
 ```
 
-The `LocalFilters` package is pure Julia code and there is nothing to build.
+The `LocalFilters` package is pure Julia code and there is thus nothing to
+build.
 
 [doc-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
 [doc-stable-url]: https://emmt.github.io/LocalFilters.jl/stable
