@@ -107,16 +107,16 @@ struct Kernel{T,N,A<:AbstractArray{T,N}} <: Neighborhood{N}
     offset::CartesianIndex{N}
     start::CartesianIndex{N}
     stop::CartesianIndex{N}
-    function Kernel{T,N,A}(C::A, start::CartesianIndex{N}
-                           ) where {T,N,A<:AbstractArray{T,N}}
+    function Kernel{T,N,A}(C::A, start::CartesianIndex{N}) where {
+        T,N,A<:AbstractArray{T,N}}
         # In local filtering operations, the kernel `B` will be used as
         #
         #     A[i-k]⋄B[k]    (∀ k ∈ [kmin, kmax])
         #
         # with `A` the source, `i` the destination index, `⋄` a given binary
-        # operation and `k` (here, indices and offsets are multi-dimensional).
-        # The offset between the indices in the kernel `B` and those in the
-        # array of coefficients `C` is such that:
+        # operation and `k` the running index.  Here, indices and offsets are
+        # multi-dimensional.  The offset between the indices in the kernel `B`
+        # and those in the array of coefficients `C` is such that:
         #
         #     kmin + off = jmin = first_cartesian_index(C)
         #     kmax + off = jmax = last_cartesian_index(C)
@@ -129,8 +129,6 @@ struct Kernel{T,N,A<:AbstractArray{T,N}} <: Neighborhood{N}
         #
         # gives the [limits](@ref) and [offset](@ref) for index `k` in the
         # kernel `B`.
-        @assert eltype(C) === T
-        @assert ndims(C) == N
         jmin, jmax = limits(C)
         off = jmin - start
         return new{T,N,A}(C, off, start, jmax - off)
