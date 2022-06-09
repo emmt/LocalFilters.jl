@@ -1,8 +1,9 @@
 # LocalFilters.jl
 
-| **License**                     | **Build Status**                                                | **Code Coverage**                                                   |
-|:--------------------------------|:----------------------------------------------------------------|:--------------------------------------------------------------------|
-| [![][license-img]][license-url] | [![][travis-img]][travis-url] [![][appveyor-img]][appveyor-url] | [![][coveralls-img]][coveralls-url] [![][codecov-img]][codecov-url] |
+[![License][license-img]][license-url] |
+[![Build Status][github-ci-img]][github-ci-url]
+[![Build Status][appveyor-img]][appveyor-url] |
+[![Coverage][codecov-img]][codecov-url] |
 
 This package implements multi-dimensional local filters for
 [Julia](http://julialang.org/) (convolution, mathematical morphology, etc.).
@@ -398,14 +399,11 @@ The `LocalFilters` package is pure Julia code and there is nothing to build.
 [license-url]: ./LICENSE.md
 [license-img]: http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
 
-[travis-img]: https://travis-ci.org/emmt/LocalFilters.jl.svg?branch=master
-[travis-url]: https://travis-ci.org/emmt/LocalFilters.jl
+[github-ci-img]: https://github.com/emmt/LocalFilters.jl/actions/workflows/CI.yml/badge.svg?branch=master
+[github-ci-url]: https://github.com/emmt/LocalFilters.jl/actions/workflows/CI.yml?query=branch%3Amaster
 
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/github/emmt/LocalFilters.jl?branch=master
 [appveyor-url]: https://ci.appveyor.com/project/emmt/LocalFilters-jl/branch/master
-
-[coveralls-img]: https://coveralls.io/repos/emmt/LocalFilters.jl/badge.svg?branch=master&service=github
-[coveralls-url]: https://coveralls.io/github/emmt/LocalFilters.jl?branch=master
 
 [codecov-img]: http://codecov.io/github/emmt/LocalFilters.jl/coverage.svg?branch=master
 [codecov-url]: http://codecov.io/github/emmt/LocalFilters.jl?branch=master
