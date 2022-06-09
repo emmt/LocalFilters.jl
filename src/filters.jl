@@ -261,18 +261,18 @@ end
 #    max(imin, i - kmax) ≤ j ≤ min(imax, i - kmin)
 #
 function localfilter!(dst,
-                      A::AbstractArray{T,N},
+                      A::AbstractArray{<:Any,N},
                       B::RectangularBox{N},
                       initial::Function,
                       update::Function,
-                      store::Function) where {T,N}
+                      store::Function) where {N}
     R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     @inbounds for i in R
         v = initial(A[i])
         @simd for j in cartesian_region(max(imin, i - kmax),
-                                       min(imax, i - kmin))
+                                        min(imax, i - kmin))
             v = update(v, A[j], true)
         end
         store(dst, i, v)
@@ -302,11 +302,11 @@ end
 #
 
 function localfilter!(dst,
-                      A::AbstractArray{T,N},
-                      B::Kernel{K,N},
+                      A::AbstractArray{<:Any,N},
+                      B::Kernel{<:Any,N},
                       initial::Function,
                       update::Function,
-                      store::Function) where {T,K,N}
+                      store::Function) where {N}
     R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -315,7 +315,7 @@ function localfilter!(dst,
         v = initial(A[i])
         k = i + off
         @simd for j in cartesian_region(max(imin, i - kmax),
-                                       min(imax, i - kmin))
+                                        min(imax, i - kmin))
             v = update(v, A[j], ker[k-j])
         end
         store(dst, i, v)

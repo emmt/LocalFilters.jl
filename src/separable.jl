@@ -33,9 +33,7 @@ import ..LocalFilters:
 """
 # Local filter by the van Herk-Gil-Werman algorithm
 
-```julia
-localfilter!([dst = A,] A, dims, op, rngs [, w])
-```
+    localfilter!([dst = A,] A, dims, op, rngs [, w])
 
 overwrites the contents of `dst` with the result of applying van
 Herk-Gil-Werman algorithm to filter array `A` along dimension(s) `dims` with
@@ -58,15 +56,11 @@ as a single integer, say `k`, is the same as specifying `k:k`).
 
 Assuming mono-dimensional arrays `A` and `dst`, the single filtering pass:
 
-```julia
-localfilter!(dst, A, :, op, rng)
-```
+    localfilter!(dst, A, :, op, rng)
 
 yields:
 
-```
-dst[j] = A[j-kmax] ⋄ A[j-kmax+1] ⋄ A[j-kmax+2] ⋄ ... ⋄ A[j-kmin]
-```
+    dst[j] = A[j-kmax] ⋄ A[j-kmax+1] ⋄ A[j-kmax+2] ⋄ ... ⋄ A[j-kmin]
 
 for all `j ∈ [first(axes(A,1)):last(axes(A,1))]`, with `x ⋄ y = op(x, y)`,
 `kmin = first(rng)` and `kmax = last(rng)`.  Note that if `kmin = kmax = k`
@@ -76,9 +70,7 @@ effects if `k = 0`.  This can be exploited to not filter some dimension(s).
 
 The out-place version, allocates the destination array and is called as:
 
-```julia
-localfilter([T,] A, dims, op, rngs [, w])
-```
+    localfilter([T,] A, dims, op, rngs [, w])
 
 with `T` the element type of the result (by default `T = eltype(A)`).
 
@@ -88,33 +80,26 @@ with `T` the element type of the result (by default `T = eltype(A)`).
 The in-place *morphological erosion* (local minimum) of the array `A` on a
 centered structuring element of width 7 in every dimension can be applied by:
 
-```julia
-localfilter!(A, :, min, -3:3)
-```
+    localfilter!(A, :, min, -3:3)
 
 Index interval `0` may be specified to do nothing along the corresponding
 dimension.  For instance, assuming `A` is a three-dimensional array:
 
-```julia
-localfilter!(A, :, max, (-3:3, 0, -4:4))
-```
+    localfilter!(A, :, max, (-3:3, 0, -4:4))
 
 overwrites `A` its *morphological dilation* (*i.e.* local maximum) in a
 centered local neighborhood of size `7×1×9` (nothing is done along the second
 dimension).  The same result may be obtained with:
 
-```julia
-localfilter!(A, (1,3), max, (-3:3, -4:4))
-```
+    localfilter!(A, (1,3), max, (-3:3, -4:4))
 
 where the second dimension is omitted from the list of dimensions.
 
 The *local average* of the two-dimensional array `A` on a centered
 structuring element of size 11×11 can be computed as:
 
-```julia
-localfilter(A, :, +, (-5:5, -5:5))*(1/11)
-```
+    localfilter(A, :, +, (-5:5, -5:5))*(1/11)
+
 
 ## Efficiency and restrictions
 
@@ -316,8 +301,6 @@ function localfilter(::Type{T}, A::AbstractArray{<:Any,N},
     return localfilter!(similar(Array{T,N}, axes(A)), A, dims, op, args...)
 end
 
-@doc @doc(localfilter!) localfilter
-
 # In-place operation.
 
 function localfilter!(A::AbstractArray{T,N},
@@ -369,7 +352,8 @@ function localfilter!(dst::AbstractArray{T,N},
                       rngs::Union{AbstractVector{<:IndexInterval},
                                   Tuple{Vararg{IndexInterval}}},
                       w::Vector{T} = workspace(T, A, :, rngs)) where {T,N}
-    length(rngs) == N || throw(DimensionMismatch("there must be as many intervals as dimensions"))
+    length(rngs) == N || throw(DimensionMismatch(
+        "there must be as many intervals as dimensions"))
     N ≥ 1 || return copyto!(dst, A)
     localfilter!(dst, A, 1, op, rngs[1], w)
     for d in 2:N
@@ -403,7 +387,8 @@ function localfilter!(dst::AbstractArray{T,N},
                                   Tuple{Vararg{IndexInterval}}},
                       w::Vector{T} = workspace(T, A, dims, rngs)) where {T,N}
     m = length(dims)
-    length(rngs) == m || throw(DimensionMismatch("list of dimensions and list of intervals must have the same length"))
+    length(rngs) == m || throw(DimensionMismatch(
+        "list of dimensions and list of intervals must have the same length"))
     m ≥ 1 || return copyto!(dst, A)
     localfilter!(dst, A, dims[1], op, rngs[1], w)
     for d in 2:m
@@ -450,19 +435,14 @@ for (f, op) in ((:erode, min), (:dilate, max))
 end
 
 """
-
-```julia
-workspacelength(n, p)
-```
+    workspacelength(n, p)
 
 yields the minimal length of the workspace array for applying the van
 Herk-Gil-Werman algorithm along a dimension of length `n` with a structuring
 element of width `p`.  If `n < 1` or `p ≤ 1`, zero is returned because there is
 no needs for a workspace array.
 
-```julia
-workspacelength(A, dims, rngs)
-```
+    workspacelength(A, dims, rngs)
 
 yields the minimal length of the workspace array for applying the van
 Herk-Gil-Werman algorithm along the dimension(s) `dims` of array `A` with a
@@ -535,10 +515,7 @@ function workspacelength(A::AbstractArray{<:Any,N},
 end
 
 """
-
-```julia
-workspace(T, A, dims, rngs)
-```
+    workspace(T, A, dims, rngs)
 
 yields a workspace array for applying the van Herk-Gil-Werman algorithm along
 the dimension(s) `dims` of array `A` with a structuring element defined by the

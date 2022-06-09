@@ -55,8 +55,7 @@ localmean(variant::Val, A::AbstractArray{T}, B::Kernel{Bool}) where {T} =
     localmean!(variant, similar(A, float(T)), A, B)
 
 localmean(variant::Val, A::AbstractArray{T}, B::Kernel{K}) where {T,K} =
-    localmean!(variant, similar(Array{float(promote_type(T,K))},
-                                axes(A)), A, B)
+    localmean!(variant, similar(A, float(promote_type(T,K))), A, B)
 
 convolve(variant::Val, A::AbstractArray{T,N}, B=3) where {T,N} =
     convolve(variant, A, Neighborhood{N}(B))
