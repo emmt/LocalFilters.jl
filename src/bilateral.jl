@@ -19,6 +19,31 @@ using ..LocalFilters
 using ..LocalFilters: Neighborhood, RectangularBox, Kernel, axes, _store!
 
 """
+    GaussianWindow{T}(σ) -> f
+
+yields a functor `f` with the shape of a Gaussian of standard deviation `σ` but
+with a peak value of one, i.e. `f(0) -> 1`.  The functor `f` can be applied to
+a single value `x`, to 2 values `x` and `x0` to yield `f(x - x0)`, or to a
+coordinate difference expressed as a Cartesian index.
+
+Type parameter `T` is to specify the numerical type of the parameter of the
+functor.  It can be omitted if `σ` is real.
+
+"""
+struct GaussianWindow{T} <: Function
+    η::T # η = -1/2σ² is the factor in the exponential
+    GaussianWindow{T}(σ) where {T} = new{T}(-1/(2*σ^2))
+end
+GaussianWindow(σ::Real) = GaussianWindow{float(typeof(σ))}(σ)
+
+(f::GaussianWindow)(I::CartesianIndex{N}) where {N} =
+    exp(sum((k) -> I[k]^2, 1:N)*f.η) # FIXME: use @generated
+
+(f::GaussianWindow)(x::T, x0::T) where {T} = f(x - x0)
+(f::GaussianWindow{T})(x) where {T} = exp(convert(T,x)^2*f.η)
+
+
+"""
     bilateralfilter([T,] A, F, G, ...)
 
 yields the result of applying the bilateral filter on array `A`.
@@ -124,10 +149,10 @@ function bilateralfilter!(::Type{T},
                           A::AbstractArray{<:Any,N},
                           σr::Real,
                           args...) where {T,N}
-    @assert isfinite(σr) && σr > 0
-    qr = _gaussfactor(T, σr)
-    return bilateralfilter!(T, dst, A,
-                            (v, v0) -> _gausswindow(qr, v - v0), args...)
+    (isfinite(σr) && σr > 0) || throw(ArgumentError(
+        "standard deviation must be finite and positive"))
+    F = GaussianWindow{T}(σr)
+    return bilateralfilter!(T, dst, A, F, args...)
 end
 
 # Distance filter specifed by its standard deviation and the neighborhood.
@@ -136,19 +161,11 @@ function bilateralfilter!(::Type{T},
                           A::AbstractArray{<:Any,N},
                           F::Function,
                           σs::Real, B) where {T,N}
-    @assert isfinite(σs) && σs > 0
-    qs = _gaussfactor(T, σs)
-    return bilateralfilter!(T, dst, A, F, (i) -> _gausswindow(qs, i), B)
+    (isfinite(σs) && σs > 0) || throw(ArgumentError(
+        "standard deviation must be finite and positive"))
+    G = GaussianWindow{T}(σs)
+    return bilateralfilter!(T, dst, A, F, G, B)
 end
-
-_gaussfactor(::Type{T}, σ) where {T} = -1/(2*convert(T,σ)^2)
-
-# η = -1/2σ²
-_gausswindow(η, I::CartesianIndex{N}) where {N} =
-    exp(sum((k) -> I[k]^2, 1:N)*η) # FIXME: use @generated
-
-_gausswindow(η, x::T, x0::T) where {T} = _gausswindow(η, x - x0)
-_gausswindow(η::T, x) where {T} = exp(convert(T,x)^2*η)
 
 function _update(v::Tuple{V,T,T}, val::V, ws::T, wr::T) where {V,T}
     w = wr*ws
