@@ -16,7 +16,9 @@ module BilateralFilter
 export bilateralfilter!, bilateralfilter
 
 using ..LocalFilters
-using ..LocalFilters: Neighborhood, RectangularBox, Kernel, axes, _store!
+using ..LocalFilters: Neighborhood, RectangularBox, Kernel, axes, store!
+
+using Base: @propagate_inbounds
 
 """
     GaussianWindow{T}(σ) -> f
@@ -113,9 +115,9 @@ function bilateralfilter!(::Type{T},
     # The state is the tuple: (central_value, numerator, denominator).
     return localfilter!(dst, A, Kernel{T}(G),
                         (val) -> (val, zero(T), zero(T)),
-                        (v, val, ker) -> _update(v, val, ker,
-                                                 convert(T, F(val, v[1]))),
-                        _final!)
+                        (v, val, ker) -> update(v, val, ker,
+                                                convert(T, F(val, v[1]))),
+                        final!)
 end
 
 function bilateralfilter!(::Type{T},
@@ -167,12 +169,12 @@ function bilateralfilter!(::Type{T},
     return bilateralfilter!(T, dst, A, F, G, B)
 end
 
-function _update(v::Tuple{V,T,T}, val::V, ws::T, wr::T) where {V,T}
+function update(v::Tuple{V,T,T}, val::V, ws::T, wr::T) where {V,T}
     w = wr*ws
     return (v[1], v[2] + convert(T, val)*w, v[3] + w)
 end
 
-_final!(dst, i, v::Tuple{V,T,T}) where {T<:AbstractFloat,V} =
-    _store!(dst, i, (v[3] > zero(T) ? v[2]/v[3] : zero(T)))
+@inline @propagate_inbounds final!(dst, i, v::Tuple{V,T,T}) where {T,V} =
+    store!(dst, i, (v[3] > zero(T) ? v[2]/v[3] : zero(T)))
 
 end # module

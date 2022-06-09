@@ -145,6 +145,26 @@ cartesian_region(inds::UnitIndexRanges) = CartesianIndices(inds)
 end
 
 #------------------------------------------------------------------------------
+# UTILITIES
+
+"""
+    check_indices(A, B)
+
+throws an exception if arrays `A` and `B` have different indices.
+
+"""
+function check_indices(A::AbstractArray, B::AbstractArray)
+    throw(DimensionMismatch(
+        "arrays have different number of dimensions"))
+end
+
+function check_indices(A::AbstractArray{<:Any,N},
+                       B::AbstractArray{<:Any,N}) where {N}
+    axes(A) == axes(B) || throw(DimensionMismatch(
+        "arrays have different indices"))
+end
+
+#------------------------------------------------------------------------------
 # CONVERSIONS
 
 # To implement variants and out-of-place versions, we define conversion rules
@@ -263,7 +283,10 @@ end
 #------------------------------------------------------------------------------
 # METHODS FOR KERNELS
 
-eltype(B::Kernel{T,N}) where {T,N} = T
+eltype(B::Kernel) = eltype(typeof(B))
+eltype(::Type{<:Kernel{T,N}}) where {T,N} = T
+ndims(B::Kernel) = ndims(typeof(B))
+ndims(::Type{<:Kernel{T,N}}) where {T,N} = N
 length(B::Kernel) = length(coefs(B))
 size(B::Kernel) = size(coefs(B))
 size(B::Kernel, d) = size(coefs(B), d)

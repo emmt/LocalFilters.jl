@@ -19,8 +19,8 @@ using LocalFilters:
     Kernel,
     Neighborhood,
     RectangularBox,
-    _store!,
-    _typeofsum,
+    store!,
+    type_of_sum,
     axes,
     cartesian_region,
     coefs,
@@ -49,10 +49,10 @@ localmean(variant::Val, A::AbstractArray{T,N}, B=3) where {T,N} =
     localmean(variant, A, Neighborhood{N}(B))
 
 localmean(variant::Val, A::AbstractArray{T}, B::RectangularBox) where {T} =
-    localmean!(variant, similar(Array{float(T)}, axes(A)), A, B)
+    localmean!(variant, similar(A, float(T)), A, B)
 
 localmean(variant::Val, A::AbstractArray{T}, B::Kernel{Bool}) where {T} =
-    localmean!(variant, similar(Array{float(T)}, axes(A)), A, B)
+    localmean!(variant, similar(A, float(T)), A, B)
 
 localmean(variant::Val, A::AbstractArray{T}, B::Kernel{K}) where {T,K} =
     localmean!(variant, similar(Array{float(promote_type(T,K))},
@@ -62,14 +62,13 @@ convolve(variant::Val, A::AbstractArray{T,N}, B=3) where {T,N} =
     convolve(variant, A, Neighborhood{N}(B))
 
 convolve(variant::Val, A::AbstractArray{T}, B::RectangularBox) where {T} =
-    convolve!(variant, similar(Array{_typeofsum(T)}, axes(A)), A, B)
+    convolve!(variant, similar(A, type_of_sum(T)), A, B)
 
 convolve(variant::Val, A::AbstractArray{T}, B::Kernel{Bool}) where {T} =
-    convolve!(variant, similar(Array{_typeofsum(T)}, axes(A)), A, B)
+    convolve!(variant, similar(A, type_of_sum(T)), A, B)
 
 convolve(variant::Val, A::AbstractArray{T}, B::Kernel{K}) where {T,K} =
-    convolve!(variant, similar(Array{_typeofsum(promote_type(T,K))},
-                               axes(A)), A, B)
+    convolve!(variant, similar(A, type_of_sum(promote_type(T,K))), A, B)
 
 dilate(variant::Val, A::AbstractArray, args...) =
     dilate!(variant, similar(A), A, args...)
@@ -213,14 +212,14 @@ end
 # Methods for rectangular boxes (with optimization for centered boxes).
 
 function localmean!(variant::Val,
-                    dst::AbstractArray{Td,N},
-                    A::AbstractArray{Ts,N},
-                    B::RectangularBox{N}) where {Td,Ts,N}
+                    dst::AbstractArray{<:Any,N},
+                    A::AbstractArray{<:Any,N},
+                    B::RectangularBox{N}) where {N}
     @assert axes(dst) == axes(A)
     R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
-    T = _typeofsum(Ts)
+    T = type_of_sum(eltype(A))
     if kmin === -kmax
         off = kmax
         @inbounds for i in R
@@ -229,7 +228,7 @@ function localmean!(variant::Val,
                 s += A[j]
                 n += 1
             end
-            _store!(dst, i, s/n)
+            store!(dst, i, s/n)
         end
     else
         @inbounds for i in R
@@ -238,7 +237,7 @@ function localmean!(variant::Val,
                 s += A[j]
                 n += 1
             end
-            _store!(dst, i, s/n)
+            store!(dst, i, s/n)
         end
     end
     return dst
@@ -343,15 +342,15 @@ end
 # Nethods for kernels of booleans.
 
 function localmean!(variant::Val,
-                    dst::AbstractArray{Td,N},
-                    A::AbstractArray{Ts,N},
-                    B::Kernel{Bool,N}) where {Td,Ts,N}
+                    dst::AbstractArray{<:Any,N},
+                    A::AbstractArray{<:Any,N},
+                    B::Kernel{Bool,N}) where {N}
     @assert axes(dst) == axes(A)
     R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     ker, off = coefs(B), offset(B)
-    T = _typeofsum(Ts)
+    T = type_of_sum(eltype(A))
     @inbounds for i in R
         n, s = 0, zero(T)
         k = i + off
@@ -361,7 +360,7 @@ function localmean!(variant::Val,
                 s += A[j]
             end
         end
-        _store!(dst, i, s/n)
+        store!(dst, i, s/n)
     end
     return dst
 end
@@ -446,15 +445,15 @@ end
 # Methods for other kernels.
 
 function localmean!(variant::Val,
-                    dst::AbstractArray{Td,N},
-                    A::AbstractArray{Ts,N},
-                    B::Kernel{Tk,N}) where {Td,Ts,Tk,N}
+                    dst::AbstractArray{<:Any,N},
+                    A::AbstractArray{<:Any,N},
+                    B::Kernel{<:Any,N}) where {N}
     @assert axes(dst) == axes(A)
     R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     ker, off = coefs(B), offset(B)
-    T = _typeofsum(promote_type(Ts, Tk))
+    T = type_of_sum(promote_type(eltype(A), eltype(B)))
     @inbounds for i in R
         s1, s2 = zero(T), zero(T)
         k = i + off
@@ -463,7 +462,7 @@ function localmean!(variant::Val,
             s1 += w*A[j]
             s2 += w
         end
-        _store!(dst, i, s1/s2)
+        store!(dst, i, s1/s2)
     end
     return dst
 end
@@ -511,22 +510,22 @@ function dilate!(variant::Val,
 end
 
 function convolve!(variant::Val,
-                   dst::AbstractArray{Td,N},
-                   A::AbstractArray{Ts,N},
-                   B::Kernel{Tk,N}) where {Td,Ts,Tk,N}
+                   dst::AbstractArray{<:Any,N},
+                   A::AbstractArray{<:Any,N},
+                   B::Kernel{<:Any,N}) where {N}
     @assert axes(dst) == axes(A)
     R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     ker, off = coefs(B), offset(B)
-    T = _typeofsum(promote_type(Ts, Tk))
+    T = type_of_sum(promote_type(eltype(A), eltype(B)))
     @inbounds for i in R
         v = zero(T)
         k = i + off
         for j in _cartesianregion(variant, imin, imax, i, kmin, kmax)
             v += A[j]*ker[k-j]
         end
-        _store!(dst, i, v)
+        store!(dst, i, v)
     end
     return dst
 end

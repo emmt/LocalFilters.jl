@@ -2,9 +2,8 @@
 
 - Syntax `Kernel(T,G,B)` has been deprecated in favor of `Kernel{T}(G,B)`.
 
-- Scalar and array element type restrictions have been relaxed for most methods
-  in the bilateral filter.  This is to let users apply these methods to
-  non-standard types.
+- Scalar and array element type restrictions have been relaxed for most filter
+  methods.  This is to let users apply these methods to non-standard types.
 
 - Rename unexported methods `initialindex`, `finalindex`, `defaultstart`,
   `cartesianregion`, `convertcoefs`, and `strictfloor` respectively as
