@@ -1,3 +1,5 @@
+* Provide `@generated` or unrolled versions for small kernel sizes.
+
 * Make `CartesianBox` an official package and replace `RectangularBox` by
   `CartesianBox`.
 

@@ -1,9 +1,11 @@
 # New features and user visible changes in version 1.2.0
 
-- Syntax `Kernel(T,G,B)` has been deprecated in favor of `Kernel{T}(G,B)`.
-
 - Scalar and array element type restrictions have been relaxed for most filter
   methods.  This is to let users apply these methods to non-standard types.
+
+- Some optimizations.
+
+- Syntax `Kernel(T,G,B)` has been deprecated in favor of `Kernel{T}(G,B)`.
 
 - Rename unexported methods `initialindex`, `finalindex`, `defaultstart`,
   `cartesianregion`, `convertcoefs`, and `strictfloor` respectively as
