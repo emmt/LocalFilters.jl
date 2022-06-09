@@ -1,5 +1,6 @@
 *.jl.cov
 *.jl.mem
+*.orig
 
 # Specific files/directories
 work/
