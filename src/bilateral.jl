@@ -8,7 +8,7 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2018, Éric Thiébaut.
+# Copyright (C) 2018-2022, Éric Thiébaut.
 #
 
 module BilateralFilter
@@ -44,7 +44,8 @@ differences in coordinates.  There are several possibilities:
   width of the neighborhood along every dimensions of `A`.
 
 Optional argument `T` can be used to force the element type used for (most)
-computations.  This is needed if the element type of `A` is not a real.
+computations.  This argument is needed if the element type of `A` is not a
+real.
 
 See [`bilateralfilter!`](@ref) for an in-place version of this function.
 
@@ -80,11 +81,10 @@ function bilateralfilter!(dst::AbstractArray{<:Real,N},
 end
 
 function bilateralfilter!(::Type{T},
-                          dst::AbstractArray{Td,N},
-                          A::AbstractArray{Ta,N},
+                          dst::AbstractArray{<:Any,N},
+                          A::AbstractArray{<:Any,N},
                           F::Function,
-                          G::Kernel{Tg,N}) where {T<:AbstractFloat, Td, Ta,
-                                                  Tg<:Real, N}
+                          G::Kernel{<:Any,N}) where {T,N}
     # The state is the tuple: (central_value, numerator, denominator).
     return localfilter!(dst, A, Kernel{T}(G),
                         (val) -> (val, zero(T), zero(T)),
@@ -94,25 +94,25 @@ function bilateralfilter!(::Type{T},
 end
 
 function bilateralfilter!(::Type{T},
-                          dst::AbstractArray{Td,N},
-                          A::AbstractArray{Ta,N},
+                          dst::AbstractArray{<:Any,N},
+                          A::AbstractArray{<:Any,N},
                           F::Function,
                           G::Function,
                           B::RectangularBox{N}
-                          ) where {T<:AbstractFloat, Td, Ta, N}
+                          ) where {T,N}
     return bilateralfilter!(T, dst, A, F, Kernel(T, G, B))
 end
 
 function bilateralfilter!(::Type{T},
-                          dst::AbstractArray{Td,N},
-                          A::AbstractArray{Ta,N},
+                          dst::AbstractArray{<:Any,N},
+                          A::AbstractArray{<:Any,N},
                           F::Function,
                           G::Function,
                           width::Integer
-                          ) where {T<:AbstractFloat, Td<:Real, Ta<:Real, N}
+                          ) where {T,N}
     (width > 0 && isodd(width)) || throw(ArgumentError(
         "width of neighborhood must be at least one and odd"))
-    h = Int(width) >> 1
+    h = Int(width) >> 1 # half-width
     I = CartesianIndex(ntuple(i -> h, Val(N)))
     B = RectangularBox{N}(-I, I)
     return bilateralfilter!(T, dst, A, F, G, B)
@@ -120,11 +120,10 @@ end
 
 # Range filter specifed by its standard deviation.
 function bilateralfilter!(::Type{T},
-                          dst::AbstractArray{Td,N},
-                          A::AbstractArray{Ta,N},
+                          dst::AbstractArray{<:Any,N},
+                          A::AbstractArray{<:Any,N},
                           σr::Real,
-                          args...) where {T<:AbstractFloat,
-                                          Td<:Real, Ta<:Real, N}
+                          args...) where {T,N}
     @assert isfinite(σr) && σr > 0
     qr = _gaussfactor(T, σr)
     return bilateralfilter!(T, dst, A,
@@ -133,31 +132,25 @@ end
 
 # Distance filter specifed by its standard deviation and the neighborhood.
 function bilateralfilter!(::Type{T},
-                          dst::AbstractArray{Td,N},
-                          A::AbstractArray{Ta,N},
+                          dst::AbstractArray{<:Any,N},
+                          A::AbstractArray{<:Any,N},
                           F::Function,
-                          σs::Real, B) where {T<:AbstractFloat,
-                                              Td<:Real, Ta<:Real, N}
+                          σs::Real, B) where {T,N}
     @assert isfinite(σs) && σs > 0
     qs = _gaussfactor(T, σs)
     return bilateralfilter!(T, dst, A, F, (i) -> _gausswindow(qs, i), B)
 end
 
-_gaussfactor(::Type{T}, σ::Real) where {T<:AbstractFloat} =
-    -1/(2*convert(T, σ)^2)
+_gaussfactor(::Type{T}, σ) where {T} = -1/(2*convert(T,σ)^2)
 
 # η = -1/2σ²
-_gausswindow(η::T, I::CartesianIndex{N}) where {T<:AbstractFloat,N} =
-    exp(sum((k) -> I[k]^2, 1:N)*η)
+_gausswindow(η, I::CartesianIndex{N}) where {N} =
+    exp(sum((k) -> I[k]^2, 1:N)*η) # FIXME: use @generated
 
-_gausswindow(η::T, x::Real, x0::Real) where {T<:AbstractFloat} =
-    _gausswindow(η, x - x0)
+_gausswindow(η, x::T, x0::T) where {T} = _gausswindow(η, x - x0)
+_gausswindow(η::T, x) where {T} = exp(convert(T,x)^2*η)
 
-_gausswindow(η::T, x::Real) where {T<:AbstractFloat} =
-    exp(convert(T, x*x)*η)
-
-function _update(v::Tuple{V,T,T}, val::V,
-                 ws::T, wr::T) where {V, T<:AbstractFloat}
+function _update(v::Tuple{V,T,T}, val::V, ws::T, wr::T) where {V,T}
     w = wr*ws
     return (v[1], v[2] + convert(T, val)*w, v[3] + w)
 end
