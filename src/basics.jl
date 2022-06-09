@@ -148,21 +148,64 @@ end
 # UTILITIES
 
 """
-    check_indices(A, B)
+    check_indices(A...)
 
-throws an exception if arrays `A` and `B` have different indices.
+throws an exception if arrays `A...` have different indices.
+
+---
+
+    check_indices(Bool, [I,] A...)
+
+yields whether arrays `A...` all have the same indices, or all have indices
+`I` if specified.
 
 """
-function check_indices(A::AbstractArray, B::AbstractArray)
+check_indices(A::AbstractArray) = nothing
+
+function check_indices(A::AbstractArray, B::AbstractArray...)
     throw(DimensionMismatch(
         "arrays have different number of dimensions"))
 end
 
-function check_indices(A::AbstractArray{<:Any,N},
-                       B::AbstractArray{<:Any,N}) where {N}
-    axes(A) == axes(B) || throw(DimensionMismatch(
+# This version is forced to be in-lined to unroll the recursion.
+@inline function check_indices(A::AbstractArray{<:Any,N},
+                               B::AbstractArray{<:Any,N}...) where {N}
+    check_indices(Bool, axes(A), B...) || throw(DimensionMismatch(
         "arrays have different indices"))
+    return nothing
 end
+
+check_indices(::Type{Bool}) = false
+check_indices(::Type{Bool}, A::AbstractArray) = true
+check_indices(::Type{Bool}, A::AbstractArray...) = false
+
+# This version is forced to be in-lined to unroll the recursion.
+@inline function check_indices(::Type{Bool},
+                               A::AbstractArray{<:Any,N},
+                               B::AbstractArray{<:Any,N}...) where {N}
+    return check_indices(Bool, axes(A), B...)
+end
+
+function check_indices(::Type{Bool},
+                       I::Tuple{Vararg{AbstractUnitRange{<:Integer}}},
+                       A::AbstractArray...)
+    return false
+end
+
+# This version is forced to be in-lined to unroll the recursion.
+@inline function check_indices(::Type{Bool},
+                               I::NTuple{N,AbstractUnitRange{<:Integer}},
+                               A::AbstractArray{<:Any,N},
+                               B::AbstractArray{<:Any,N}...) where {N}
+    return axes(A) == I && check_indices(Bool, I, B...)
+end
+
+function check_indices(::Type{Bool},
+                       I::NTuple{N,AbstractUnitRange{<:Integer}},
+                       A::AbstractArray{<:Any,N}) where {N}
+    return axes(A) == I
+end
+
 
 #------------------------------------------------------------------------------
 # CONVERSIONS

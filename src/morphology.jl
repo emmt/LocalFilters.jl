@@ -69,7 +69,7 @@ function erode!(dst::AbstractArray{T,N},
     if ismmbox(B)
         localfilter!(dst, A, :, min, axes(B))
     else
-        @assert axes(dst) == axes(A)
+        check_indices(dst, A)
         localfilter!(dst, A, B,
                      (a)     -> typemax(T),
                      (v,a,b) -> b && a < v ? a : v,
@@ -85,7 +85,7 @@ function erode!(dst::AbstractArray{T,N},
     if ismmbox(B)
         localfilter!(dst, A, :, min, axes(B))
     else
-        @assert axes(dst) == axes(A)
+        check_indices(dst, A)
         localfilter!(dst, A, Kernel{T}(B),
                      (a)     -> typemax(T),
                      (v,a,b) -> min(v, a - b),
@@ -120,7 +120,7 @@ function dilate!(dst::AbstractArray{T,N},
     if ismmbox(B)
         localfilter!(dst, A, :, max, axes(B))
     else
-        @assert axes(dst) == axes(A)
+        check_indices(dst, A)
         localfilter!(dst, A, B,
                      (a)     -> typemin(T),
                      (v,a,b) -> b && a > v ? a : v,
@@ -136,7 +136,7 @@ function dilate!(dst::AbstractArray{T,N},
     if ismmbox(B)
         localfilter!(dst, A, :, max, axes(B))
     else
-        @assert axes(dst) == axes(A)
+        check_indices(dst, A)
         localfilter!(dst, A, Kernel{T}(B),
                      (a)     -> typemin(T),
                      (v,a,b) -> max(v, a + b),
@@ -162,7 +162,7 @@ function localextrema!(Amin::AbstractArray{T,N},
                        Amax::AbstractArray{T,N},
                        A::AbstractArray{T,N},
                        B::RectangularBox{N}) where {T,N}
-    @assert axes(Amin) == axes(Amax) == axes(A)
+    check_indices(Amin, Amax, A)
     localfilter!((Amin, Amax), A, B,
                  (a)     -> (typemax(T),
                              typemin(T)),
@@ -175,7 +175,7 @@ function localextrema!(Amin::AbstractArray{T,N},
                        Amax::AbstractArray{T,N},
                        A::AbstractArray{T,N},
                        B::Kernel{Bool,N}) where {T,N}
-    @assert axes(Amin) == axes(Amax) == axes(A)
+    check_indices(Amin, Amax, A)
     localfilter!((Amin, Amax), A, B,
                  (a)     -> (typemax(T),
                              typemin(T)),
@@ -189,7 +189,7 @@ function localextrema!(Amin::AbstractArray{T,N},
                        A::AbstractArray{T,N},
                        B::Kernel{K,N}) where {T<:AbstractFloat,
                                               K<:AbstractFloat,N}
-    @assert axes(Amin) == axes(Amax) == axes(A)
+    check_indices(Amin, Amax, A)
     localfilter!((Amin, Amax), A, Kernel{T}(B),
                  (a)     -> (typemax(T),
                              typemin(T)),
