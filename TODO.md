@@ -1,3 +1,7 @@
+* Allow for complex element type (e.g. in the bilateral filter).
+
+* Deprecate syntax `Kernel(T,G,B)` in favor of `Kernel{T}(G,B)`.
+
 * Use `@checkbounds` etc. for bound checking when indexing neighborhoods
   (cf. doc. in "Methods on a neighborhood").
 
