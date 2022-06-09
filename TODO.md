@@ -1,6 +1,7 @@
-* Allow for complex element type (e.g. in the bilateral filter).
+* Make `CartesianBox` an official package and replace `RectangularBox` by
+  `CartesianBox`.
 
-* Deprecate syntax `Kernel(T,G,B)` in favor of `Kernel{T}(G,B)`.
+* Allow for complex element type (e.g. in the bilateral filter).
 
 * Use `@checkbounds` etc. for bound checking when indexing neighborhoods
   (cf. doc. in "Methods on a neighborhood").

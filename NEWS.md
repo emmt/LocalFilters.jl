@@ -1,3 +1,12 @@
+# New features and user visible changes in version 1.2.0
+
+- Syntax `Kernel(T,G,B)` has been deprecated in favor of `Kernel{T}(G,B)`.
+
+- Scalar and array element type restrictions have been relaxed for most methods
+  in the bilateral filter.  This is to let users apply these methods to
+  non-standard types.
+
+
 # New features and user visible changes in version 1.1.0
 
 - Drop compatibility with Julia versions < 1.0; `Compat` only needed to run

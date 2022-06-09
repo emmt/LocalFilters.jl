@@ -8,7 +8,7 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2017-2020, Éric Thiébaut.
+# Copyright (C) 2017-2022, Éric Thiébaut.
 #
 
 """
@@ -69,7 +69,7 @@ type is to fully qualify the type of the array of coefficients).
 
 A kernel is built as:
 
-    B = Kernel([T,] C, start=defaultstart(C))
+    B = Kernel{T}(C, start=defaultstart(C))
 
 where `C` is the array of coefficients (which can be retrieved by `coefs(B)`)
 and `start` the initial `CartesianIndex` for indexing the kernel (which can be
@@ -84,12 +84,12 @@ where `off = initialindex(C) - initialindex(B)`.
 If `start` is omitted, its value is set so that the *origin* (whose index is
 `zero(CartesianIndex{N})` with `N` the number of dimensions) of the kernel
 indices is at the geometric center of the array of coefficients (see
-[`LocalFilters.defaultstart`](@ref)).  Optional argument `T` is to impose the
-type of the coefficients.
+[`LocalFilters.defaultstart`](@ref)).  Optional type parameter `T` is to impose
+the type of the coefficients.
 
 To convert the element type of the coefficients of an existing kernel, do:
 
-    Kernel(T, K)
+    Kernel{T}(K)
 
 which yields a kernel whose coefficients are those of the kernel `K`
 converted to type `T`.
@@ -138,45 +138,51 @@ struct Kernel{T,N,A<:AbstractArray{T,N}} <: Neighborhood{N}
 end
 
 """
+    IndexInterval
 
-`IndexInterval` is an union of the types of any argument suitable to specify an
-interval of indices along a dimension (that is, an integer or an integer valued
-unit range).
+is an union of the types of any argument suitable to specify an interval of
+indices along a dimension (that is, an integer or an integer valued unit
+range).
 
 """
 const IndexInterval = Union{Integer,AbstractUnitRange{<:Integer}}
 
 """
+    Dimensions{N}
 
-`Dimensions{N}` is an `N`-tuple of integers, that is the type of an argument
-suitable for specifying a list of dimensions.
+is an `N`-tuple of integers, that is the type of an argument suitable for
+specifying a list of dimensions.  It is less restrictive than `Dims{N}` which
+is an `N`-tuple of `Int`.
 
 """
 const Dimensions{N} = NTuple{N,Integer}
 
 """
+    UnitIndexRange
 
-`UnitIndexRange` is any integer valued range with unit step, that is the type
-of an argument suitable for specifying a range of contiguous indices.
+is any integer valued range with unit step, that is the type of an argument
+suitable for specifying a range of contiguous indices.
 
 """
 const UnitIndexRange = AbstractUnitRange{<:Integer}
 
 """
+    UnitIndexRanges{N}
 
-`UnitIndexRanges{N}` is an `N`-tuple of `UnitIndexRange`, that is the type of
-an argument suitable for specifying a list of Cartesian indices.
+is an `N`-tuple of `UnitIndexRange`, that is the type of an argument suitable
+for specifying a list of Cartesian indices.
 
 """
 const UnitIndexRanges{N} = NTuple{N,UnitIndexRange}
 
 """
+    CartesianRegion{N}
 
-`CartesianRegion{N}` is an union of the types of anything suitable to define a
-Cartesian region in `N` dimensions.  That is, an interval of Cartesian indices
-in `N` dimensions.  Methods [`initialindex`](@ref), [`finalindex`](@ref),
-[`limits`](@ref) and [`cartesianregion`](@ref) can be applied to anything
-whose type belongs to `CartesianRegion`.
+is an union of the types of anything suitable to define a Cartesian region in
+`N` dimensions.  That is, an interval of Cartesian indices in `N` dimensions.
+Methods [`initialindex`](@ref), [`finalindex`](@ref), [`limits`](@ref) and
+[`cartesianregion`](@ref) can be applied to anything whose type belongs to
+`CartesianRegion`.
 
 """
 const CartesianRegion{N} = Union{NTuple{2,CartesianIndex{N}},

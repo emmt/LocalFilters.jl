@@ -100,7 +100,7 @@ function bilateralfilter!(::Type{T},
                           G::Function,
                           B::RectangularBox{N}
                           ) where {T,N}
-    return bilateralfilter!(T, dst, A, F, Kernel(T, G, B))
+    return bilateralfilter!(T, dst, A, F, Kernel{T}(G, B))
 end
 
 function bilateralfilter!(::Type{T},

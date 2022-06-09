@@ -208,6 +208,7 @@ f2(x) = x > 0.5
 
             # Kernel constructors.
             @test Kernel(ker) === ker
+            @test_deprecated Kernel(eltype(A), ker) === ker
             @test identical(Kernel(box), Kernel(ones(Bool, dims)))
             @test identical(Kernel{Bool}(box), Kernel(ones(Bool, dims)))
             @test Kernel(A, initialindex(ker)) === ker

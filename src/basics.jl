@@ -8,7 +8,7 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2017-2020, Éric Thiébaut.
+# Copyright (C) 2017-2022, Éric Thiébaut.
 #
 
 # Extend `CartesianIndices`.
@@ -34,7 +34,6 @@ setindex!(B::Neighborhood, val, inds::Union{Integer,CartesianIndex}...) =
 @inline _length(start::Int, stop::Int) = max(Int(stop) - Int(start) + 1, 0)
 
 """
-
     defaultstart(A) -> I::CartesianIndex
 
 yields the initial (multi-dimensional) index of a rectangular region which has
@@ -47,7 +46,6 @@ defaultstart(A::AbstractArray) =
     CartesianIndex(map(rng -> -(Int(length(rng)) >> 1), axes(A)))
 
 """
-
     initialindex(B) -> Imin::CartesianIndex{N}
     finalindex(B)   -> Imax::CartesianIndex{N}
 
@@ -63,6 +61,7 @@ Any multi-dimensional index `I::CartesianIndex{N}` is in the Cartesian region
 defined `B` if and only if `Imin ≤ I ≤ Imax`.
 
 Also see: [`limits`](@ref).
+
 """
 initialindex(B::Neighborhood) = B.start
 finalindex(B::Neighborhood) = B.stop
@@ -82,11 +81,9 @@ initialindex(inds::NTuple{2,CartesianIndex{N}}) where {N} = inds[1]
 finalindex(inds::NTuple{2,CartesianIndex{N}}) where {N} = inds[2]
 
 """
-
     limits(T::DataType) -> typemin(T), typemax(T)
 
 yields the infimum and supremum of a type `T`.
-
 
     limits(B) -> Imin, Imax
 
@@ -105,7 +102,6 @@ limits(inds::UnitIndexRanges{N}) where {N} =
 limits(inds::NTuple{2,CartesianIndex{N}}) where {N} = inds
 
 """
-
     cartesianregion(args...) -> R
 
 yields the rectangular region (as an instance of `CartesianIndices`) specified
@@ -272,9 +268,9 @@ setindex!(B::Kernel, val, I::CartesianIndex) =
     setindex!(coefs(B), val, I + offset(B))
 
 """
+    LocalFilters.coefs(B)
 
-`LocalFilters.coefs(B)` yields the array of coefficients embedded in
-kernel `B`.
+yields the array of coefficients embedded in kernel `B`.
 
 See also: [`LocalFilters.offset`](@ref).
 
@@ -282,9 +278,10 @@ See also: [`LocalFilters.offset`](@ref).
 coefs(B::Kernel) = B.coefs
 
 """
+    LocalFilters.offset(B)
 
-`LocalFilters.offset(B)` yields the index offset of the array of coefficients
-embedded in kernel `B`.   That is, `B[k] ≡ coefs(B)[k + offset(B)]`.
+yields the index offset of the array of coefficients embedded in kernel `B`.
+That is, `B[k] ≡ coefs(B)[k + offset(B)]`.
 
 See also: [`LocalFilters.coefs`](@ref).
 
@@ -353,7 +350,7 @@ Kernel{T,N}(A::AbstractArray{S,N}, rngs::UnitIndexRange...) where {S,T,N} =
 
 # Another ways to specify the element type of the kernel coefficients is to
 # have their type the first parameter.
-Kernel(::Type{T}, B, args...) where {T} = Kernel{T}(B, args...)
+@deprecate Kernel(T::Type, B, args...) Kernel{T}(B, args...) false
 
 # Methods to convert other neighborhoods.  Beware that booleans mean something
 # specific, i.e. the result is a so-called *flat* structuring element
@@ -416,7 +413,6 @@ strel(::Type{T}, B::RectangularBox) where {T<:AbstractFloat} =
     Kernel(zeros(T, size(B)), initialindex(B))
 
 """
-
     convertcoefs(T, A)
 
 yields an array of kernel coefficients equivalent to array `A` but whose
