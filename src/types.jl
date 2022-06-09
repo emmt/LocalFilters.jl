@@ -69,23 +69,23 @@ type is to fully qualify the type of the array of coefficients).
 
 A kernel is built as:
 
-    B = Kernel{T}(C, start=defaultstart(C))
+    B = Kernel{T}(C, start=default_start(C))
 
 where `C` is the array of coefficients (which can be retrieved by `coefs(B)`)
 and `start` the initial `CartesianIndex` for indexing the kernel (which can be
-retrieved by `initialindex(B)`).  The `start` parameter let the caller choose
-an arbitrary origin for the kernel coefficients; when a filter is applied, the
-following mapping is assumed:
+retrieved by `first_cartesian_index(B)`).  The `start` parameter let the caller
+choose an arbitrary origin for the kernel coefficients; when a filter is
+applied, the following mapping is assumed:
 
     B[k] ≡ C[k + off]
 
-where `off = initialindex(C) - initialindex(B)`.
+where `off = first_cartesian_index(C) - first_cartesian_index(B)`.
 
 If `start` is omitted, its value is set so that the *origin* (whose index is
 `zero(CartesianIndex{N})` with `N` the number of dimensions) of the kernel
 indices is at the geometric center of the array of coefficients (see
-[`LocalFilters.defaultstart`](@ref)).  Optional type parameter `T` is to impose
-the type of the coefficients.
+[`LocalFilters.default_start`](@ref)).  Optional type parameter `T` is to
+impose the type of the coefficients.
 
 To convert the element type of the coefficients of an existing kernel, do:
 
@@ -118,8 +118,8 @@ struct Kernel{T,N,A<:AbstractArray{T,N}} <: Neighborhood{N}
         # The offset between the indices in the kernel `B` and those in the
         # array of coefficients `C` is such that:
         #
-        #     kmin + off = jmin = initialindex(C)
-        #     kmax + off = jmax = finalindex(C)
+        #     kmin + off = jmin = first_cartesian_index(C)
+        #     kmax + off = jmax = last_cartesian_index(C)
         #
         # Hence:
         #
@@ -180,9 +180,9 @@ const UnitIndexRanges{N} = NTuple{N,UnitIndexRange}
 
 is an union of the types of anything suitable to define a Cartesian region in
 `N` dimensions.  That is, an interval of Cartesian indices in `N` dimensions.
-Methods [`initialindex`](@ref), [`finalindex`](@ref), [`limits`](@ref) and
-[`cartesianregion`](@ref) can be applied to anything whose type belongs to
-`CartesianRegion`.
+Methods [`first_cartesian_index`](@ref), [`last_cartesian_index`](@ref),
+[`limits`](@ref) and [`cartesian_region`](@ref) can be applied to anything
+whose type belongs to `CartesianRegion`.
 
 """
 const CartesianRegion{N} = Union{NTuple{2,CartesianIndex{N}},

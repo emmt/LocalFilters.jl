@@ -9,7 +9,7 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2018-2020, Éric Thiébaut.
+# Copyright (C) 2018-2022, Éric Thiébaut.
 #
 
 module Separable
@@ -19,7 +19,7 @@ using ..LocalFilters
 using ..LocalFilters:
     IndexInterval,
     axes,
-    cartesianregion
+    cartesian_region
 
 import ..LocalFilters:
     dilate!,
@@ -215,8 +215,8 @@ function localfilter!(dst::AbstractArray{T,N},
     end
 
     # Get index bounds on other parts of input array A.
-    R1 = cartesianregion(inds[1:d-1])
-    R2 = cartesianregion(inds[d+1:N])
+    R1 = cartesian_region(inds[1:d-1])
+    R2 = cartesian_region(inds[d+1:N])
 
     if kmin == kmax
         # Perform a simple shift: `dst[j] = A[j-k]`.  To allow for in-place

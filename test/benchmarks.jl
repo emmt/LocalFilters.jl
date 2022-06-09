@@ -16,7 +16,7 @@ const AUTORUN = true
 using Compat
 using Compat.Printf
 using LocalFilters
-using LocalFilters: Kernel, limits, cartesianregion, axes
+using LocalFilters: Kernel, limits, cartesian_region, axes
 
 import Base: eltype, ndims, size, length, first, last, tail,
     getindex, setindex!, convert

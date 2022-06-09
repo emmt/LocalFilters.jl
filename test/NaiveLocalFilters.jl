@@ -9,7 +9,7 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2017-2020, Éric Thiébaut.
+# Copyright (C) 2017-2022, Éric Thiébaut.
 #
 
 module NaiveLocalFilters
@@ -22,14 +22,14 @@ using LocalFilters:
     _store!,
     _typeofsum,
     axes,
-    cartesianregion,
+    cartesian_region,
     coefs,
     limits,
     offset
 
 import LocalFilters:
     bottom_hat,
-    cartesianregion,
+    cartesian_region,
     closing,
     convolve!,
     convolve,
@@ -132,7 +132,7 @@ end
                                   imax::CartesianIndex{N},
                                   i::CartesianIndex{N},
                                   off::CartesianIndex{N}) where N
-    cartesianregion(max(imin, i - off), min(imax, i + off))
+    cartesian_region(max(imin, i - off), min(imax, i + off))
 end
 @inline function _cartesianregion(::Val{:Base},
                                   imin::CartesianIndex{N},
@@ -140,7 +140,7 @@ end
                                   i::CartesianIndex{N},
                                   kmin::CartesianIndex{N},
                                   kmax::CartesianIndex{N}) where N
-    cartesianregion(max(imin, i - kmax), min(imax, i - kmin))
+    cartesian_region(max(imin, i - kmax), min(imax, i - kmin))
 end
 
 # "NTuple" variant: use `ntuple()` to expand expressions.
@@ -149,7 +149,7 @@ end
                                   imax::CartesianIndex{N},
                                   i::CartesianIndex{N},
                                   off::CartesianIndex{N}) where N
-    cartesianregion(ntuple(k -> (max(imin[k], i[k] - off[k]) :
+    cartesian_region(ntuple(k -> (max(imin[k], i[k] - off[k]) :
                                  min(imax[k], i[k] + off[k])), N))
 end
 @inline function _cartesianregion(::Val{:NTuple},
@@ -158,7 +158,7 @@ end
                                   i::CartesianIndex{N},
                                   kmin::CartesianIndex{N},
                                   kmax::CartesianIndex{N}) where N
-    cartesianregion(ntuple(k -> (max(imin[k], i[k] - kmax[k]) :
+    cartesian_region(ntuple(k -> (max(imin[k], i[k] - kmax[k]) :
                                  min(imax[k], i[k] - kmin[k])), N))
 end
 
@@ -171,7 +171,7 @@ for N in (1,2,3,4)
                                           imax::CartesianIndex{$N},
                                           i::CartesianIndex{$N},
                                           off::CartesianIndex{$N})
-            cartesianregion(ntuple(k -> (max(imin[k], i[k] - off[k]) :
+            cartesian_region(ntuple(k -> (max(imin[k], i[k] - off[k]) :
                                          min(imax[k], i[k] + off[k])),
                                    Val($N)))
         end
@@ -181,7 +181,7 @@ for N in (1,2,3,4)
                                           i::CartesianIndex{$N},
                                           kmin::CartesianIndex{$N},
                                           kmax::CartesianIndex{$N})
-            cartesianregion(ntuple(k -> (max(imin[k], i[k] - kmax[k]) :
+            cartesian_region(ntuple(k -> (max(imin[k], i[k] - kmax[k]) :
                                          min(imax[k], i[k] - kmin[k])),
                                    Val($N)))
         end
@@ -198,7 +198,7 @@ end
                                   imax::CartesianIndex{N},
                                   i::CartesianIndex{N},
                                   off::CartesianIndex{N}) where N
-    cartesianregion(map(_range, imin.I, imax.I, i.I, off.I))
+    cartesian_region(map(_range, imin.I, imax.I, i.I, off.I))
 end
 @inline function _cartesianregion(::Val{:Map},
                                   imin::CartesianIndex{N},
@@ -206,7 +206,7 @@ end
                                   i::CartesianIndex{N},
                                   kmin::CartesianIndex{N},
                                   kmax::CartesianIndex{N}) where N
-    cartesianregion(map(_range, imin.I, imax.I, i.I, kmin.I, kmax.I))
+    cartesian_region(map(_range, imin.I, imax.I, i.I, kmin.I, kmax.I))
 end
 
 #------------------------------------------------------------------------------
@@ -217,7 +217,7 @@ function localmean!(variant::Val,
                     A::AbstractArray{Ts,N},
                     B::RectangularBox{N}) where {Td,Ts,N}
     @assert axes(dst) == axes(A)
-    R = cartesianregion(A)
+    R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     T = _typeofsum(Ts)
@@ -249,7 +249,7 @@ function erode!(variant::Val,
                 A::AbstractArray{T,N},
                 B::RectangularBox{N}) where {T,N}
     @assert axes(Amin) == axes(A)
-    R = cartesianregion(A)
+    R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     tmax = typemax(T)
@@ -279,7 +279,7 @@ function dilate!(variant::Val,
                  A::AbstractArray{T,N},
                  B::RectangularBox{N}) where {T,N}
     @assert axes(Amax) == axes(A)
-    R = cartesianregion(A)
+    R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     tmin = typemin(T)
@@ -310,7 +310,7 @@ function localextrema!(variant::Val,
                        A::AbstractArray{T,N},
                        B::RectangularBox{N}) where {T,N}
     @assert axes(Amin) == axes(Amax) == axes(A)
-    R = cartesianregion(A)
+    R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     tmin, tmax = limits(T)
@@ -347,7 +347,7 @@ function localmean!(variant::Val,
                     A::AbstractArray{Ts,N},
                     B::Kernel{Bool,N}) where {Td,Ts,N}
     @assert axes(dst) == axes(A)
-    R = cartesianregion(A)
+    R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     ker, off = coefs(B), offset(B)
@@ -371,7 +371,7 @@ function erode!(variant::Val,
                 A::AbstractArray{T,N},
                 B::Kernel{Bool,N}) where {T,N}
     @assert axes(Amin) == axes(A)
-    R = cartesianregion(A)
+    R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     ker, off = coefs(B), offset(B)
@@ -395,7 +395,7 @@ function dilate!(variant::Val,
                  A::AbstractArray{T,N},
                  B::Kernel{Bool,N}) where {T,N}
     @assert axes(Amax) == axes(A)
-    R = cartesianregion(A)
+    R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     ker, off = coefs(B), offset(B)
@@ -420,7 +420,7 @@ function localextrema!(variant::Val,
                        A::AbstractArray{T,N},
                        B::Kernel{Bool,N}) where {T,N}
     @assert axes(Amin) == axes(Amax) == axes(A)
-    R = cartesianregion(A)
+    R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     tmin, tmax = limits(T)
@@ -450,7 +450,7 @@ function localmean!(variant::Val,
                     A::AbstractArray{Ts,N},
                     B::Kernel{Tk,N}) where {Td,Ts,Tk,N}
     @assert axes(dst) == axes(A)
-    R = cartesianregion(A)
+    R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     ker, off = coefs(B), offset(B)
@@ -473,7 +473,7 @@ function erode!(variant::Val,
                 A::AbstractArray{T,N},
                 B::Kernel{T,N}) where {T<:AbstractFloat,N}
     @assert axes(Amin) == axes(A)
-    R = cartesianregion(A)
+    R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     ker, off = coefs(B), offset(B)
@@ -494,7 +494,7 @@ function dilate!(variant::Val,
                  A::AbstractArray{T,N},
                  B::Kernel{T,N}) where {T<:AbstractFloat,N}
     @assert axes(Amax) == axes(A)
-    R = cartesianregion(A)
+    R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     ker, off = coefs(B), offset(B)
@@ -515,7 +515,7 @@ function convolve!(variant::Val,
                    A::AbstractArray{Ts,N},
                    B::Kernel{Tk,N}) where {Td,Ts,Tk,N}
     @assert axes(dst) == axes(A)
-    R = cartesianregion(A)
+    R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     ker, off = coefs(B), offset(B)
@@ -537,7 +537,7 @@ function localextrema!(variant::Val,
                        A::AbstractArray{T,N},
                        B::Kernel{T,N}) where {T<:AbstractFloat,N}
     @assert axes(Amin) == axes(Amax) == axes(A)
-    R = cartesianregion(A)
+    R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     tmin, tmax = limits(T)

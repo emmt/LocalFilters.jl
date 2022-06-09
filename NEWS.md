@@ -6,6 +6,11 @@
   in the bilateral filter.  This is to let users apply these methods to
   non-standard types.
 
+- Rename unexported methods `initialindex`, `finalindex`, `defaultstart`,
+  `cartesianregion`, `convertcoefs`, and `strictfloor` respectively as
+  `first_cartesian_index` and `last_cartesian_index`, `default_start`,
+  `cartesianregion`, `convert_coefs`, and `strictfloor`.
+
 
 # New features and user visible changes in version 1.1.0
 

@@ -258,8 +258,8 @@ end
 #
 #    imin ≤ j ≤ imax   and   kmin ≤ k = i - j ≤ kmax
 #
-# where `imin = initialindex(A)` and `imax = finalindex(A)` are the bounds for
-# `A` while `kmin = initialindex(B)` and `kmax = finalindex(B)` are the bounds
+# where `imin = first_cartesian_index(A)` and `imax = last_cartesian_index(A)` are the bounds for
+# `A` while `kmin = first_cartesian_index(B)` and `kmax = last_cartesian_index(B)` are the bounds
 # for `B`.  The above constraints are identical to:
 #
 #    max(imin, i - kmax) ≤ j ≤ min(imax, i - kmin)
@@ -270,12 +270,12 @@ function localfilter!(dst,
                       initial::Function,
                       update::Function,
                       store::Function) where {T,N}
-    R = cartesianregion(A)
+    R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     @inbounds for i in R
         v = initial(A[i])
-        @simd for j in cartesianregion(max(imin, i - kmax),
+        @simd for j in cartesian_region(max(imin, i - kmax),
                                        min(imax, i - kmin))
             v = update(v, A[j], true)
         end
@@ -311,14 +311,14 @@ function localfilter!(dst,
                       initial::Function,
                       update::Function,
                       store::Function) where {T,K,N}
-    R = cartesianregion(A)
+    R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
     ker, off = coefs(B), offset(B)
     @inbounds for i in R
         v = initial(A[i])
         k = i + off
-        @simd for j in cartesianregion(max(imin, i - kmax),
+        @simd for j in cartesian_region(max(imin, i - kmax),
                                        min(imax, i - kmin))
             v = update(v, A[j], ker[k-j])
         end

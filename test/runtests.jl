@@ -7,8 +7,8 @@ using Compat
 using Test
 using LocalFilters
 using LocalFilters: Neighborhood, RectangularBox, Kernel,
-    axes, initialindex, finalindex, limits, cartesianregion, ball, coefs,
-    ismmbox, strictfloor, _range
+    axes, first_cartesian_index, last_cartesian_index, limits, cartesian_region, ball, coefs,
+    ismmbox, strict_floor, _range
 
 struct Empty{N} <: Neighborhood{N} end
 
@@ -22,22 +22,22 @@ replicate(a, n::Integer) = ntuple(i->a, n)
 compare(a::AbstractArray, b::AbstractArray) = maximum(abs(a - b))
 samevalues(a::AbstractArray, b::AbstractArray) = minimum(a .== b)
 identical(a::RectangularBox{N}, b::RectangularBox{N}) where {N} =
-    (initialindex(a) === initialindex(b) &&
-     finalindex(a) === finalindex(b))
+    (first_cartesian_index(a) === first_cartesian_index(b) &&
+     last_cartesian_index(a) === last_cartesian_index(b))
 identical(a::Kernel{Ta,N}, b::Kernel{Tb,N}) where {Ta,Tb,N} =
     nearlysame(a, b; atol=0, gtol=0)
 identical(a::Neighborhood, b::Neighborhood) = false
 
 function nearlysame(a::Kernel{Ta,N}, b::Kernel{Tb,N};
                     atol=ATOL, gtol=GTOL) where {Ta,Tb,N}
-    initialindex(a) == initialindex(b) || return false
-    finalindex(a) == finalindex(b) || return false
+    first_cartesian_index(a) == first_cartesian_index(b) || return false
+    last_cartesian_index(a) == last_cartesian_index(b) || return false
     if atol == 0 && gtol == 0
-        for i in cartesianregion(a)
+        for i in cartesian_region(a)
             a[i] == b[i] || return false
         end
     else
-        for i in cartesianregion(a)
+        for i in cartesian_region(a)
             ai, bi = a[i], b[i]
             abs(ai - bi) ≤ atol + gtol*max(abs(ai), abs(bi)) || return false
         end
@@ -136,8 +136,8 @@ f2(x) = x > 0.5
             @test _range(Int8(dim)) === _range(dim)
         end
         @test_throws ArgumentError _range(0)
-        @test strictfloor(Int, 5*(1 + eps(Float64))) == 5
-        @test strictfloor(Int, 5.0) == 4
+        @test strict_floor(Int, 5*(1 + eps(Float64))) == 5
+        @test strict_floor(Int, 5.0) == 4
     end
 
     @testset "Neighborhoods" begin
@@ -151,24 +151,24 @@ f2(x) = x > 0.5
             msk = rand(Bool, dims)
             ker = Kernel(A)
 
-            # Test limits(), initialindex() and finalindex().
-            @test initialindex(CartesianIndices(rngs)) === Imin
-            @test finalindex(CartesianIndices(rngs)) === Imax
+            # Test limits(), first_cartesian_index() and last_cartesian_index().
+            @test first_cartesian_index(CartesianIndices(rngs)) === Imin
+            @test last_cartesian_index(CartesianIndices(rngs)) === Imax
             @test limits(CartesianIndices(rngs)) === (Imin, Imax)
-            @test initialindex(box) === Imin
-            @test finalindex(box) === Imax
+            @test first_cartesian_index(box) === Imin
+            @test last_cartesian_index(box) === Imax
             @test limits(box) === (Imin, Imax)
-            @test initialindex(A) === oneunit(CartesianIndex{N})
-            @test finalindex(A) === CartesianIndex(size(A))
+            @test first_cartesian_index(A) === oneunit(CartesianIndex{N})
+            @test last_cartesian_index(A) === CartesianIndex(size(A))
             @test limits(A) === (oneunit(CartesianIndex{N}),
                                  CartesianIndex(size(A)))
 
-            # Test cartesianregion().
+            # Test cartesian_region().
             region = CartesianIndices(rngs)
-            @test cartesianregion(Imin,Imax) === region
-            @test cartesianregion(CartesianIndices(rngs)) === region
-            @test cartesianregion(box) === region
-            @test cartesianregion(A) === CartesianIndices(A)
+            @test cartesian_region(Imin,Imax) === region
+            @test cartesian_region(CartesianIndices(rngs)) === region
+            @test cartesian_region(box) === region
+            @test cartesian_region(A) === CartesianIndices(A)
 
             # Neighborhood constructors.
             @test Neighborhood(box) === box
@@ -211,11 +211,11 @@ f2(x) = x > 0.5
             @test_deprecated Kernel(eltype(A), ker) === ker
             @test identical(Kernel(box), Kernel(ones(Bool, dims)))
             @test identical(Kernel{Bool}(box), Kernel(ones(Bool, dims)))
-            @test Kernel(A, initialindex(ker)) === ker
+            @test Kernel(A, first_cartesian_index(ker)) === ker
             @test Kernel(A, rngs) === ker
             @test Kernel(A, rngs...) === ker
             @test Kernel(A, CartesianIndices(ker)) === ker
-            off = initialindex(A) - initialindex(ker)
+            off = first_cartesian_index(A) - first_cartesian_index(ker)
             @test identical(Kernel{eltype(A)}(i -> f1(A[off + i]),
                                               CartesianIndices(ker)),
                             Kernel(map(f1, A)))
@@ -265,10 +265,10 @@ f2(x) = x > 0.5
             # Test reverse().
             revbox = reverse(box)
             revker = reverse(ker)
-            @test initialindex(revbox) === -finalindex(box)
-            @test finalindex(revbox) === -initialindex(box)
-            @test initialindex(revker) === -finalindex(ker)
-            @test finalindex(revker) === -initialindex(ker)
+            @test first_cartesian_index(revbox) === -last_cartesian_index(box)
+            @test last_cartesian_index(revbox) === -first_cartesian_index(box)
+            @test first_cartesian_index(revker) === -last_cartesian_index(ker)
+            @test last_cartesian_index(revker) === -first_cartesian_index(ker)
             @test samevalues(coefs(revker), reversealldims(coefs(ker)))
         end
     end
