@@ -13,7 +13,7 @@
 
 module BilateralFilter
 
-export bilateralfilter!, bilateralfilter!
+export bilateralfilter!, bilateralfilter
 
 using ..LocalFilters
 using ..LocalFilters: Neighborhood, RectangularBox, Kernel, axes, _store!
