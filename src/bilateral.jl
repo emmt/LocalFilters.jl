@@ -68,7 +68,9 @@ differences in coordinates.  There are several possibilities:
   where to apply the distance filter function, they can be a
   [`Neighborhood`](@ref) object such as a [`RectangularBox`](@ref) or anything
   that may defined a neighborhood such as an odd integer assumed to be the
-  width of the neighborhood along every dimensions of `A`.
+  width of the neighborhood along every dimensions of `A`.  If a standard
+  deviation `σ` is specified for `G` with no subsequent arguments, a default
+  window of radius `3σ` is assumed.
 
 Optional argument `T` can be used to force the element type used for (most)
 computations.  This argument is needed if the element type of `A` is not a
@@ -162,12 +164,16 @@ function bilateralfilter!(::Type{T},
                           dst::AbstractArray{<:Any,N},
                           A::AbstractArray{<:Any,N},
                           F::Function,
-                          σs::Real, B) where {T,N}
+                          σs::Real,
+                          B = default_width(σs)) where {T,N}
     (isfinite(σs) && σs > 0) || throw(ArgumentError(
         "standard deviation must be finite and positive"))
     G = GaussianWindow{T}(σs)
     return bilateralfilter!(T, dst, A, F, G, B)
 end
+
+# Default window width for a Gaussian kernel with given standard deviation σ.
+default_width(σ::Real) = 2*round(Int, 3σ) + 1
 
 function update(v::Tuple{V,T,T}, val::V, ws::T, wr::T) where {V,T}
     w = wr*ws

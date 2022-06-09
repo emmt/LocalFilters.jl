@@ -1,3 +1,9 @@
+# New features and user visible changes in version 1.2.1
+
+- A default window of width `2*round(Int,3σ)+1` for the spatial filter in the
+  bilateral filter if a Gaussian spatial filter of standard deviation `σ` is
+  chosen.
+
 # New features and user visible changes in version 1.2.0
 
 - Scalar and array element type restrictions have been relaxed for most filter

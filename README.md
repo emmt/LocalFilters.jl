@@ -74,11 +74,11 @@ available filters are:
   of `B` is `eltype(B)` is `Bool`;
 
 * `bilateralfilter(A,F,G,B)` performs a bilateral filtering of array `A` with
-  `F` the range kernel for smoothing differences in values, `G` the
-  spatial kernel for smoothing differences in coordinates, and `B` the
-  neighborhood.  Alternatively one can specify the range and spatial parameters
-  `bilateralfilter(A,σr,σs,B)` for using Gaussian kernels with standard
-  deviations `σr` and `σs`.  (See:
+  `F` the range kernel for smoothing differences in values, `G` the spatial
+  kernel for smoothing differences in coordinates, and `B` the neighborhood.
+  Alternatively one can specify the range and spatial parameters
+  `bilateralfilter(A,σr,σs,B=2*round(Int,3σs)+1)` for using Gaussian kernels
+  with standard deviations `σr` and `σs`.  (See:
   https://en.wikipedia.org/wiki/Bilateral_filter.)
 
 
