@@ -97,12 +97,14 @@ region defined by `B`.
 Also see: [`first_cartesian_index`](@ref) and [`last_cartesian_index`](@ref).
 
 """
-limits(::Type{T}) where {T} = typemin(T), typemax(T)
+limits(T::Type) = (typemin(T), typemax(T))
 limits(A::AbstractArray) = limits(axes(A)) # provides a slight optimization?
-limits(B::Neighborhood) = first_cartesian_index(B), last_cartesian_index(B)
-limits(R::CartesianIndices) = first_cartesian_index(R), last_cartesian_index(R)
-limits(inds::UnitIndexRanges{N}) where {N} =
-    first_cartesian_index(inds), last_cartesian_index(inds)
+limits(B::Neighborhood) = (first_cartesian_index(B),
+                           last_cartesian_index(B))
+limits(R::CartesianIndices) = (first_cartesian_index(R),
+                               last_cartesian_index(R))
+limits(inds::UnitIndexRanges) = (first_cartesian_index(inds),
+                                 last_cartesian_index(inds))
 limits(inds::NTuple{2,CartesianIndex{N}}) where {N} = inds
 
 """
