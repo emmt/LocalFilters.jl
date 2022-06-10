@@ -82,7 +82,7 @@ function localmean!(dst::AbstractArray{<:Any,N},
 end
 
 """
-    store!(A, I, x)
+    LocalFilters.store!(A, I, x)
 
 stores value `x` in array `A` at index `I`, taking care of rounding `x`
 if it is of floating-point type while the elements of `A` are integers.
@@ -99,7 +99,7 @@ end
 
 
 """
-    type_of_sum(T)
+    LocalFilters.type_of_sum(T)
 
 yields a numerical type suitable for storing a sum of elements of type `T`.
 
@@ -179,39 +179,47 @@ function convolve!(dst::AbstractArray{<:Any,N},
 end
 
 """
-# General local filters
-
-A local filtering operation can be performed by calling:
-
     localfilter!(dst, A, B, initial, update, store) -> dst
 
-where `dst` is the destination, `A` is the source, `B` defines the
-neighborhood, `initial`, `update` and `store` are three functions whose
-purposes are explained by the following pseudo-code to implement the local
-operation:
+overwrites the destination `dst` with the result of a local filter applied to
+the source `A`, on a relative neighborhood defined by `B`, and implemented by
+the functions `initial`, `update`, and `store`.  The purpose of these functions
+is explained by the following pseudo-code implementing the local operation:
 
     for i ∈ Sup(A)
         v = initial(A[i])
-        for j ∈ Sup(A) and i - j ∈ Sup(B)
+        for j ∈ Sup(A) ∩ (i - Sup(B))
             v = update(v, A[j], B[i-j])
         end
         store(dst, i, v)
     end
 
-where `A` `Sup(A)` yields the support of `A` (that is the set of indices in
-`A`) and likely `Sup(B)` for `B`.
+where `Sup(A)` denotes the support of `A` (that is the set of indices in `A`)
+and `i - Sup(B)` denotes the set of indices `j` such that `i - j ∈ Sup(B)` with
+`Sup(B)` the support of `B`.  In other words, `j ∈ Sup(A) ∩ (i - Sup(B))` means
+all indices `j` such that `j ∈ Sup(A)` and `i - j ∈ Sup(B)` so that `A[j]` and
+`B[i-j]` are in-bounds.
 
-For instance, to compute a local minimum (that is, an *erosion*):
+!!! warning
+    Because the result of an elementary operation can be something else than
+    just a scalar, the loop(s) in `localfilter!` are performed without bound
+    checking of the destination and it is the caller's responsibility to insure
+    that the destination have the correct sizes.
+
+For example, implementing a local minimum filter (that is, an *erosion*), is as
+simple as:
 
     localfilter!(dst, A, B,
-                 (a)     -> typemax(T),
+                 (a)     -> typemax(a),
                  (v,a,b) -> min(v,a),
-                 (d,i,v) -> d[i] = v)
+                 (d,i,v) -> @inbounds(d[i] = v))
 
-**Important:** Because the result of an elementary operation can be something
-else than just a scalar, the loop(s) in `localfilter!` are performed without
-bound checking of the destination and it is the caller's responsability to
-insure that the destination have the correct sizes.
+As another example, implementing a convolution by `B` writes:
+
+    localfilter!(dst, A, B,
+                 (a)     -> zero(a),
+                 (v,a,b) -> v + a*b,
+                 (d,i,v) -> @inbounds(d[i] = v))
 
 """
 function localfilter!(dst, A::AbstractArray{T,N}, B, initial::Function,

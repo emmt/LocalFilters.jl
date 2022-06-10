@@ -285,7 +285,7 @@ smaller than `R`.  For instance:
 top_hat(bitmap, 3, 1)
 ```
 
-may be used to detect text or lines in a bimap image.
+may be used to detect text or lines in a bitmap image.
 
 The in-place versions:
 
@@ -298,7 +298,7 @@ apply the top-hat filter on the source `src` and store the result in the
 destination `dst` using `wrk` as a workspace array.  These 3 arguments must
 be similar but different arrays.  The destination `dst` is returned.
 
-See also [`dilate`](@ref), [`closing`](@ref) and [`morph_enhance`](@ref).
+See also [`dilate`](@ref) and [`closing`](@ref).
 
 """
 top_hat(a, r=3) = top_hat!(similar(a), similar(a), a, r)

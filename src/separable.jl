@@ -1,7 +1,7 @@
 #
 # separable.jl --
 #
-# Implementation of efficient separables filters by means of the van
+# Implementation of efficient separable filters by means of the van
 # Herk-Gil-Werman algorithm.
 #
 #------------------------------------------------------------------------------
@@ -40,10 +40,11 @@ Herk-Gil-Werman algorithm to filter array `A` along dimension(s) `dims` with
 (associative) binary operation `op` and contiguous structuring element(s)
 defined by the interval(s) `rngs`.  Optional argument `w` is a workspace array
 which is automatically allocated if not provided; otherwise, it must be a
-vector of same element type as `A` which is resized (with [`resize!`](@ref)) as
-needed.  The destination `dst` must have the same indices as the source `A`
-(see [`axes`](@ref)).  Operation can be done in-place; that is, `dst` and `A`
-can be the same.
+vector with the same element type as `A` which is resized as needed (by calling
+the `resize!` method).  The destination `dst` must have the same indices as the
+source `A` (that is, `axes(dst) == axes(A)`).  Operation can be done in-place
+and `dst` and `A` can be the same; this is the default behavior if `dst` is not
+specified.
 
 Argument `dims` specifies along which dimension(s) of `A` the filter is to be
 applied, it can be a single integer, several integers or a colon `:` to specify
@@ -51,14 +52,14 @@ all dimensions.  Dimensions are processed in the order given by `dims` (the
 same dimension may appear several times) and there must be a matching interval
 in `rngs` to specify the structuring element (except that if `rngs` is a single
 interval, it is used for every dimension in `dims`).  An interval is either an
-integer or an integer unit range in the form `kmin:kmax` (an interval specified
-as a single integer, say `k`, is the same as specifying `k:k`).
+integer or an integer valued unit range in the form `kmin:kmax` (an interval
+specified as a single integer, say `k`, is the same as specifying `k:k`).
 
 Assuming mono-dimensional arrays `A` and `dst`, the single filtering pass:
 
     localfilter!(dst, A, :, op, rng)
 
-yields:
+amount to computing:
 
     dst[j] = A[j-kmax] ⋄ A[j-kmax+1] ⋄ A[j-kmax+2] ⋄ ... ⋄ A[j-kmin]
 
@@ -68,7 +69,7 @@ for all `j ∈ [first(axes(A,1)):last(axes(A,1))]`, with `x ⋄ y = op(x, y)`,
 operate a simple shift by `k` along the corresponding dimension and has no
 effects if `k = 0`.  This can be exploited to not filter some dimension(s).
 
-The out-place version, allocates the destination array and is called as:
+The out-of-place version, allocates the destination array and is called as:
 
     localfilter([T,] A, dims, op, rngs [, w])
 
@@ -87,7 +88,7 @@ dimension.  For instance, assuming `A` is a three-dimensional array:
 
     localfilter!(A, :, max, (-3:3, 0, -4:4))
 
-overwrites `A` its *morphological dilation* (*i.e.* local maximum) in a
+overwrites `A` by its *morphological dilation* (*i.e.* local maximum) in a
 centered local neighborhood of size `7×1×9` (nothing is done along the second
 dimension).  The same result may be obtained with:
 
@@ -95,8 +96,8 @@ dimension).  The same result may be obtained with:
 
 where the second dimension is omitted from the list of dimensions.
 
-The *local average* of the two-dimensional array `A` on a centered
-structuring element of size 11×11 can be computed as:
+The *local average* of the two-dimensional array `A` on a centered moving
+window of size 11×11 can be computed as:
 
     localfilter(A, :, +, (-5:5, -5:5))*(1/11)
 
@@ -117,10 +118,10 @@ array and then all other passes in-place on the destination array.
 To apply the van Herk-Gil-Werman algorithm, the structuring element must be
 separable along the dimensions and its components must be contiguous.  In other
 words, the algorithm is only applicable for `N`-dimensional rectangular
-neighborhoods.  The structuring element may however be off-centered by
-arbitrary offsets along each dimension.
+neighborhoods, so-called *hyperrectangles*.  The structuring element may
+however be off-centered by arbitrary offsets along each dimension.
 
-To take into account boundary conditions (for now only nearest neighborhood is
+To take into account boundary conditions (for now, only nearest neighbor is
 implemented) and allow for in-place operation, the algorithm allocates a
 workspace array.
 

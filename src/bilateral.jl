@@ -21,7 +21,7 @@ using ..LocalFilters: Neighborhood, RectangularBox, Kernel, axes, store!
 using Base: @propagate_inbounds
 
 """
-    GaussianWindow{T}(σ) -> f
+    LocalFilters.BilateralFilter.GaussianWindow{T}(σ) -> f
 
 yields a functor `f` with the shape of a Gaussian of standard deviation `σ` but
 with a peak value of one, i.e. `f(0) -> 1`.  The functor `f` can be applied to
@@ -46,7 +46,7 @@ GaussianWindow(σ::Real) = GaussianWindow{float(typeof(σ))}(σ)
 
 
 """
-    bilateralfilter([T,] A, F, G, ...)
+    bilateralfilter([T=float(eltype(A)),] A, F, G, ...)
 
 yields the result of applying the bilateral filter on array `A`.
 
@@ -70,16 +70,15 @@ differences in coordinates.  There are several possibilities:
   that may defined a neighborhood such as an odd integer assumed to be the
   width of the neighborhood along every dimensions of `A`.  If a standard
   deviation `σ` is specified for `G` with no subsequent arguments, a default
-  window of radius `3σ` is assumed.
+  window of size `±3σ` is assumed.
 
 Optional argument `T` can be used to force the element type used for (most)
 computations.  This argument is needed if the element type of `A` is not a
 real.
 
-See [`bilateralfilter!`](@ref) for an in-place version of this function.
-
-See [wikipedia](https://en.wikipedia.org/wiki/Bilateral_filter) for a
-description of the bilateral filter.
+See [`bilateralfilter!`](@ref) for an in-place version of this function and see
+[Wikipedia](https://en.wikipedia.org/wiki/Bilateral_filter) for a description
+of the bilateral filter.
 
 """
 bilateralfilter(A::AbstractArray{<:Real}, args...) =
@@ -90,15 +89,13 @@ bilateralfilter(T::Type, A::AbstractArray, args...) =
     bilateralfilter!(T, similar(A, T), A, args...)
 
 """
-    bilateralfilter!([T,] dst, A, F, G, ...) -> dst
+    bilateralfilter!([T=float(eltype(A)),] dst, A, F, G, ...) -> dst
 
 overwrites `dst` with the result of applying the bilateral filter on array `A`
 and returns `dst`.
 
 See [`bilateralfilter`](@ref) for a description of the other arguments than
-`dst`.
-
-See [wikipedia](https://en.wikipedia.org/wiki/Bilateral_filter) for a
+`dst` and see [Wikipedia](https://en.wikipedia.org/wiki/Bilateral_filter) for a
 description of the bilateral filter.
 
 """
