@@ -460,13 +460,18 @@ f2(x) = x > 0.5
 
     # Bilateral filter.
     @testset "Bilateral filter" begin
-        A = randn(Float64, 128, 200)
-        box = RectangularBox{2}(5)
-        B1 = bilateralfilter(A, 4, 3, box)
-        B2 = bilateralfilter(Float32, A, 4, 3, 5)
-        B3 = bilateralfilter!(similar(Array{Float32}, axes(A)), A, 4, 3, box)
-        @test similarvalues(B1, B2; atol=0, gtol=8*eps(Float32))
-        @test similarvalues(B2, B3; atol=0, gtol=4*eps(Float32))
+        A = randn(Float64, 128, 100)
+        σr = 1.2
+        σs = 2.5
+        width = LocalFilters.BilateralFilter.default_width(σs)
+        box = RectangularBox{2}(width)
+        B0 = bilateralfilter(A, σr, σs)
+        B1 = bilateralfilter(A, σr, σs, box)
+        B2 = bilateralfilter(Float32, A, σr, σs, width)
+        B3 = bilateralfilter!(similar(Array{Float32}, axes(A)), A, σr, σs, box)
+        @test similarvalues(B1, B0; atol=0, gtol=8*eps(Float32))
+        @test similarvalues(B2, B0; atol=0, gtol=8*eps(Float32))
+        @test similarvalues(B3, B0; atol=0, gtol=4*eps(Float32))
     end
 end
 
