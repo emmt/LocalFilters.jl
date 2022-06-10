@@ -14,7 +14,7 @@ module LocalFiltersBenchmarks
 const AUTORUN = true
 
 using Compat
-using Compat.Printf
+using Printf
 using LocalFilters
 using LocalFilters: Kernel, limits, cartesian_region, axes
 
@@ -68,7 +68,7 @@ if AUTORUN
     box = RectangularBox(3,5)
     rngs = (-1:1, -2:2)
     mask = Kernel(box)
-    kern = Kernel(eltype(a), ones(size(box)))
+    kern = Kernel{eltype(a)}(ones(size(box)))
     a0 = similar(a)
     a1 = similar(a)
     a2 = similar(a)
