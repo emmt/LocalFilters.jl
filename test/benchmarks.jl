@@ -63,8 +63,10 @@ function checkresult(tst::Bool)
 end
 
 if AUTORUN
+    T = Float64
+    dims = (64, 81)
     n = 1000
-    a = rand(62,81)
+    a = rand(T, dims)
     box = RectangularBox(3,5)
     rngs = (-1:1, -2:2)
     mask = Kernel(box)
@@ -87,7 +89,7 @@ if AUTORUN
             @printf "   Variant %-10s (" v
             checkresult(samevalues(a1, a0))
             print("): ")
-            @time for i in 1:n; erode!(Val(v), a0, a, B); end
+            @time for i in 1:n; erode!(alg, a0, a, B); end
         end
         if B === box
             erode!(a1, a, :, rngs)

@@ -187,3 +187,29 @@ const CartesianRegion{N} = Union{NTuple{2,CartesianIndex{N}},
                                  UnitIndexRanges{N},
                                  Neighborhood{N},
                                  CartesianIndices{N}}
+
+"""
+    ConstantProducer(val)
+
+yields a functor object which, when called as a function with any number of
+arguments of any types, always yields the value `val`.
+
+This is useful to avoid closures which are quite inefficient and thus have a
+strong impact on performances when called repeatedly in loops.  Typically when
+calling [`localfilter!`](@ref) with an initializer whose value is a constant
+but given by an anonymous function or a closure depending on a local variable,
+the code:
+
+    v0 = ... # initial state variable
+    localfilter!(dst, A, B, ConstantProducer(v0), update, store!)
+
+is much faster than:
+
+    v0 = ... # initial state variable
+    localfilter!(dst, A, B, a -> v0, update, store!)
+
+"""
+struct ConstantProducer{T} <: Function
+    val::T
+end
+(obj::ConstantProducer)(args...) = getfield(obj, :val)

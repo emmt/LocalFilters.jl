@@ -1,3 +1,8 @@
+# New features and user visible changes in version 1.2.2
+
+- Fix an important performance bug related to anonymous functions.  Methods
+  `localmean!` and `convolve!` are about 60 times faster!
+
 # New features and user visible changes in version 1.2.1
 
 - A default window of width `2*round(Int,3σ)+1` for the spatial filter in the

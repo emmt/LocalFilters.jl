@@ -53,8 +53,10 @@ function localmean!(dst::AbstractArray{<:Any,N},
                     B::RectangularBox{N}) where {N}
     check_indices(dst, A)
     T = type_of_sum(eltype(A))
+    v0 = (zero(T), 0) # initial state variable
     localfilter!(dst, A, B,
-                 (a)     -> (zero(T), 0),
+                 ConstantProducer(v0),
+                 #(a)     -> (zero(T), 0),
                  (v,a,b) -> (v[1] + a, v[2] + 1),
                  (d,i,v) -> store!(d, i, v[1]/v[2]))
 end
@@ -64,8 +66,10 @@ function localmean!(dst::AbstractArray{<:Any,N},
                     B::Kernel{Bool,N}) where {N}
     check_indices(dst, A)
     T = type_of_sum(eltype(A))
+    v0 = (zero(T), 0) # initial state variable
     localfilter!(dst, A, B,
-                 (a)     -> (zero(T), 0),
+                 ConstantProducer(v0),
+                 #(a)     -> (zero(T), 0),
                  (v,a,b) -> b ? (v[1] + a, v[2] + 1) : v,
                  (d,i,v) -> store!(d, i, v[1]/v[2]))
 end
@@ -75,8 +79,10 @@ function localmean!(dst::AbstractArray{<:Any,N},
                     B::Kernel{<:Any,N}) where {N}
     check_indices(dst, A)
     T = type_of_sum(promote_type(eltype(A), eltype(B)))
+    v0 = (zero(T), zero(T)) # initial state variable
     localfilter!(dst, A, B,
-                 (a)     -> (zero(T), zero(T)),
+                 ConstantProducer(v0),
+                 #(a)     -> (zero(T), zero(T)),
                  (v,a,b) -> (v[1] + a*b, v[2] + b),
                  (d,i,v) -> store!(d, i, v[1]/v[2]))
 end
@@ -150,8 +156,10 @@ function convolve!(dst::AbstractArray{<:Any,N},
                    B::RectangularBox{N}) where {N}
     check_indices(dst, A)
     T = type_of_sum(eltype(A))
+    v0 = zero(T) # initial state variable
     localfilter!(dst, A, B,
-                 (a)     -> zero(T),
+                 ConstantProducer(v0),
+                 #(a)     -> zero(T),
                  (v,a,b) -> v + a,
                  store!)
 end
@@ -161,8 +169,10 @@ function convolve!(dst::AbstractArray{<:Any,N},
                    B::Kernel{Bool,N}) where {N}
     check_indices(dst, A)
     T = type_of_sum(eltype(A))
+    v0 = zero(T) # initial state variable
     localfilter!(dst, A, B,
-                 (a)     -> zero(T),
+                 ConstantProducer(v0),
+                 #(a)     -> zero(T),
                  (v,a,b) -> b ? v + a : v,
                  store!)
 end
@@ -172,8 +182,10 @@ function convolve!(dst::AbstractArray{<:Any,N},
                    B::Kernel{<:Any,N}) where {N}
     check_indices(dst, A)
     T = type_of_sum(promote_type(eltype(A), eltype(B)))
+    v0 = zero(T) # initial state variable
     localfilter!(dst, A, B,
-                 (a)     -> zero(T),
+                 ConstantProducer(v0),
+                 #(a)     -> zero(T),
                  (v,a,b) -> v + a*b,
                  store!)
 end
@@ -220,6 +232,14 @@ As another example, implementing a convolution by `B` writes:
                  (a)     -> zero(a),
                  (v,a,b) -> v + a*b,
                  (d,i,v) -> @inbounds(d[i] = v))
+
+!!! note
+    If the methods `init`, `update`, and/or `store!` are anonymous functions or
+    closures, beware that they should not depend on local variables because
+    this may have a strong impact on performances.  For instance, you may
+    consider using [`LocalFilter.ConstantProducer`](@ref) as a replacement for
+    `init` (have a look at the implementation of methods such as
+    [`localmean!`](@ref) or [`convolve!`](@ref)).
 
 """
 function localfilter!(dst, A::AbstractArray{T,N}, B, initial::Function,
