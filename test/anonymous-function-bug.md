@@ -32,13 +32,13 @@ The `localmean!` and `convolve!` methods have an important perfomance issue illu
   - max. abs. diff: 0.0
 
 The issue seems to be related to the `init` method when it is an anonymous
-function which depends on a local variable.  The new code (commit #) fix this
-issue.  For the above tests, the speed-up is about a factor of 60 for an array
-of 400×400 `Float64` entries and a neighborhood of 5×3 cells.  On an AMD Ryzen
-Threadripper 2950X 16-Core processor at 2.2 GHz, the new versions deliver about
-1.6 Gflops for `localmean!` and about 2.2 Gflops for `convolve!`.  These speeds
-are not much improved in single precision, so loop vectorization is not
-effective.
+function which depends on a local variable.  This issue is fixed by commit
+2cdecf20586436c169636379be9362615e0959fd.  For the above tests, the speed-up is
+about a factor of 60 for an array of 400×400 `Float64` entries and a
+neighborhood of 5×3 cells.  On an AMD Ryzen Threadripper 2950X 16-Core
+processor at 2.2 GHz, the new versions deliver about 1.6 Gflops for
+`localmean!` and about 2.2 Gflops for `convolve!`.  These speeds are not much
+improved in single precision, so loop vectorization is not effective.
 
 The bilateral filter and morphological filters do not have the same issue:
 
