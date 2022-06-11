@@ -29,22 +29,17 @@ import ..LocalFilters:
     localfilter!,
     localfilter
 
-
 """
-# Local filter by the van Herk-Gil-Werman algorithm
+    localfilter([T=eltype(A),] A, dims, op, rngs[, wrk]) -> dst
 
-    localfilter!([dst = A,] A, dims, op, rngs [, w])
-
-overwrites the contents of `dst` with the result of applying van
-Herk-Gil-Werman algorithm to filter array `A` along dimension(s) `dims` with
-(associative) binary operation `op` and contiguous structuring element(s)
-defined by the interval(s) `rngs`.  Optional argument `w` is a workspace array
-which is automatically allocated if not provided; otherwise, it must be a
-vector with the same element type as `A` which is resized as needed (by calling
-the `resize!` method).  The destination `dst` must have the same indices as the
-source `A` (that is, `axes(dst) == axes(A)`).  Operation can be done in-place
-and `dst` and `A` can be the same; this is the default behavior if `dst` is not
-specified.
+yields the result of applying van Herk-Gil-Werman algorithm to filter array `A`
+along dimension(s) `dims` with (associative) binary operation `op` and
+contiguous structuring element(s) defined by the interval(s) `rngs`.  Optional
+argument `wrk` is a workspace array which is automatically allocated if not
+provided; otherwise, it must be a vector with the same element type as `A`
+which is resized as needed (by calling the `resize!` method).  The optional
+argument `T` allows to specify another type of element than `eltype(A)` for the
+result.
 
 Argument `dims` specifies along which dimension(s) of `A` the filter is to be
 applied, it can be a single integer, several integers or a colon `:` to specify
@@ -55,9 +50,9 @@ interval, it is used for every dimension in `dims`).  An interval is either an
 integer or an integer valued unit range in the form `kmin:kmax` (an interval
 specified as a single integer, say `k`, is the same as specifying `k:k`).
 
-Assuming mono-dimensional arrays `A` and `dst`, the single filtering pass:
+Assuming a mono-dimensional array `A`, the single filtering pass:
 
-    localfilter!(dst, A, :, op, rng)
+    localfilter(A, :, op, rng)
 
 amount to computing:
 
@@ -69,11 +64,7 @@ for all `j ∈ [first(axes(A,1)):last(axes(A,1))]`, with `x ⋄ y = op(x, y)`,
 operate a simple shift by `k` along the corresponding dimension and has no
 effects if `k = 0`.  This can be exploited to not filter some dimension(s).
 
-The out-of-place version, allocates the destination array and is called as:
-
-    localfilter([T,] A, dims, op, rngs [, w])
-
-with `T` the element type of the result (by default `T = eltype(A)`).
+See [`localfilter!`](@ref) for an in-place version of the method.
 
 
 ## Examples
@@ -125,6 +116,7 @@ To take into account boundary conditions (for now, only nearest neighbor is
 implemented) and allow for in-place operation, the algorithm allocates a
 workspace array.
 
+
 ## References
 
 * Marcel van Herk, "*A fast algorithm for local minimum and maximum filters on
@@ -136,10 +128,40 @@ workspace array.
   504-507 (1993).
 
 """
+function localfilter(A::AbstractArray,
+                     dims::Union{Colon, Integer, Tuple{Vararg{Integer}},
+                                 AbstractVector{<:Integer}},
+                     op::Function, args...)
+    return localfilter(eltype(A), A, dims, op, args...)
+end
+
+function localfilter(T::Type, A::AbstractArray,
+                     dims::Union{Colon, Integer, Tuple{Vararg{Integer}},
+                                 AbstractVector{<:Integer}},
+                     op::Function, args...)
+    return localfilter!(similar(A, T), A, dims, op, args...)
+end
+
+
+"""
+    localfilter!([dst = A,] A, dims, op, rngs[, wrk])
+
+overwrites the contents of `dst` with the result of applying van
+Herk-Gil-Werman algorithm to filter array `A` along dimension(s) `dims` with
+(associative) binary operation `op` and contiguous structuring element(s)
+defined by the interval(s) `rngs` and using optional argument `wrk` as a
+workspace array.  The destination `dst` must have the same indices as the
+source `A` (that is, `axes(dst) == axes(A)`).  Operation can be done in-place
+and `dst` and `A` can be the same; this is the default behavior if `dst` is not
+specified.
+
+See [`localfilter`](@ref) for a full description of the method.
+
+"""
 function localfilter!(dst::AbstractArray{T,N},
                       A::AbstractArray{<:Any,N}, d::Int,
                       op::Function, kmin::Int, kmax::Int,
-                      w::Vector{T}) where {T,N}
+                      wrk::Vector{T}) where {T,N}
     #
     # A monodimensional local filter involving binary operation ⋄ on a
     # neighborhood [kmin:kmax] yields the following array B when filtering the
@@ -193,7 +215,8 @@ function localfilter!(dst::AbstractArray{T,N},
     1 ≤ d ≤ N || throw(ArgumentError("out of bounds dimension index"))
     kmin ≤ kmax || throw(ArgumentError("invalid structuring element interval"))
     inds = axes(A)
-    axes(dst) == inds || throw(DimensionMismatch("source and destination must have the same indices"))
+    axes(dst) == inds || throw(DimensionMismatch(
+        "source and destination must have the same indices"))
     jmin, jmax = first(inds[d]), last(inds[d])
     if kmin == kmax == 0 || jmin > jmax
         # Nothing to do!
@@ -217,7 +240,7 @@ function localfilter!(dst::AbstractArray{T,N},
         end
     else
         # Apply van Herk-Gil-Werman algorithm.
-        _localfilter!(dst, A, R1, jmin, jmax, R2, op, kmin, kmax, w)
+        _localfilter!(dst, A, R1, jmin, jmax, R2, op, kmin, kmax, wrk)
     end
     return dst
 end
@@ -240,11 +263,11 @@ function _localfilter!(dst::AbstractArray{T,N},
                        A::AbstractArray{<:Any,N},
                        R1, jmin::Int, jmax::Int, R2,
                        op::Function, kmin::Int, kmax::Int,
-                       w::Vector{T}) where {T,N}
+                       wrk::Vector{T}) where {T,N}
     n = jmax - jmin + 1 # length of dimension in A
     p = kmax - kmin + 1 # length of neighborhood
     imin, imax = p, workspacelength(n, p) # range for storing A in W
-    length(w) ≥ imax || resize!(w, imax)
+    length(wrk) ≥ imax || resize!(wrk, imax)
     off = imin - jmin + kmax # offset such that W[j-k+off] ≡ A[j-k]
     m = off - kmin # W[j+m] ≡ A[j-kmin]
     pm1 = p - 1
@@ -255,7 +278,7 @@ function _localfilter!(dst::AbstractArray{T,N},
         # conditions).
         @simd for i in imin:imax
             j = clamp(i - off, jmin, jmax)
-            w[i] = A[J1,j,J2]
+            wrk[i] = A[J1,j,J2]
         end
 
         # Process the input by blocks of as much as p elements (less at the end
@@ -263,43 +286,27 @@ function _localfilter!(dst::AbstractArray{T,N},
         for j = jmin:p:jmax
             # Compute auxilliary array W[1:p-1] ≡ R[1:p-1].
             jpm = j + m
-            w[1] = w[jpm-1] # R[1] = A[j-kmin-1]
+            wrk[1] = wrk[jpm-1] # R[1] = A[j-kmin-1]
             @simd for i in 2:pm1
                 # R[i] = A[j-kmin-i] ⋄ R[i-1]   for i ∈ [2:p-1]
-                w[i] = op(w[jpm-i], w[i-1])
+                wrk[i] = op(wrk[jpm-i], wrk[i-1])
             end
 
             # Apply the recursion to compute at least 1 and at most p resulting
             # values.
-            s = w[jpm] # S[1] = A[j-kmin]
-            dst[J1,j,J2] = op(w[pm1], s) # B[j] = R[p-1]⋄S[1]
+            s = wrk[jpm] # S[1] = A[j-kmin]
+            dst[J1,j,J2] = op(wrk[pm1], s) # B[j] = R[p-1]⋄S[1]
             @simd for i in 1:min(p-2, jmax-j)
-                s = op(s, w[jpm+i]) # S[i+1] = S[i]⋄A[j-kmin+i] for i ∈ [p-1:1]
-                dst[J1,j+i,J2] = op(w[pm1-i], s) # B[j+i] = R[p-1-i]⋄S[i+1]
+                s = op(s, wrk[jpm+i]) # S[i+1] = S[i]⋄A[j-kmin+i] for i ∈ [p-1:1]
+                dst[J1,j+i,J2] = op(wrk[pm1-i], s) # B[j+i] = R[p-1-i]⋄S[i+1]
             end
             if j + pm1 ≤ jmax
                 # B[j+p-1] = S[p-1]⋄A[j-kmin+p-1]
-                dst[J1,j+pm1,J2] = op(s,w[jpm+pm1])
+                dst[J1,j+pm1,J2] = op(s,wrk[jpm+pm1])
             end
         end
     end
     return nothing
-end
-
-# Provide destination.
-
-function localfilter(A::AbstractArray{T,N},
-                     dims::Union{Colon, Integer, Tuple{Vararg{Integer}},
-                                 AbstractVector{<:Integer}},
-                     op::Function, args...) where {T,N}
-    return localfilter(T, A, dims, op, args...)
-end
-
-function localfilter(::Type{T}, A::AbstractArray{<:Any,N},
-                     dims::Union{Colon, Integer, Tuple{Vararg{Integer}},
-                                 AbstractVector{<:Integer}},
-                     op::Function, args...) where {T,N}
-    return localfilter!(similar(Array{T,N}, axes(A)), A, dims, op, args...)
 end
 
 # In-place operation.
@@ -327,8 +334,8 @@ function localfilter!(dst::AbstractArray{T,N},
                       d::Integer,
                       op::Function,
                       rng::IndexInterval,
-                      w::Vector{T} = workspace(T, A, d, rng)) where {T,N}
-    return localfilter!(dst, A, Int(d), op, Int(first(rng)), Int(last(rng)), w)
+                      wrk::Vector{T} = workspace(T, A, d, rng)) where {T,N}
+    return localfilter!(dst, A, Int(d), op, Int(first(rng)), Int(last(rng)), wrk)
 end
 
 function localfilter!(dst::AbstractArray{T,N},
@@ -336,12 +343,12 @@ function localfilter!(dst::AbstractArray{T,N},
                       ::Colon,
                       op::Function,
                       rng::IndexInterval,
-                      w::Vector{T} = workspace(T, A, :, rng)) where {T,N}
+                      wrk::Vector{T} = workspace(T, A, :, rng)) where {T,N}
     kmin, kmax = Int(first(rng)), Int(last(rng))
     N ≥ 1 || return copyto!(dst, A)
-    localfilter!(dst, A, 1, op, kmin, kmax, w)
+    localfilter!(dst, A, 1, op, kmin, kmax, wrk)
     for d in 2:N
-        localfilter!(dst, d, op, kmin, kmax, w)
+        localfilter!(dst, d, op, kmin, kmax, wrk)
     end
     return dst
 end
@@ -352,13 +359,13 @@ function localfilter!(dst::AbstractArray{T,N},
                       op::Function,
                       rngs::Union{AbstractVector{<:IndexInterval},
                                   Tuple{Vararg{IndexInterval}}},
-                      w::Vector{T} = workspace(T, A, :, rngs)) where {T,N}
+                      wrk::Vector{T} = workspace(T, A, :, rngs)) where {T,N}
     length(rngs) == N || throw(DimensionMismatch(
         "there must be as many intervals as dimensions"))
     N ≥ 1 || return copyto!(dst, A)
-    localfilter!(dst, A, 1, op, rngs[1], w)
+    localfilter!(dst, A, 1, op, rngs[1], wrk)
     for d in 2:N
-        localfilter!(dst, d, op, rngs[d], w)
+        localfilter!(dst, d, op, rngs[d], wrk)
     end
     return dst
 end
@@ -369,12 +376,12 @@ function localfilter!(dst::AbstractArray{T,N},
                                   Tuple{Vararg{Integer}}},
                       op::Function,
                       rng::IndexInterval,
-                      w::Vector{T} = workspace(T, A, dims, rng)) where {T,N}
+                      wrk::Vector{T} = workspace(T, A, dims, rng)) where {T,N}
     m = length(dims)
     m ≥ 1 || return copyto!(dst, A)
-    localfilter!(dst, A, dims[1], op, rng, w)
+    localfilter!(dst, A, dims[1], op, rng, wrk)
     for d in 2:m
-        localfilter!(dst, dims[d], op, rng, w)
+        localfilter!(dst, dims[d], op, rng, wrk)
     end
     return dst
 end
@@ -386,14 +393,14 @@ function localfilter!(dst::AbstractArray{T,N},
                       op::Function,
                       rngs::Union{AbstractVector{<:IndexInterval},
                                   Tuple{Vararg{IndexInterval}}},
-                      w::Vector{T} = workspace(T, A, dims, rngs)) where {T,N}
+                      wrk::Vector{T} = workspace(T, A, dims, rngs)) where {T,N}
     m = length(dims)
     length(rngs) == m || throw(DimensionMismatch(
         "list of dimensions and list of intervals must have the same length"))
     m ≥ 1 || return copyto!(dst, A)
-    localfilter!(dst, A, dims[1], op, rngs[1], w)
+    localfilter!(dst, A, dims[1], op, rngs[1], wrk)
     for d in 2:m
-        localfilter!(dst, dims[d], op, rngs[d], w)
+        localfilter!(dst, dims[d], op, rngs[d], wrk)
     end
     return dst
 end

@@ -8,69 +8,67 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2017-2018, Éric Thiébaut.
+# Copyright (C) 2017-2022, Éric Thiébaut.
 #
 
 """
-Basic operations of mathematical morphology are:
+    erode(A, R=3) -> Amin
 
-```julia
-erode(A, B) -> Amin
-dilate(A, B) -> Amax
-```
+yields the array of local minima `Amin` of argument `A` with a structuring
+element defined by `R`.  The returned result `Amin` is similar to `A` (same
+size and type).
 
-which respectively return the local minima `Amin` and the local maxima `Amax`
-of argument `A` in a neighborhood defined by `B`.  The returned result is
-similar to `A` (same size and type).
+If the structuring element `R` is a simple hyperrectangular moving window, the
+much faster van Herk-Gil-Werman algorithm is used.  If specified as an odd
+integer (as is assumed by default), the structuring element is a
+hyperrectangular moving window of size `R` along every dimension of `A`.
 
-The two operations can be combined in one call:
-
-```julia
-localextrema(A, B) -> Amin, Amax
-```
-
-The in-place versions:
-
-```julia
-erode!(Amin, A, B) -> Amin
-dilate!(Amax, A, B) -> Amax
-localextrema!(Amin, Amax, A, B) -> Amin, Amax
-```
-
-apply the operation to `A` with structuring element `B` and store the
-result in the provided arrays `Amin` and/or `Amax`.
-
-See also [`localmean`](@ref), [`opening`](@ref), [`closing`](@ref),
-[`top_hat`](@ref) and [`bottom_hat`](@ref).
+An erosion is one of the most basic operations of mathematical morphology.  See
+[`erode!`](@ref) for an in-place version of the method, [`dilate`](@ref) for
+retrieving the local maxima, and [`localextrema`](@ref) for performing an
+erosion and a dilation in a single pass.
 
 """
 erode(A::AbstractArray, args...) = erode!(similar(A), A, args...)
 
-erode!(dst, src::AbstractArray{T,N}, B=3) where {T,N} =
-    erode!(dst, src, Neighborhood{N}(B))
+"""
+    erode!(Amin, A, R=3) -> Amin
 
-@doc @doc(erode) erode!
+overwrites `Amin` with an erosion of the array `A` by the structuring element
+defined by `R` and returns `Amin`.
 
+If the structuring element `R` is a simple hyperrectangular moving window, the
+much faster van Herk-Gil-Werman algorithm is used and the operation can be done
+in-place.  That is `A` and `Amin` can be the same arrays.  In that case, the
+following syntax is allowed:
+
+    erode!(A, R=3) -> A
+
+See [`erode`](@ref) for an out-of-place version and for more information.
+
+"""
+erode!(dst, A::AbstractArray{T,N}, R=3) where {T,N} =
+    erode!(dst, A, Neighborhood{N}(R))
 
 function erode!(dst::AbstractArray{T,N},
                 A::AbstractArray{T,N},
-                B::RectangularBox{N}) where {T,N}
-    localfilter!(dst, A, :, min, axes(B))
+                R::RectangularBox{N}) where {T,N}
+    localfilter!(dst, A, :, min, axes(R))
 end
 
 function erode!(A::AbstractArray{T,N},
-                B::RectangularBox{N}) where {T,N}
-    localfilter!(A, :, min, axes(B))
+                R::RectangularBox{N}) where {T,N}
+    localfilter!(A, :, min, axes(R))
 end
 
 function erode!(dst::AbstractArray{T,N},
                 A::AbstractArray{T,N},
-                B::Kernel{Bool,N}) where {T,N}
-    if ismmbox(B)
-        localfilter!(dst, A, :, min, axes(B))
+                R::Kernel{Bool,N}) where {T,N}
+    if ismmbox(R)
+        localfilter!(dst, A, :, min, axes(R))
     else
         check_indices(dst, A)
-        localfilter!(dst, A, B,
+        localfilter!(dst, A, R,
                      (a)     -> typemax(T),
                      (v,a,b) -> b && a < v ? a : v,
                      (d,i,v) -> d[i] = v)
@@ -80,13 +78,13 @@ end
 
 function erode!(dst::AbstractArray{T,N},
                 A::AbstractArray{T,N},
-                B::Kernel{K,N}) where {T<:AbstractFloat,
+                R::Kernel{K,N}) where {T<:AbstractFloat,
                                        K<:AbstractFloat,N}
-    if ismmbox(B)
-        localfilter!(dst, A, :, min, axes(B))
+    if ismmbox(R)
+        localfilter!(dst, A, :, min, axes(R))
     else
         check_indices(dst, A)
-        localfilter!(dst, A, Kernel{T}(B),
+        localfilter!(dst, A, Kernel{T}(R),
                      (a)     -> typemax(T),
                      (v,a,b) -> min(v, a - b),
                      (d,i,v) -> d[i] = v)
@@ -94,34 +92,64 @@ function erode!(dst::AbstractArray{T,N},
     return dst
 end
 
+"""
+    dilate(A, R=3) -> Amax
+
+yields the array of local maxima `Amax` of argument `A` with a structuring
+element defined by `R`.  The returned result `Amax` is similar to `A` (same
+size and type).
+
+If the structuring element `R` is a simple hyperrectangular moving window, the
+much faster van Herk-Gil-Werman algorithm is used.  If specified as an odd
+integer (as is assumed by default), the structuring element is a
+hyperrectangular moving window of size `R` along every dimension of `A`.
+
+A dilation is one of the most basic operations of mathematical morphology.  See
+[`dilate!`](@ref) for an in-place version of the method, [`erode`](@ref) for
+retrieving the local minima, and [`localextrema`](@ref) for performing an
+erosion and a dilation in a single pass.
+
+"""
 dilate(A::AbstractArray, args...) = dilate!(similar(A), A, args...)
 
-@doc @doc(erode) dilate
+"""
+    dilate!(Amax, A, R=3) -> Amax
 
-dilate!(dst, src::AbstractArray{T,N}, B=3) where {T,N} =
-    dilate!(dst, src, Neighborhood{N}(B))
+overwrites `Amax` with a dilation of the array `A` by the structuring element
+defined by `R` and returns `Amax`.
 
-@doc @doc(dilate) dilate!
+If the structuring element `R` is a simple hyperrectangular moving window, the
+much faster van Herk-Gil-Werman algorithm is used and the operation can be done
+in-place.  That is `A` and `Amin` can be the same arrays.  In that case, the
+following syntax is allowed:
+
+    dilate!(A, R=3) -> A
+
+See [`dilate`](@ref) for an out-of-place version and for more information.
+
+"""
+dilate!(dst, A::AbstractArray{T,N}, R=3) where {T,N} =
+    dilate!(dst, A, Neighborhood{N}(R))
 
 function dilate!(dst::AbstractArray{T,N},
                  A::AbstractArray{T,N},
-                 B::RectangularBox{N}) where {T,N}
-    localfilter!(dst, A, :, max, axes(B))
+                 R::RectangularBox{N}) where {T,N}
+    localfilter!(dst, A, :, max, axes(R))
 end
 
 function dilate!(A::AbstractArray{T,N},
-                 B::RectangularBox{N}) where {T,N}
-    localfilter!(A, :, max, axes(B))
+                 R::RectangularBox{N}) where {T,N}
+    localfilter!(A, :, max, axes(R))
 end
 
 function dilate!(dst::AbstractArray{T,N},
                  A::AbstractArray{T,N},
-                 B::Kernel{Bool,N}) where {T,N}
-    if ismmbox(B)
-        localfilter!(dst, A, :, max, axes(B))
+                 R::Kernel{Bool,N}) where {T,N}
+    if ismmbox(R)
+        localfilter!(dst, A, :, max, axes(R))
     else
         check_indices(dst, A)
-        localfilter!(dst, A, B,
+        localfilter!(dst, A, R,
                      (a)     -> typemin(T),
                      (v,a,b) -> b && a > v ? a : v,
                      (d,i,v) -> d[i] = v)
@@ -131,13 +159,13 @@ end
 
 function dilate!(dst::AbstractArray{T,N},
                  A::AbstractArray{T,N},
-                 B::Kernel{K,N}) where {T<:AbstractFloat,
+                 R::Kernel{K,N}) where {T<:AbstractFloat,
                                         K<:AbstractFloat,N}
-    if ismmbox(B)
-        localfilter!(dst, A, :, max, axes(B))
+    if ismmbox(R)
+        localfilter!(dst, A, :, max, axes(R))
     else
         check_indices(dst, A)
-        localfilter!(dst, A, Kernel{T}(B),
+        localfilter!(dst, A, Kernel{T}(R),
                      (a)     -> typemin(T),
                      (v,a,b) -> max(v, a + b),
                      (d,i,v) -> d[i] = v)
@@ -145,25 +173,41 @@ function dilate!(dst::AbstractArray{T,N},
     return dst
 end
 
+"""
+    localextrema(A, R=3) -> Amin, Amax
+
+yields the results of performing an erosion and a dilation of `A` by the
+structuring element defined by `R` in a single pass.  Calling this method is
+usually almost twice as fast as calling [`erode`](@ref) and [`dilate`](@ref).
+
+See [`localextrema!`](@ref) for an in-place version of the method, and
+[`erode`](@ref) or [`dilate`](@ref) for a description of these operations.
+
+"""
 localextrema(A::AbstractArray, args...) =
     localextrema!(similar(A), similar(A), A, args...)
 
-@doc @doc(erode) localextrema
+"""
+    localextrema!(Amin, Amax, A, R=3) -> Amin, Amax
 
+overwrites `Amin` and `Amax` with, respectively, an erosion and a dilation of
+the array `A` by by the structuring element defined by `R` in a single pass.
+
+See [`localextrema`](@ref) for an out-of-place version for more information.
+
+"""
 function localextrema!(Amin::AbstractArray{T,N},
                        Amax::AbstractArray{T,N},
-                       A::AbstractArray{T,N}, B=3) where {T,N}
-    localextrema!(Amin, Amax, A, Neighborhood{N}(B))
+                       A::AbstractArray{T,N}, R=3) where {T,N}
+    localextrema!(Amin, Amax, A, Neighborhood{N}(R))
 end
-
-@doc @doc(localextrema) localextrema!
 
 function localextrema!(Amin::AbstractArray{T,N},
                        Amax::AbstractArray{T,N},
                        A::AbstractArray{T,N},
-                       B::RectangularBox{N}) where {T,N}
+                       R::RectangularBox{N}) where {T,N}
     check_indices(Amin, Amax, A)
-    localfilter!((Amin, Amax), A, B,
+    localfilter!((Amin, Amax), A, R,
                  (a)     -> (typemax(T),
                              typemin(T)),
                  (v,a,b) -> (min(v[1], a),
@@ -174,9 +218,9 @@ end
 function localextrema!(Amin::AbstractArray{T,N},
                        Amax::AbstractArray{T,N},
                        A::AbstractArray{T,N},
-                       B::Kernel{Bool,N}) where {T,N}
+                       R::Kernel{Bool,N}) where {T,N}
     check_indices(Amin, Amax, A)
-    localfilter!((Amin, Amax), A, B,
+    localfilter!((Amin, Amax), A, R,
                  (a)     -> (typemax(T),
                              typemin(T)),
                  (v,a,b) -> (b && a < v[1] ? a : v[1],
@@ -187,10 +231,10 @@ end
 function localextrema!(Amin::AbstractArray{T,N},
                        Amax::AbstractArray{T,N},
                        A::AbstractArray{T,N},
-                       B::Kernel{K,N}) where {T<:AbstractFloat,
+                       R::Kernel{K,N}) where {T<:AbstractFloat,
                                               K<:AbstractFloat,N}
     check_indices(Amin, Amax, A)
-    localfilter!((Amin, Amax), A, Kernel{T}(B),
+    localfilter!((Amin, Amax), A, Kernel{T}(R),
                  (a)     -> (typemax(T),
                              typemin(T)),
                  (v,a,b) -> (min(v[1], a - b),
@@ -202,139 +246,182 @@ end
 # Higher level operators.
 
 """
-```julia
-closing(A, R)
-opening(A, R)
-```
+    closing(A, R=3) -> dst
 
-respectively perform a closing or an opening of array `A` by the structuring
-element `R`.  If not specified, `R` is a box of size 3 along all the dimensions
-of `A`.  A closing is a dilation followed by an erosion, whereas an opening is
-an erosion followed by a dilation.
+yields a closing of array `A` by the structuring element `R`.  A closing is a
+dilation followed by an erosion.  The result `dst` is an array similar to `A`.
 
-The in-place versions are:
-
-```julia
-closing!(dst, wrk, src, R)
-opening!(dst, wrk, src, R)
-```
-
-which perform the operation on the source `src` and store the result in
-destination `dst` using `wrk` as a workspace array.  These 3 arguments must be
-similar arrays, `dst` and `src` may be identical, but `wrk` must not be the
-same array as `src` or `dst`.  The destination `dst` is returned.
-
-See [`erode`](@ref) or [`dilate`](@ref) for the meaning of the arguments.
+See [`closing!`](@ref) for an in-place version of the method, [`opening`](@ref)
+for a related filter, and [`erode`](@ref) or [`dilate`](@ref) for a description
+of these operations.
 
 """
 closing(A::AbstractArray, args...) =
     closing!(similar(A), similar(A), A, args...)
 
+"""
+    closing!(dst, wrk, A, R=3) -> dst
+
+overwrites destination `dst` with the result of a closing of the source `A` by
+a structuring element specified by `R` using `wrk` as a workspace array.  The 3
+arguments `dst`, `wrk`, and `A` must be similar arrays, `dst` and `A` may be
+identical, but `wrk` must not be the same array as `A` or `dst`.  The
+destination `dst` is returned.
+
+See [`closing`](@ref) for a description of this kind of filter and for the
+meaning of the arguments.
+
+"""
 function closing!(dst::AbstractArray{T,N},
                   wrk::AbstractArray{T,N},
-                  src::AbstractArray{T,N}, B=3) where {T,N}
-    closing!(dst, wrk, src, Neighborhood{N}(B))
+                  A::AbstractArray{T,N}, R=3) where {T,N}
+    closing!(dst, wrk, A, Neighborhood{N}(R))
 end
 
 function closing!(dst::AbstractArray{T,N},
                   wrk::AbstractArray{T,N},
-                  src::AbstractArray{T,N},
-                  B::Neighborhood{N}) where {T,N}
-    erode!(dst, dilate!(wrk, src, B), B)
+                  A::AbstractArray{T,N},
+                  R::Neighborhood{N}) where {T,N}
+    erode!(dst, dilate!(wrk, A, R), R)
 end
 
+"""
+    opening(A, R=3) -> dst
+
+yields an opening of array `A` by the structuring element `R`.  An opening is
+an erosion followed by a dilation.  The result `dst` is an array similar to
+`A`.
+
+See [`opening!`](@ref) for an in-place version of the method, [`closing`](@ref)
+for a related filter, and [`erode`](@ref) or [`dilate`](@ref) for a description
+of these operations.
+
+"""
 opening(A::AbstractArray, args...) =
     opening!(similar(A), similar(A), A, args...)
 
+"""
+    opening!(dst, wrk, A, R=3) -> dst
+
+overwrites destination `dst` with the result of an opening of the source `A` by
+a structuring element specified by `R` using `wrk` as a workspace array.  The 3
+arguments `dst`, `wrk`, and `A` must be similar arrays, `dst` and `A` may be
+identical, but `wrk` must not be the same array as `A` or `dst`.  The
+destination `dst` is returned.
+
+See [`opening`](@ref) for a description of this kind of filter and for the
+meaning of the arguments.
+
+"""
 function opening!(dst::AbstractArray{T,N},
                   wrk::AbstractArray{T,N},
-                  src::AbstractArray{T,N}, B=3) where {T,N}
-    opening!(dst, wrk, src, Neighborhood{N}(B))
+                  A::AbstractArray{T,N}, R=3) where {T,N}
+    opening!(dst, wrk, A, Neighborhood{N}(R))
 end
 
 function opening!(dst::AbstractArray{T,N},
                   wrk::AbstractArray{T,N},
-                  src::AbstractArray{T,N},
-                  B::Neighborhood{N}) where {T,N}
-    dilate!(dst, erode!(wrk, src, B), B)
+                  A::AbstractArray{T,N},
+                  R::Neighborhood{N}) where {T,N}
+    dilate!(dst, erode!(wrk, A, R), R)
 end
-
-@doc @doc(closing) closing!
-@doc @doc(closing) opening
-@doc @doc(closing) opening!
 
 # Out-of-place top hat filter requires 2 allocations without a
 # pre-filtering, 3 allocations with a pre-filtering.
 
 """
-```julia
-top_hat(A, R)
-top_hat(A, R, S)
-bottom_hat(A, R)
-bottom_hat(A, R, S)
-```
+    top_hat(A, R[, S]) -> dst
 
-Perform A summit/valley detection by applying a top-hat filter to array
-`A`.  Argument `R` defines the structuring element for the feature
-detection.  Optional argument `S` specifies the structuring element used to
-apply a smoothing to `A` prior to the top-hat filter.  If `R` and `S` are
-specified as the radii of the structuring elements, then `S` should be
-smaller than `R`.  For instance:
+performs a *summit detection* by applying a top-hat filter to array `A`.
+Argument `R` defines the structuring element for the feature detection.
+Top-hat filtering is equivalent to:
 
-```julia
-top_hat(bitmap, 3, 1)
-```
+    dst = A .- opening(A, R)
+
+Optional argument `S` specifies the structuring element for smoothing `A` prior
+to the top-hat filter.  If `R` and `S` are specified as the radii of the
+structuring elements, then `S` should be smaller than `R`.  For instance:
+
+    top_hat(bitmap, 3, 1)
 
 may be used to detect text or lines in a bitmap image.
 
-The in-place versions:
-
-```julia
-top_hat!(dst, wrk, src, R)
-bottom_hat!(dst, wrk, src, R)
-```
-
-apply the top-hat filter on the source `src` and store the result in the
-destination `dst` using `wrk` as a workspace array.  These 3 arguments must
-be similar but different arrays.  The destination `dst` is returned.
-
-See also [`dilate`](@ref) and [`closing`](@ref).
+See [`bottom_hat`](@ref) for a related operation,
+[`LocalFilters.top_hat!`](@ref) for an in-place version.
 
 """
-top_hat(a, r=3) = top_hat!(similar(a), similar(a), a, r)
+top_hat(A, R=3) = top_hat!(similar(A), similar(A), A, R)
 
-function top_hat(a, r, s)
-    wrk = similar(a)
-    top_hat!(similar(a), wrk, closing!(similar(a), wrk, a, s), r)
+function top_hat(A, R, S)
+    wrk = similar(A)
+    top_hat!(similar(A), wrk, closing!(similar(A), wrk, A, S), R)
 end
 
+"""
+    LocalFilters.top_hat!(dst, wrk, A, R[, S]) -> dst
+
+overwrites `dst` with the result of a top-hat filter applied to `A` with
+structuring element `R` and optional smoothing element `S`.  Argument `wrk` is
+a workspace array whose contents is not preserved.  The 3 arguments `A`, `dst`,
+and `wrk` must be similar but different arrays.  The destination `dst` is
+returned.
+
+See also [`top_hat`](@ref) for more details.
+
+"""
 function top_hat!(dst::AbstractArray{T,N},
                   wrk::AbstractArray{T,N},
-                  src::AbstractArray{T,N}, r=3) where {T,N}
-    opening!(dst, wrk, src, r)
-    @inbounds for i in eachindex(dst, src)
-        dst[i] = src[i] - dst[i]
+                  A::AbstractArray{T,N}, R=3) where {T,N}
+    opening!(dst, wrk, A, R)
+    @inbounds for i in eachindex(dst, A)
+        dst[i] = A[i] - dst[i]
     end
     return dst
 end
 
-bottom_hat(a, r=3) = bottom_hat!(similar(a), similar(a), a, r)
+"""
+    bottom_hat(A, R[, S]) -> dst
 
-function bottom_hat(a, r, s)
-    wrk = similar(a)
-    bottom_hat!(similar(a), wrk, opening!(similar(a), wrk, a, s), r)
+performs a *valley detection* by applying a bottom-hat filter to array `A`.
+Argument `R` defines the structuring element for the feature detection.
+Bottom-hat filtering is equivalent to:
+
+    dst = closing(A, R) .- A
+
+Optional argument `S` specifies the structuring element for smoothing `A` prior
+to the top-hat filter.  If `R` and `S` are specified as the radii of the
+structuring elements, then `S` should be smaller than `R`.
+
+See [`top_hat`](@ref) for a related operation,
+[`LocalFilters.bottom_hat!`](@ref) for an in-place version.
+
+"""
+bottom_hat(A, R=3) = bottom_hat!(similar(A), similar(A), A, R)
+
+function bottom_hat(A, R, S)
+    wrk = similar(A)
+    return bottom_hat!(similar(A), wrk, opening!(similar(A), wrk, A, S), R)
 end
 
+"""
+    LocalFilters.bottom_hat!(dst, wrk, A, R[, S]) -> dst
+
+overwrites `dst` with the result of a bottom-hat filter applied to `A` with
+structuring element `R` and optional smoothing element `S`.  Argument `wrk` is
+a workspace array whose contents is not preserved.  The 3 arguments `A`, `dst`,
+and `wrk` must be similar but different arrays.  The destination `dst` is
+returned.
+
+See also [`bottom_hat`](@ref) for more details.
+
+"""
 function bottom_hat!(dst::AbstractArray{T,N},
                      wrk::AbstractArray{T,N},
-                     src::AbstractArray{T,N}, r=3) where {T,N}
-    closing!(dst, wrk, src, r)
-    @inbounds for i in eachindex(dst, src)
-        dst[i] -= src[i]
+                     A::AbstractArray{T,N},
+                     R=3) where {T,N}
+    closing!(dst, wrk, A, R)
+    @inbounds for i in eachindex(dst, A)
+        dst[i] -= A[i]
     end
     return dst
 end
-
-@doc @doc(top_hat)    top_hat!
-@doc @doc(top_hat) bottom_hat
-@doc @doc(top_hat) bottom_hat!

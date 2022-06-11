@@ -14,10 +14,15 @@
 using Base: @propagate_inbounds
 
 """
-    localmean(A, B)
+    localmean(A, B=3)
 
 yields the local mean of `A` in a neighborhood defined by `B`.  The result is
-an array similar to `A`.
+an array similar to `A`.  If `B` is not specified, the neighborhood is a
+hyperrectangular moving window of size 3 in every dimension.  Otherwise, `B`
+may be specified as a Cartesian box, or as an array of booleans of same number
+of dimensions as `A`.  If `B` is a single odd integer (as it is by default),
+the neighborhood is assumed to be a hyperrectangular moving window of size `B`
+in every dimension.
 
 See also [`localmean!`](@ref) and [`localfilter!`](@ref).
 
@@ -25,17 +30,17 @@ See also [`localmean!`](@ref) and [`localfilter!`](@ref).
 localmean(A::AbstractArray{T,N}, B=3) where {T,N} =
     localmean(A, Neighborhood{N}(B))
 
-localmean(A::AbstractArray{T}, B::RectangularBox) where {T} =
+localmean(A::AbstractArray{T,N}, B::RectangularBox{N}) where {T,N} =
     localmean!(similar(A, float(T)), A, B)
 
-localmean(A::AbstractArray{T}, B::Kernel{Bool}) where {T} =
+localmean(A::AbstractArray{T,N}, B::Kernel{Bool,N}) where {T,N} =
     localmean!(similar(A, float(T)), A, B)
 
-localmean(A::AbstractArray{Ta}, B::Kernel{Tb}) where {Ta,Tb} =
-    localmean!(similar(A, promote_type(Ta,Tb)), A, B)
+localmean(A::AbstractArray{<:Any,N}, B::Kernel{<:Any,N}) where {N} =
+    localmean!(similar(A, promote_type(eltype(A),eltype(B))), A, B)
 
 """
-    localmean!(dst, A, B) -> dst
+    localmean!(dst, A, B=3) -> dst
 
 overwrites `dst` with the local mean of `A` in a neighborhood defined by `B`
 and returns `dst`.
@@ -90,8 +95,9 @@ end
 """
     LocalFilters.store!(A, I, x)
 
-stores value `x` in array `A` at index `I`, taking care of rounding `x`
-if it is of floating-point type while the elements of `A` are integers.
+stores value `x` in array `A` at index `I`, taking care of rounding `x` if it
+is of floating-point type while the elements of `A` are integers.  This method
+propagates the current in-bounds settings.
 
 """
 @inline @propagate_inbounds function store!(A::AbstractArray{T}, I,
@@ -102,7 +108,6 @@ end
 @inline @propagate_inbounds function store!(A::AbstractArray, I, x)
     A[I] = x
 end
-
 
 """
     LocalFilters.type_of_sum(T)
@@ -117,11 +122,26 @@ type_of_sum(::Type{T}) where {T<:Integer} =
 """
     convolve(A, B)
 
-yields the convolution of `A` by the support of the neighborhood defined by
-`B` of by the kernel `B` if it is an instance of `LocalFilters.Kernel` with
-numerical coefficients.  The result is an array similar to `A`.
+yields the discrete convolution of array `A` by the kernel defined by `B`.  The
+result `dst` is an array similar to `A`.
 
-See also [`convolve`](@ref), [`localfilter!`](@ref).
+Using `Sup(A)` to denote the set of valid indices for array `A` and assuming
+`B` is an array of values, the discrete convolution of `A` by `B` writes:
+
+    T = promote_type(eltype(A), eltype(B))
+    for i ∈ Sup(A)
+        v = zero(T)
+        @inbounds for k ∈ Sup(B) ∩ (i - Sup(A))
+            v += A[i-k]*B[k]
+        end
+        dst[i] = v
+    end
+
+with `T` the type of the product of elements of `A` and `B`, and where `Sup(B)
+∩ (i - Sup(A))` denotes the subset of indices `k` such that `k ∈ Sup(B)` and
+`i - k ∈ Sup(A)` and thus for which `B[k]` and `A[i-k]` are valid.
+
+See also [`convolve!`](@ref) and [`localfilter!`](@ref).
 
 """
 convolve(A::AbstractArray{T,N}, B=3) where {T,N} =
@@ -139,11 +159,10 @@ convolve(A::AbstractArray{T}, B::Kernel{K}) where {T,K} =
 """
     convolve!(dst, A, B) -> dst
 
-overwrites `dst` with the convolution of `A` by the support of the neighborhood
-defined by `B` of by the kernel `B` if it is an instance of
-`LocalFilters.Kernel` with numerical coefficients.  The result is `dst`.
+overwrites `dst` with the discrete convolution of `A` by the kernel `B` and
+returns `dst`.
 
-See also [`convolve!`](@ref), [`localfilter!`](@ref).
+See also [`convolve`](@ref) and [`localfilter!`](@ref).
 
 """
 function convolve!(dst::AbstractArray{<:Any,N},
@@ -191,19 +210,19 @@ function convolve!(dst::AbstractArray{<:Any,N},
 end
 
 """
-    localfilter!(dst, A, B, initial, update, store) -> dst
+    localfilter!(dst, A, B, initial, update, store!) -> dst
 
 overwrites the destination `dst` with the result of a local filter applied to
 the source `A`, on a relative neighborhood defined by `B`, and implemented by
-the functions `initial`, `update`, and `store`.  The purpose of these functions
-is explained by the following pseudo-code implementing the local operation:
+the functions `initial`, `update`, and `store!`.  The purpose of these functions
+is explained by the following pseudo-code implementing the local fitering:
 
-    for i ∈ Sup(A)
+    @inbounds for i ∈ Sup(A)
         v = initial(A[i])
         for j ∈ Sup(A) ∩ (i - Sup(B))
             v = update(v, A[j], B[i-j])
         end
-        store(dst, i, v)
+        store!(dst, i, v)
     end
 
 where `Sup(A)` denotes the support of `A` (that is the set of indices in `A`)
@@ -213,10 +232,10 @@ all indices `j` such that `j ∈ Sup(A)` and `i - j ∈ Sup(B)` so that `A[j]` a
 `B[i-j]` are in-bounds.
 
 !!! warning
-    Because the result of an elementary operation can be something else than
-    just a scalar, the loop(s) in `localfilter!` are performed without bound
-    checking of the destination and it is the caller's responsibility to insure
-    that the destination have the correct sizes.
+    The loop(s) in `localfilter!` are performed without bounds checking of the
+    destination and it is the caller's responsibility to insure that the
+    destination have the correct size.  It is however always possible to write
+    `store!` so that it performs bounds checking.
 
 For example, implementing a local minimum filter (that is, an *erosion*), is as
 simple as:
@@ -243,12 +262,12 @@ As another example, implementing a convolution by `B` writes:
 
 """
 function localfilter!(dst, A::AbstractArray{T,N}, B, initial::Function,
-                      update::Function, store::Function) where {T,N}
-    # Notes: The signature of this method is intentionally as little
-    #        specialized as possible to avoid confusing the dispatcher.  The
-    #        purpose of this method is just to convert `B ` into a neighborhood
-    #        suitable for `A`.
-    localfilter!(dst, A, Neighborhood{N}(B), initial, update, store)
+                      update::Function, store!::Function) where {T,N}
+    # NOTE: The signature of this method is intentionally as little specialized
+    #       as possible to avoid confusing the dispatcher.  The purpose of this
+    #       method is just to convert `B ` into a neighborhood suitable for
+    #       `A`.
+    localfilter!(dst, A, Neighborhood{N}(B), initial, update, store!)
 end
 
 #
@@ -293,7 +312,7 @@ function localfilter!(dst,
                       B::RectangularBox{N},
                       initial::Function,
                       update::Function,
-                      store::Function) where {N}
+                      store!::Function) where {N}
     R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -303,7 +322,7 @@ function localfilter!(dst,
                                         min(imax, i - kmin))
             v = update(v, A[j], true)
         end
-        store(dst, i, v)
+        store!(dst, i, v)
     end
     return dst
 end
@@ -334,7 +353,7 @@ function localfilter!(dst,
                       B::Kernel{<:Any,N},
                       initial::Function,
                       update::Function,
-                      store::Function) where {N}
+                      store!::Function) where {N}
     R = cartesian_region(A)
     imin, imax = limits(R)
     kmin, kmax = limits(B)
@@ -346,7 +365,7 @@ function localfilter!(dst,
                                         min(imax, i - kmin))
             v = update(v, A[j], ker[k-j])
         end
-        store(dst, i, v)
+        store!(dst, i, v)
     end
     return dst
 end
