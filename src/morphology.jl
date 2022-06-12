@@ -14,9 +14,9 @@
 """
     erode(A, R=3) -> Amin
 
-yields the array of local minima `Amin` of argument `A` with a structuring
-element defined by `R`.  The returned result `Amin` is similar to `A` (same
-size and type).
+yields the erosion of `A` by the structuring element defined by `R`.  The
+erosion is the array of local minima of `A`.  The returned result `Amin` is
+similar to `A` (same size and type).
 
 If the structuring element `R` is a simple hyperrectangular moving window, the
 much faster van Herk-Gil-Werman algorithm is used.  If specified as an odd
@@ -34,12 +34,12 @@ erode(A::AbstractArray, args...) = erode!(similar(A), A, args...)
 """
     erode!(Amin, A, R=3) -> Amin
 
-overwrites `Amin` with an erosion of the array `A` by the structuring element
+overwrites `Amin` with the erosion of the array `A` by the structuring element
 defined by `R` and returns `Amin`.
 
 If the structuring element `R` is a simple hyperrectangular moving window, the
 much faster van Herk-Gil-Werman algorithm is used and the operation can be done
-in-place.  That is `A` and `Amin` can be the same arrays.  In that case, the
+in-place.  That is, `A` and `Amin` can be the same arrays.  In that case, the
 following syntax is allowed:
 
     erode!(A, R=3) -> A
@@ -95,9 +95,9 @@ end
 """
     dilate(A, R=3) -> Amax
 
-yields the array of local maxima `Amax` of argument `A` with a structuring
-element defined by `R`.  The returned result `Amax` is similar to `A` (same
-size and type).
+yields the dilation of `A` by the structuring element defined by `R`.  The
+dilation is the array of local maxima of `A`.  The returned result `Amax` is
+similar to `A` (same size and type).
 
 If the structuring element `R` is a simple hyperrectangular moving window, the
 much faster van Herk-Gil-Werman algorithm is used.  If specified as an odd
@@ -120,7 +120,7 @@ defined by `R` and returns `Amax`.
 
 If the structuring element `R` is a simple hyperrectangular moving window, the
 much faster van Herk-Gil-Werman algorithm is used and the operation can be done
-in-place.  That is `A` and `Amin` can be the same arrays.  In that case, the
+in-place.  That is, `A` and `Amin` can be the same arrays.  In that case, the
 following syntax is allowed:
 
     dilate!(A, R=3) -> A
@@ -191,7 +191,7 @@ localextrema(A::AbstractArray, args...) =
     localextrema!(Amin, Amax, A, R=3) -> Amin, Amax
 
 overwrites `Amin` and `Amax` with, respectively, an erosion and a dilation of
-the array `A` by by the structuring element defined by `R` in a single pass.
+the array `A` by the structuring element defined by `R` in a single pass.
 
 See [`localextrema`](@ref) for an out-of-place version for more information.
 
@@ -248,8 +248,9 @@ end
 """
     closing(A, R=3) -> dst
 
-yields a closing of array `A` by the structuring element `R`.  A closing is a
-dilation followed by an erosion.  The result `dst` is an array similar to `A`.
+yields a closing of array `A` by the structuring element defined by `R`.  A
+closing is a dilation followed by an erosion.  The result `dst` is an array
+similar to `A`.
 
 See [`closing!`](@ref) for an in-place version of the method, [`opening`](@ref)
 for a related filter, and [`erode`](@ref) or [`dilate`](@ref) for a description
@@ -262,11 +263,10 @@ closing(A::AbstractArray, args...) =
 """
     closing!(dst, wrk, A, R=3) -> dst
 
-overwrites destination `dst` with the result of a closing of the source `A` by
-a structuring element specified by `R` using `wrk` as a workspace array.  The 3
-arguments `dst`, `wrk`, and `A` must be similar arrays, `dst` and `A` may be
-identical, but `wrk` must not be the same array as `A` or `dst`.  The
-destination `dst` is returned.
+overwrites `dst` with the result of a closing of `A` by the structuring element
+defined by `R` using `wrk` as a workspace array.  The arguments `dst`, `wrk`,
+and `A` must be similar arrays, `dst` and `A` may be identical, but `wrk` must
+not be the same array as `A` or `dst`.  The destination `dst` is returned.
 
 See [`closing`](@ref) for a description of this kind of filter and for the
 meaning of the arguments.
@@ -288,9 +288,9 @@ end
 """
     opening(A, R=3) -> dst
 
-yields an opening of array `A` by the structuring element `R`.  An opening is
-an erosion followed by a dilation.  The result `dst` is an array similar to
-`A`.
+yields an opening of array `A` by the structuring element defined by `R`.  An
+opening is an erosion followed by a dilation.  The result `dst` is an array
+similar to `A`.
 
 See [`opening!`](@ref) for an in-place version of the method, [`closing`](@ref)
 for a related filter, and [`erode`](@ref) or [`dilate`](@ref) for a description
@@ -303,11 +303,11 @@ opening(A::AbstractArray, args...) =
 """
     opening!(dst, wrk, A, R=3) -> dst
 
-overwrites destination `dst` with the result of an opening of the source `A` by
-a structuring element specified by `R` using `wrk` as a workspace array.  The 3
-arguments `dst`, `wrk`, and `A` must be similar arrays, `dst` and `A` may be
-identical, but `wrk` must not be the same array as `A` or `dst`.  The
-destination `dst` is returned.
+overwrites `dst` with the result of an opening of `A` by the structuring
+element defined by `R` using `wrk` as a workspace array.  The arguments `dst`,
+`wrk`, and `A` must be similar arrays, `dst` and `A` may be identical, but
+`wrk` must not be the same array as `A` or `dst`.  The destination `dst` is
+returned.
 
 See [`opening`](@ref) for a description of this kind of filter and for the
 meaning of the arguments.
@@ -330,16 +330,16 @@ end
 # pre-filtering, 3 allocations with a pre-filtering.
 
 """
-    top_hat(A, R[, S]) -> dst
+    top_hat(A, R=3 [, S]) -> dst
 
-performs a *summit detection* by applying a top-hat filter to array `A`.
-Argument `R` defines the structuring element for the feature detection.
-Top-hat filtering is equivalent to:
+performs a *summit detection* by applying a top-hat filter to array `A` using
+the structuring element defined by `R` for the feature detection.  Top-hat
+filtering is equivalent to:
 
     dst = A .- opening(A, R)
 
 Optional argument `S` specifies the structuring element for smoothing `A` prior
-to the top-hat filter.  If `R` and `S` are specified as the radii of the
+to top-hat filtering.  If `R` and `S` are specified as the radii of the
 structuring elements, then `S` should be smaller than `R`.  For instance:
 
     top_hat(bitmap, 3, 1)
@@ -358,13 +358,12 @@ function top_hat(A, R, S)
 end
 
 """
-    LocalFilters.top_hat!(dst, wrk, A, R[, S]) -> dst
+    LocalFilters.top_hat!(dst, wrk, A, R=3) -> dst
 
 overwrites `dst` with the result of a top-hat filter applied to `A` with
-structuring element `R` and optional smoothing element `S`.  Argument `wrk` is
-a workspace array whose contents is not preserved.  The 3 arguments `A`, `dst`,
-and `wrk` must be similar but different arrays.  The destination `dst` is
-returned.
+structuring element `R`, and using `wrk` as a workspace whose contents is not
+preserved.  The arguments `A`, `dst`, and `wrk` must be similar but different
+arrays.  The destination `dst` is returned.
 
 See also [`top_hat`](@ref) for more details.
 
@@ -380,16 +379,16 @@ function top_hat!(dst::AbstractArray{T,N},
 end
 
 """
-    bottom_hat(A, R[, S]) -> dst
+    bottom_hat(A, R=3 [, S]) -> dst
 
-performs a *valley detection* by applying a bottom-hat filter to array `A`.
-Argument `R` defines the structuring element for the feature detection.
+performs a *valley detection* by applying a bottom-hat filter to array `A`
+using the structuring element defined by `R` for the feature detection.
 Bottom-hat filtering is equivalent to:
 
     dst = closing(A, R) .- A
 
 Optional argument `S` specifies the structuring element for smoothing `A` prior
-to the top-hat filter.  If `R` and `S` are specified as the radii of the
+to bottom-hat filtering.  If `R` and `S` are specified as the radii of the
 structuring elements, then `S` should be smaller than `R`.
 
 See [`top_hat`](@ref) for a related operation,
@@ -404,11 +403,11 @@ function bottom_hat(A, R, S)
 end
 
 """
-    LocalFilters.bottom_hat!(dst, wrk, A, R[, S]) -> dst
+    LocalFilters.bottom_hat!(dst, wrk, A, R=3) -> dst
 
 overwrites `dst` with the result of a bottom-hat filter applied to `A` with
 structuring element `R` and optional smoothing element `S`.  Argument `wrk` is
-a workspace array whose contents is not preserved.  The 3 arguments `A`, `dst`,
+a workspace array whose contents is not preserved.  The arguments `A`, `dst`,
 and `wrk` must be similar but different arrays.  The destination `dst` is
 returned.
 

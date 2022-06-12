@@ -256,7 +256,7 @@ As another example, implementing a convolution by `B` writes:
     If the methods `init`, `update`, and/or `store!` are anonymous functions or
     closures, beware that they should not depend on local variables because
     this may have a strong impact on performances.  For instance, you may
-    consider using [`LocalFilter.ConstantProducer`](@ref) as a replacement for
+    consider using [`LocalFilters.ConstantProducer`](@ref) as a replacement for
     `init` (have a look at the implementation of methods such as
     [`localmean!`](@ref) or [`convolve!`](@ref)).
 

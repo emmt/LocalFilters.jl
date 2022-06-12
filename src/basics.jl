@@ -43,7 +43,7 @@ setindex!(B::Neighborhood, val, inds::Union{Integer,CartesianIndex}...) =
 yields the initial (multi-dimensional) index of a rectangular region which has
 the same size as the array `A` but whose origin (that is, index
 `zero(CartesianIndex{N})`) is at the geometrical center of the region (with the
-same conventions as [`fftshift`](@ref)).
+same conventions as `fftshift`.
 
 """
 default_start(A::AbstractArray) =
@@ -464,14 +464,12 @@ end
 
 yields a *structuring element* suitable for mathematical morphology operations.
 The result is a `Kernel` whose elements have type `T` (which can be `Bool` or a
-floating-point type).  Argument `A` can be a rectangular box or a `Kernel`
+floating-point type).  Argument `A` can be a Cartesian box or a `Kernel`
 with boolean elements.
 
 If `T` is a floating-point type, then the result is a so-called *flat*
 structuring element whose coefficients are `zero(T)` inside the shape defined
 by `A` and `-T(Inf)` elsewhere.
-
-See also: [`convert_coefs`](@ref).
 
 """
 strel(::Type{Bool}, K::Kernel{Bool,N}) where {N} = K
@@ -523,7 +521,7 @@ function convert_coefs(tup::Tuple{T,T}, A::AbstractArray{Bool,N}) where {T,N}
 end
 
 """
-    reverse(B::LocalFilters.Neighborhood)
+    LocalFilters.reverse(B::LocalFilters.Neighborhood)
 
 yields neighborhood `B` reversed along all its dimensions.  This can be used
 to correlate by `B` rather than convolving by `B`.

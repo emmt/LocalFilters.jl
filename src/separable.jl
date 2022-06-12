@@ -36,19 +36,20 @@ yields the result of applying van Herk-Gil-Werman algorithm to filter array `A`
 along dimension(s) `dims` with (associative) binary operation `op` and
 contiguous structuring element(s) defined by the interval(s) `rngs`.  Optional
 argument `wrk` is a workspace array which is automatically allocated if not
-provided; otherwise, it must be a vector with the same element type as `A`
-which is resized as needed (by calling the `resize!` method).  The optional
+provided; otherwise, it must be a vector with the same element type as `A` and
+it is resized as needed (by calling the `resize!` method).  The optional
 argument `T` allows to specify another type of element than `eltype(A)` for the
 result.
 
 Argument `dims` specifies along which dimension(s) of `A` the filter is to be
-applied, it can be a single integer, several integers or a colon `:` to specify
-all dimensions.  Dimensions are processed in the order given by `dims` (the
-same dimension may appear several times) and there must be a matching interval
-in `rngs` to specify the structuring element (except that if `rngs` is a single
-interval, it is used for every dimension in `dims`).  An interval is either an
-integer or an integer valued unit range in the form `kmin:kmax` (an interval
-specified as a single integer, say `k`, is the same as specifying `k:k`).
+applied, it can be a single integer, a tuple of integers, or a colon `:` to
+apply the operation to all dimensions.  Dimensions are processed in the order
+given by `dims` (the same dimension may appear several times) and there must be
+a matching interval in `rngs` to specify the structuring element (except that
+if `rngs` is a single interval, it is used for every dimension in `dims`).  An
+interval is either an integer or an integer valued unit range in the form
+`kmin:kmax` (an interval specified as a single integer, say `k`, is the same as
+specifying `k:k`).
 
 Assuming a mono-dimensional array `A`, the single filtering pass:
 
@@ -151,7 +152,7 @@ Herk-Gil-Werman algorithm to filter array `A` along dimension(s) `dims` with
 (associative) binary operation `op` and contiguous structuring element(s)
 defined by the interval(s) `rngs` and using optional argument `wrk` as a
 workspace array.  The destination `dst` must have the same indices as the
-source `A` (that is, `axes(dst) == axes(A)`).  Operation can be done in-place
+source `A` (that is, `axes(dst) == axes(A)`).  Operation may be done in-place
 and `dst` and `A` can be the same; this is the default behavior if `dst` is not
 specified.
 

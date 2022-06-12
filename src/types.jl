@@ -208,7 +208,8 @@ is much faster than:
     v0 = ... # initial state variable
     localfilter!(dst, A, B, a -> v0, update, store!)
 
-"""
+""" ConstantProducer
+
 struct ConstantProducer{T} <: Function
     val::T
 end
