@@ -5,6 +5,7 @@
 # Specific files/directories
 work/
 articles/
+docs/build
 
 # Backup files
 *~
