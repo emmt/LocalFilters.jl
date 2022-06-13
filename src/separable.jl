@@ -53,7 +53,7 @@ specifying `k:k`).
 
 Assuming a mono-dimensional array `A`, the single filtering pass:
 
-    localfilter(A, :, op, rng)
+    dst = localfilter(A, :, op, rng)
 
 amount to computing:
 
@@ -65,26 +65,21 @@ for all `j ∈ [first(axes(A,1)):last(axes(A,1))]`, with `x ⋄ y = op(x, y)`,
 operate a simple shift by `k` along the corresponding dimension and has no
 effects if `k = 0`.  This can be exploited to not filter some dimension(s).
 
-See [`localfilter!`](@ref) for an in-place version of the method.
+The *morphological erosion* (local minimum) of the array `A` on a centered
+structuring element of width 7 in every dimension can be obtained by:
 
+    localfilter(A, :, min, -3:3)
 
-## Examples
-
-The in-place *morphological erosion* (local minimum) of the array `A` on a
-centered structuring element of width 7 in every dimension can be applied by:
-
-    localfilter!(A, :, min, -3:3)
-
-Index interval `0` may be specified to do nothing along the corresponding
+Index interval `0:0` may be specified to do nothing along the corresponding
 dimension.  For instance, assuming `A` is a three-dimensional array:
 
-    localfilter!(A, :, max, (-3:3, 0, -4:4))
+    localfilter(A, :, max, (-3:3, 0:0, -4:4))
 
-overwrites `A` by its *morphological dilation* (*i.e.* local maximum) in a
-centered local neighborhood of size `7×1×9` (nothing is done along the second
+yields the *morphological dilation* (*i.e.* local maximum) of `A` in a centered
+local neighborhood of size `7×1×9` (nothing is done along the second
 dimension).  The same result may be obtained with:
 
-    localfilter!(A, (1,3), max, (-3:3, -4:4))
+    localfilter(A, (1,3), max, (-3:3, -4:4))
 
 where the second dimension is omitted from the list of dimensions.
 
@@ -93,40 +88,7 @@ window of size 11×11 can be computed as:
 
     localfilter(A, :, +, (-5:5, -5:5))*(1/11)
 
-
-## Efficiency and restrictions
-
-The van Herk-Gil-Werman algorithm is very fast for rectangular structuring
-elements.  It takes at most 3 operations to filter an element along a given
-dimension whatever the width `p` of the considered local neighborhood.  For
-`N`-dimensional arrays, the algorithm requires only `3N` operations per element
-instead of `p^N - 1` operations for a naive implementation.  This however
-requires to make a pass along each dimension so memory page faults may reduce
-the performances.  This is somewhat attenuated by the fact that the algorithm
-can be applied in-place.  For efficient multi-dimensional out-of-place
-filtering, it is recommended to make the first pass with a fresh destination
-array and then all other passes in-place on the destination array.
-
-To apply the van Herk-Gil-Werman algorithm, the structuring element must be
-separable along the dimensions and its components must be contiguous.  In other
-words, the algorithm is only applicable for `N`-dimensional rectangular
-neighborhoods, so-called *hyperrectangles*.  The structuring element may
-however be off-centered by arbitrary offsets along each dimension.
-
-To take into account boundary conditions (for now, only nearest neighbor is
-implemented) and allow for in-place operation, the algorithm allocates a
-workspace array.
-
-
-## References
-
-* Marcel van Herk, "*A fast algorithm for local minimum and maximum filters on
-  rectangular and octagonal kernels*" in Pattern Recognition Letters **13**,
-  517-521 (1992).
-
-* Joseph Gil and Michael Werman, "*Computing 2-D Min, Median, and Max Filters*"
-  in IEEE Transactions on Pattern Analysis and Machine Intelligence **15**,
-  504-507 (1993).
+See [`localfilter!`](@ref) for an in-place version of the method.
 
 """
 function localfilter(A::AbstractArray,
@@ -157,6 +119,11 @@ and `dst` and `A` can be the same; this is the default behavior if `dst` is not
 specified.
 
 See [`localfilter`](@ref) for a full description of the method.
+
+The in-place *morphological erosion* (local minimum) of the array `A` on a
+centered structuring element of width 7 in every dimension can be obtained by:
+
+    localfilter!(A, :, min, -3:3)
 
 """
 function localfilter!(dst::AbstractArray{T,N},

@@ -6,7 +6,8 @@ generic [`localfilter!`](@ref) method.
 
 ## The `localfilter!` method
 
-A local filtering operation can be performed by calling:
+A local filtering operation can be performed by calling the
+[`localfilter!`](@ref) method as follows:
 
 ```julia
 localfilter!(dst, A, B, initial, update, store!) -> dst
@@ -27,7 +28,7 @@ filtering:
 end
 ```
 
-where `Sup(A)` denotes the support of `A` (that is the set of indices in `A`)
+where `Sup(A)` denotes the support of `A` (that is the set of indices of `A`)
 and `i - Sup(B)` denotes the set of indices `j` such that `i - j ∈ Sup(B)` with
 `Sup(B)` the support of `B`.  In other words, `j ∈ Sup(A) ∩ (i - Sup(B))` means
 all indices `j` such that `j ∈ Sup(A)` and `i - j ∈ Sup(B)`, hence `A[j]` and
@@ -37,16 +38,17 @@ Julia.
 
 The behavior of the filter is fully determined by the *neighborhood* `B` (see
 Section [*Neighborhoods, structuring elements, and
-kernels*](neighborhoods.html)) and by the provided methods used as follows:
+kernels*](neighborhoods.html)), by the type of the state variable `v`, and by
+the methods:
 
-- `initial(a)` yields the initial value of the state variable `v` given `a =
-  A[i]`;
+- `initial(a)` which yields the initial value of the state variable `v` given
+  `a = A[i]`;
 
-- `update(v, a, b)` yields the updated state variable `v` given the state
+- `update(v, a, b)` which yields the updated state variable `v` given the state
   variable `v`, `a = A[j]`, and `b = B[i-j]`;
 
-- `store!(dst, i, v)` extracts the result of the filter from the state variable
-  `v` and stores it at index `i` in the destination `dst`.
+- `store!(dst, i, v)` which extracts the result of the filter from the state
+  variable `v` and stores it at index `i` in the destination `dst`.
 
 !!! warning
     The loop(s) in `localfilter!` are performed without bounds checking of the

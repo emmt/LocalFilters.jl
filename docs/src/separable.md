@@ -1,37 +1,51 @@
-# Efficient separable filters for associative operations
+# Fast separable filters for associative operations
+
+When the filter amounts to combining all elements in a rectangular neighborhood
+by an associative binary operation (`+`, `min`, `max`, *etc.*), the van
+Herk-Gil-Werman algorithm can be used to implement the filter.  This algorithm
+is much faster than a naive implementation (about `3N` operations per element
+for a `N`-dimensional array whatever the size of the neighborhood instead of
+`p^N - 1` operations for a neighborhood of lenght `p` along all the `N`
+dimensions).  Another advantage of the van Herk-Gil-Werman algorithm is that it
+can be applied in-place.  Such a filter is said to be *separable* and can be
+applied along each dimension, one at a time.
+
 
 ## Out-of-place version
 
-The [`localfilter`](@ref) method may be called as:
+The van Herk-Gil-Werman algorithm is used by the [`localfilter`](@ref) method
+when called as:
 
 ```julia
-dst = localfilter([T=eltype(A),] A, dims, op, rngs [, w])
+localfilter([T=eltype(A),] A, dims, op, rngs [, wrk]) -> dst
 ```
 
-to apply the van Herk-Gil-Werman algorithm to filter array `A` along
-dimension(s) `dims` with (associative) binary operation `op` and contiguous
-structuring element(s) defined by the interval(s) `rngs`.  Optional argument
-`T` is the element type of the result `dst` (by default `T = eltype(A)`).
-Optional argument `w` is a workspace array which is automatically allocated if
-not provided; otherwise, it must be a vector with the same element type as `A`
-which is resized as needed (by calling the `resize!` method).
+yields the result of applying van Herk-Gil-Werman algorithm to filter array `A`
+along dimension(s) `dims` with (associative) binary operation `op` and
+contiguous structuring element(s) defined by the interval(s) `rngs`.  Optional
+argument `wrk` is a workspace array which is automatically allocated if not
+provided; otherwise, it must be a vector with the same element type as `A` and
+it is resized as needed (by calling the `resize!` method).  The optional
+argument `T` allows to specify another type of element than `eltype(A)` for the
+result.
 
 Argument `dims` specifies along which dimension(s) of `A` the filter is to be
-applied, it can be a single integer, several integers or a colon `:` to specify
-all dimensions.  Dimensions are processed in the order given by `dims` (the
-same dimension may appear several times) and there must be a matching interval
-in `rngs` to specify the structuring element (except that if `rngs` is a single
-interval, it is used for every dimension in `dims`).  An interval is either an
-integer or an integer valued unit range in the form `kmin:kmax` (an interval
-specified as a single integer, say `k`, is the same as specifying `k:k`).
+applied, it can be a single integer, a tuple of integers, or a colon `:` to
+apply the operation to all dimensions.  Dimensions are processed in the order
+given by `dims` (the same dimension may appear several times) and there must be
+a matching interval in `rngs` to specify the structuring element (except that
+if `rngs` is a single interval, it is used for every dimension in `dims`).  An
+interval is either an integer or an integer valued unit range in the form
+`kmin:kmax` (an interval specified as a single integer, say `k`, is the same as
+specifying `k:k`).
 
 Assuming a mono-dimensional array `A`, the single filtering pass:
 
 ```julia
-localfilter!(dst, A, :, op, rng)
+dst = localfilter(A, :, op, rng)
 ```
 
-yields:
+amount to computing:
 
 ```julia
 dst[j] = A[j-kmax] ⋄ A[j-kmax+1] ⋄ A[j-kmax+2] ⋄ ... ⋄ A[j-kmin]
@@ -50,7 +64,7 @@ The [`localfilter!`](@ref) method implement the *in-place* version of the van
 Herk-Gil-Werman algorithm:
 
 ```julia
-localfilter!([dst = A,] A, dims, op, rngs [, w]) -> dst
+localfilter!([dst = A,] A, dims, op, rngs [, wrk]) -> dst
 ```
 
 overwrites the contents of `dst` with the result of the filter and returns
@@ -61,18 +75,22 @@ is `A`, the operation is performed in-place.
 
 ## Examples
 
-The in-place *morphological erosion* (local minimum) of the array `A` on a
-centered structuring element of width 7 in every dimension can be applied by:
+The *morphological erosion* (local minimum) of the array `A` on a centered
+structuring element of width 7 in every dimension can be obtained by:
+
+    localfilter(A, :, min, -3:3)
+
+Array `A` can be used *in-place* for the same operation:
 
 ```julia
 localfilter!(A, :, min, -3:3)
 ```
 
-Index interval `0` may be specified to do nothing along the corresponding
+Index interval `0:0` may be specified to do nothing along the corresponding
 dimension.  For instance, assuming `A` is a three-dimensional array:
 
 ```julia
-localfilter!(A, :, max, (-3:3, 0, -4:4))
+localfilter!(A, :, max, (-3:3, 0:0, -4:4))
 ```
 
 overwrites `A` by its *morphological dilation* (*i.e.* local maximum) in a
@@ -91,6 +109,7 @@ window of size 11×11 can be computed as:
 ```julia
 localfilter(A, :, +, (-5:5, -5:5))*(1/11)
 ```
+
 
 ## Efficiency and restrictions
 
