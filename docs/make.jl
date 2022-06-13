@@ -8,6 +8,7 @@ DEPLOYDOCS = (get(ENV, "CI", nothing) == "true")
 makedocs(
     sitename = "LocalFilters.jl Package",
     format = Documenter.HTML(
+        edit_link = "master",
         prettyurls = DEPLOYDOCS,
     ),
     authors = "Éric Thiébaut and contributors",
