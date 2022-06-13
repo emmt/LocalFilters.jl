@@ -4,6 +4,13 @@ The following summarizes the documentation of types and methods provided by the
 `LocalFilters` package.  This information is also available from the REPL by
 typing `?` followed by the name of a method or a type.
 
+
+## Index
+
+```@index
+```
+
+
 ## Linear filters
 
 `LocalFilters` provides convolutive filters which are shift-invariant linear

@@ -13,8 +13,3 @@ The source code of `LocalFilters` is available on
 Pages = ["generic.md", "neighborhoods.md", "linear.md", "nonlinear.md",
          "morphology.md", "separable.md", "reference.md"]
 ```
-
-## Index
-
-```@index
-```
