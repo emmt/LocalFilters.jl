@@ -11,141 +11,270 @@
 # Copyright (C) 2017-2022, Éric Thiébaut.
 #
 
-# Extend `CartesianIndices`.
-CartesianIndices(B::Neighborhood) = CartesianIndices(axes(B))
-convert(::Type{CartesianIndices}, B::Neighborhood) = CartesianIndices(B)
-convert(::Type{CartesianIndices{N}}, B::Neighborhood{N}) where N =
-    CartesianIndices(B)
+Base.IndexStyle(A::Indices) = IndexStyle(typeof(A))
+Base.IndexStyle(::Type{<:Indices{S}}) where {S} = S()
 
-# Default implementation of common methods.
-ndims(::Neighborhood{N}) where {N} = N
-length(B::Neighborhood) = prod(size(B))
-size(B::Neighborhood) = map(_length,
-                            Tuple(first_cartesian_index(B)),
-                            Tuple(last_cartesian_index(B)))
-size(B::Neighborhood, d) = _length(first_cartesian_index(B)[d],
-                                   last_cartesian_index(B)[d])
-@inline axes(B::Neighborhood) = map((i,j) -> i:j,
-                                    Tuple(first_cartesian_index(B)),
-                                    Tuple(last_cartesian_index(B)))
-axes(B::Neighborhood, d) =
-    (first_cartesian_index(B)[d]:last_cartesian_index(B)[d])
-getindex(B::Neighborhood, inds::Union{Integer,CartesianIndex}...) =
-    getindex(B, CartesianIndex(inds...))
-setindex!(B::Neighborhood, val, inds::Union{Integer,CartesianIndex}...) =
-    setindex!(B, val, CartesianIndex(inds...))
+@inline (::Indices{IndexLinear})(A::AbstractArray) = Base.OneTo{Int}(length(A))
+@inline (::Indices{IndexLinear})(A::AbstractVector) = to_int(Base.axes1(A))
+@inline (::Indices{IndexCartesian})(A::AbstractArray) = CartesianIndices(A)
 
-@inline _length(start::Int, stop::Int) = max(Int(stop) - Int(start) + 1, 0)
+Indices(::S) where {S<:IndexStyle} = Indices{S}()
+#Indices(::S, A::AbstractArray) where {S<:IndexStyle} = Indices{S}()
+#Indices(::S, A::AbstractArray, B::AbstractArray...) where {S<:IndexStyle} =
+#    Indices{S}()
+
+Indices(A::AbstractVector) = Indices(IndexStyle(A))
+Indices(A::AbstractVector, B::AbstractVector...) = Indices(IndexStyle(A, B...))
+Indices(A::AbstractArray) = Indices{IndexCartesian}()
+Indices(A::AbstractArray, B::AbstractArray...) = Indices{IndexCartesian}()
 
 """
-    default_start(A) -> I::CartesianIndex
+    LocalFilters.kernel_range(x)
 
-yields the initial (multi-dimensional) index of a rectangular region which has
-the same size as the array `A` but whose origin (that is, index
-`zero(CartesianIndex{N})`) is at the geometrical center of the region (with the
-same conventions as `fftshift`.
+yields an `Int`-valued index range based on `x`.  If `x` is an integer, a
+centered range of this length is returned (for even lengths, the same
+conventions as in `fftshift` are used).  Otherwise, `x` must be a an integer
+valued range.
 
-"""
-default_start(A::AbstractArray) =
-    CartesianIndex(map(rng -> -(Int(length(rng)) >> 1), axes(A)))
+    LocalFilters.kernel_range(start, [step = 1,] stop)
 
-"""
-    first_cartesian_index(B) -> Imin::CartesianIndex{N}
-    last_cartesian_index(B)  -> Imax::CartesianIndex{N}
+yields an `Int`-valued index range similar to `start:step:stop`.  Beware that
+non-unit steps may not be fully supported in `LocalFilters`.
 
-respectively yield the first and last multi-dimensional Cartesian index for
-indexing the Cartesian region defined by `B`.  A Cartesian region defines a
-rectangular set of indices whose edges are aligned with the indexing axes.
-
-Compared to similar methods [`firstindex`](@ref), [`lastindex()`](@ref),
-[`first()`](@ref) and [`last()`](@ref), the returned value is always an
-instance of `CartesianIndex{N}` with `N` the number of dimensions.
-
-Any multi-dimensional index `I::CartesianIndex{N}` is in the Cartesian region
-defined `B` if and only if `Imin ≤ I ≤ Imax`.
-
-Also see: [`limits`](@ref).
+See [`LocalFilters.kernel`](@ref),
+[`LocalFilters.first_centered_index`](@ref), [`LocalFilters.centered`](@ref),
+and alias [`LocalFilters.WindowRange`](@ref).
 
 """
-first_cartesian_index(B::Neighborhood) = B.start
-last_cartesian_index(B::Neighborhood) = B.stop
+kernel_range(rng::IntegerRange) = to_int(rng)
 
-first_cartesian_index(R::CartesianIndices) = first(R)
-last_cartesian_index(R::CartesianIndices) = last(R)
+function kernel_range(len::Integer)
+    len ≥ 0 || throw(ArgumentError("invalid range length"))
+    n = to_int(len)
+    start = first_centered_index(n)
+    return kernel_range(start, n - 1 + start)
+end
 
-first_cartesian_index(A::AbstractArray) = first_cartesian_index(axes(A))
-last_cartesian_index(A::AbstractArray) = last_cartesian_index(axes(A))
+kernel_range(start::Integer, stop::Integer) = to_int(start):to_int(stop)
 
-first_cartesian_index(inds::UnitIndexRanges{N}) where {N} =
-    CartesianIndex(map(first, inds))
-last_cartesian_index(inds::UnitIndexRanges{N}) where {N} =
-     CartesianIndex(map(last, inds))
+kernel_range(start::Integer, step::Integer, stop::Integer) =
+    to_int(start):to_int(step):to_int(stop)
 
-first_cartesian_index(inds::NTuple{2,CartesianIndex{N}}) where {N} = inds[1]
-last_cartesian_index(inds::NTuple{2,CartesianIndex{N}}) where {N} = inds[2]
+"""
+    LocalFilters.kernel([Dims{N},] args...)
+
+yields an `N`-dimensional abstract array builds from `args...` and which can be
+used as a kernel in local filtering operations.
+
+* If `args...` is composed of `N` integers and/or ranges or if it is an
+  `N`-tuple of integers and/or ranges, a uniformly true abstract array is
+  returned whose axes are specified by `args...`.  Each integer argument is
+  converted in a centered unit range of this length (see
+  [`LocalFilters.kernel_range`](@ref)).
+
+* If `Dims{N}` is provided and `args...` is a single integer or range, it is
+  interpreted as being the same for all dimensions.
+
+* If `args...` is a pair of Cartesian indices, say `I_first` and `I_last`, a
+  uniformly true abstract array is returned whose first and last indices are
+  given by `args...`.
+
+* If `args...` is a Cartesian range, a uniformly true abstract array is
+  returned whose axes are given by `args...`.
+
+* If `args...` is an array of any other type than a Cartesian range,
+  it is returned unchanged.
+
+Optional leading argument `Dims{N}` can be specified to assert the number of
+dimensions of the result or to provide the number of dimensions when it cannot
+be guessed from the arguments.  For example, when `args...` is a single integer
+length or range which should be interpreted as being the same for all
+dimensions.
+
+See also [`LocalFilters.kernel_range`](@ref) and
+[`LocalFilters.cartesian_limits`](@ref).
+
+"""
+kernel(x::Axis...) = box(x)
+kernel(::Type{Dims{N}}, x::Axis...) where {N} = Box{N}(x...)
+
+kernel(x::Tuple{Vararg{Axis}}) = Box(x)
+kernel(::Type{Dims{N}}, x::NTuple{N,Axis}) where {N} = Box(x)
+
+kernel(x::CartesianIndices) = Box(x)
+kernel(::Type{Dims{N}}, x::CartesianIndices{N}) where {N} = Box(x)
+
+kernel(x::AbstractArray) = x
+kernel(::Type{Dims{N}}, x::AbstractArray{<:Any,N}) where {N} = x
+
+kernel(x::NTuple{2,CartesianIndex{N}}) where {N} = Box(x...)
+kernel(::Type{Dims{N}}, x::NTuple{2,CartesianIndex{N}}) where {N} = Box(x...)
+
+kernel(a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} = Box(a, b)
+kernel(::Type{Dims{N}}, a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} =
+    Box(a, b)
+kernel(::Type{Dims{N}}, x...) where {N} =
+    throw(ArgumentError(
+        "cannot create an instance of CartesianIndices{$N} for argument of type $(typeof(x))"))
+
+# Implement abstract array interface for Box objects which are uniformly true
+# arrays.
+Base.length(A::Box) = prod(size(A))
+Base.axes(A::Box) = ranges(CartesianIndices(A))
+Base.size(A::Box) = map(length, axes(A))
+Base.CartesianIndices(A::Box) = getfield(A, :inds)
+Base.IndexStyle(::Type{<:Box}) = IndexLinear()
+@inline Base.getindex(A::Box, I...) = true # FIXME: check indices
+
+# `Box` constructors, also see the `kernel` method.
+Box{N}(x::Axis) where {N} = Box(replicate(NTuple{N}, kernel_range(x)))
+Box{N}(x::Axis...) where {N} = Box{N}(x)
+Box{N}(x::NTuple{N,Axis}) where {N} = Box(x)
+Box(x::Axis...) = Box(x)
+Box(x::NTuple{N,Axis}) where {N} = Box(CartesianIndices(map(kernel_range, x)))
+Box{N}(a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} = Box(a, b)
+Box(a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} =
+    Box(CartesianIndices(map(kernel_range, Tuple(a), Tuple(b))))
+Box{N}(A::AbstractArray{N}) where {N} = Box(A)
+Box(A::AbstractArray) = Box(CartesianIndices(A))
+Box(A::Box) = A
+
+"""
+    LocalFilters.subset(A_inds, ord, B_inds, i) -> J
+
+yields the subset `J` of all indices `j` such that:
+
+* `A[j]` and `B[j-i]` are in-bounds if `ord = Forward`;
+
+* `A[j]` and `B[i-j]` are in-bounds if `ord = Reverse`;
+
+with `A` and `B` any arrays whose index ranges are given by `A_inds` and
+`B_inds`.
+
+"""
+@inline function subset(A::CartesianIndices{N},
+                        ::typeof(Forward),
+                        B::CartesianIndices{N},
+                        I::CartesianIndex{N}) where {N}
+    return @range A ∩ (I + B)
+end
+
+@inline function subset(A::CartesianIndices{N},
+                        ::typeof(Reverse),
+                        B::CartesianIndices{N},
+                        I::CartesianIndex{N}) where {N}
+    return @range A ∩ (I - B)
+end
+
+@inline function subset(A::IntegerRange,
+                        ::typeof(Forward),
+                        B::IntegerRange,
+                        I::Integer)
+    return @range A ∩ (I + B)
+end
+
+@inline function subset(A::IntegerRange,
+                        ::typeof(Reverse),
+                        B::IntegerRange,
+                        I::Integer)
+    return @range A ∩ (I - B)
+end
+
+"""
+    LocalFilters.getval(ord, B, i, j)
+
+yields the value of the kernel `B` according to ordering `ord` and for indices
+`i` and `j` respectively in the destination and in the source.  If `B` is a
+Cartesian window, `true` is returned; otherwise `B[j-i]` is returned if `ord =
+Forward` and `B[i-j]` is returned if `ord = Reverse`.
+
+"""
+@inline function getval(::typeof(Forward), B::Box, i, j)
+    # FIXME: check bounds (and idem for others)
+    return true
+end
+
+@inline function getval(::typeof(Reverse), B::Box, i, j)
+    return true
+end
+
+@inline @propagate_inbounds function getval(::typeof(Forward),
+                                            B::AbstractArray, i, j)
+    return B[j-i]
+end
+
+@inline @propagate_inbounds function getval(::typeof(Reverse),
+                                            B::AbstractArray, i, j)
+    return B[i-j]
+end
+
+"""
+   LocalFilters.centered(A) -> B
+
+yields an abstract array `B` sharing the entries of array `A` but with offsets
+on indices so that the axes of `B` are *centered* (for even dimension lengths,
+the same conventions as in `fftshift` are used).
+
+This method is purposely not exported because it could introduce some
+confusions.  For example `OffsetArrays.centered` is similar but has a slightly
+different semantic.
+
+Argument `A` can also be an index range (linear or Cartesian), in which case
+a centered index range of same size is returned.
+
+See [`LocalFilters.kernel_range`](@ref),
+[`LocalFilters.first_centered_index`](@ref).
+
+"""
+centered(A::AbstractArray) =
+    OffsetArray(A, map(x -> first_centered_index(x) - 1, size(A)))
+centered(A::OffsetArray) = centered(parent(A))
+centered(R::CartesianIndices{N}) where {N} =
+    CartesianIndices(map(centered, ranges(R)))
+centered(R::AbstractUnitRange{<:Integer}) = kernel_range(length(R))
+centered(R::IntegerRange) = begin
+    abs(step(R)) == 1 || throw(ArgumentError("invalid non-unit step index range"))
+    return kernel_range(length(R))
+end
+
+"""
+   LocalFilters.first_centered_index(len)
+
+yields the first index along a centered dimension of length `len`.  That is,
+`-div(len,2)` converetd to `Int`.  For even dimension lengths, this amounts to
+using the same conventions as in `fftshift`.
+
+See [`LocalFilters.kernel_range`](@ref) and [`LocalFilters.entered`](@ref).
+
+"""
+function first_centered_index(len::Integer)
+    len ≥ 0 || throw(ArgumentError("invalid dimension length"))
+    n = to_int(len)
+    return -(n >> 1)
+end
+
+"""
+    LocalFilters.replicate(NTuple{N}, val)
+
+yields the `N`-tuple `(val,val,...)`.
+
+    LocalFilters.replicate(NTuple{N,T}, val)
+
+yields the `N`-tuple `(x,x,...)` where `x` is `val` converted to type `T`.
+
+"""
+replicate(::Type{NTuple{N}}, val) where {N} = ntuple((x) -> val, Val(N))
+replicate(::Type{NTuple{N,T}}, val::T) where {N,T} = ntuple((x) -> val, Val(N))
+replicate(::Type{NTuple{N,T}}, val) where {N,T} =
+    replicate(NTuple{N,T}, convert(T, val)::T)
 
 """
     limits(T::DataType) -> typemin(T), typemax(T)
 
 yields the infimum and supremum of a type `T`.
 
-    limits(B) -> Imin, Imax
-
-yields the corners (as a tuple of 2 `CartesianIndex`) of the Cartesian
-region defined by `B`.
-
-Also see: [`first_cartesian_index`](@ref) and [`last_cartesian_index`](@ref).
-
 """
 limits(T::Type) = (typemin(T), typemax(T))
-limits(A::AbstractArray) = limits(axes(A)) # provides a slight optimization?
-limits(B::Neighborhood) = (first_cartesian_index(B),
-                           last_cartesian_index(B))
-limits(R::CartesianIndices) = (first_cartesian_index(R),
-                               last_cartesian_index(R))
-limits(inds::UnitIndexRanges) = (first_cartesian_index(inds),
-                                 last_cartesian_index(inds))
-limits(inds::NTuple{2,CartesianIndex{N}}) where {N} = inds
-
-"""
-    cartesian_region(args...) -> R
-
-yields the rectangular region (as an instance of `CartesianIndices`) specified
-by the arguments which can be:
-
-* an abstract array whose axes define the region (see [`axes`](@ref));
-
-* a list of unit range indices and/or indices along each dimension;
-
-* the corners of the bounding box, say `start` and `stop`, specified as two
-  instances of `CartesianIndex`;
-
-* a neighborhood (see [`Neighborhood`](@ref));
-
-* an instance of `CartesianIndices.
-
-This method is mostly similar to `CartesianIndices`, it is introduced in
-`LocalFilters` to avoid type-piracy when dealing with arguments not handled
-`CartesianIndices`.
-
-See also: [`first_cartesian_index`](@ref), [`last_cartesian_index`](@ref) and [`limits`](@ref).
-
-"""
-cartesian_region(B::Neighborhood) =
-    cartesian_region(first_cartesian_index(B), last_cartesian_index(B))
-cartesian_region(A::AbstractArray) = cartesian_region(axes(A))
-cartesian_region(R::CartesianIndices) = R
-cartesian_region(inds::UnitIndexRanges) = CartesianIndices(inds)
-
-# The most critical version of `cartesian_region` is the one which takes the
-# first and last indices of the region and which is inlined.
-@inline function cartesian_region(start::CartesianIndex{N},
-                                 stop::CartesianIndex{N}) where N
-    return CartesianIndices(map((i,j) -> i:j, Tuple(start), Tuple(stop)))
-end
-
-#------------------------------------------------------------------------------
-# UTILITIES
 
 """
     check_indices(A...)
@@ -206,363 +335,77 @@ function check_indices(::Type{Bool},
     return axes(A) == I
 end
 
+"""
+    result_eltype(f, A[, B]) -> T
 
-#------------------------------------------------------------------------------
-# CONVERSIONS
-
-# To implement variants and out-of-place versions, we define conversion rules
-# to convert various types of arguments into a neighborhood suitable with the
-# source (e.g., of given rank `N`).
-
-convert(::Type{Neighborhood}, x) = Neighborhood(x)
-convert(::Type{Neighborhood}, x::Neighborhood) = x
-convert(::Type{Neighborhood{N}}, x) where {N} = Neighborhood{N}(x)
-convert(::Type{Neighborhood{N}}, x::Neighborhood{N}) where {N} = x
-
-convert(::Type{RectangularBox}, x) = RectangularBox(x)
-convert(::Type{RectangularBox}, x::RectangularBox) = x
-convert(::Type{RectangularBox{N}}, x) where {N} = RectangularBox{N}(x)
-convert(::Type{RectangularBox{N}}, x::RectangularBox{N}) where {N} = x
-
-convert(::Type{Kernel}, x) = Kernel(x)
-convert(::Type{Kernel}, x::Kernel) = x
-convert(::Type{Kernel{T}}, x) where {T} = Kernel{T}(x)
-convert(::Type{Kernel{T}}, x::Kernel{T}) where {T} = x
-convert(::Type{Kernel{T,N}}, x) where {T,N} = Kernel{T,N}(x)
-convert(::Type{Kernel{T,N}}, x::Kernel{T,N}) where {T,N} = x
-
-#------------------------------------------------------------------------------
-# METHODS FOR NEIGHBORHOODS
-
-# Outer constructors for Neighborhood.  All constructors taking a single
-# argument must account for any explicit parametrization.
-
-Neighborhood(B::Neighborhood) = B
-Neighborhood{N}(B::Neighborhood{N}) where {N} = B
-
-Neighborhood(A::AbstractArray) = Kernel(A)
-Neighborhood{N}(A::AbstractArray{T,N}) where {T,N} = Kernel(A)
-
-Neighborhood(dim::Integer) = RectangularBox(dim)
-Neighborhood{N}(dim::Integer) where {N} = RectangularBox{N}(dim)
-Neighborhood(dims::Integer...) = RectangularBox(dims)
-Neighborhood{N}(dims::Integer...) where {N} = RectangularBox{N}(dims)
-Neighborhood(dims::Dimensions{N}) where {N} = RectangularBox(dims)
-Neighborhood{N}(dims::Dimensions{N}) where {N} = RectangularBox(dims)
-
-Neighborhood(rng::UnitIndexRange) = RectangularBox(rng)
-Neighborhood{N}(rng::UnitIndexRange) where {N} = RectangularBox{N}(rng)
-Neighborhood(rngs::UnitIndexRange...) = RectangularBox(rngs)
-Neighborhood{N}(rngs::UnitIndexRange...) where {N} = RectangularBox{N}(rngs)
-Neighborhood(rngs::UnitIndexRanges{N}) where {N} = RectangularBox(rngs)
-Neighborhood{N}(rngs::UnitIndexRanges{N}) where {N} = RectangularBox(rngs)
-
-Neighborhood(R::CartesianIndices) = RectangularBox(R)
-Neighborhood{N}(R::CartesianIndices{N}) where {N} = RectangularBox(R)
-
-#------------------------------------------------------------------------------
-# METHODS FOR RECTANGULAR BOXES
-
-RectangularBox(B::RectangularBox) = B
-RectangularBox{N}(B::RectangularBox{N}) where {N} = B
-
-RectangularBox(dim::Integer) = RectangularBox{1}(dim)
-RectangularBox{N}(dim::Integer) where {N} = RectangularBox{N}(_range(dim))
-RectangularBox(dims::Integer...) = RectangularBox(dims)
-RectangularBox{N}(dims::Integer...) where {N} = RectangularBox{N}(dims)
-RectangularBox(dims::Dimensions{N}) where {N} =
-    RectangularBox(map(_range, dims))
-RectangularBox{N}(dims::Dimensions{N}) where {N} = RectangularBox(dims)
-
-RectangularBox(rng::UnitIndexRange) = RectangularBox{1}(rng)
-function RectangularBox{N}(rng::UnitIndexRange) where {N}
-    imin = Int(first(rng))
-    imax = Int(last(rng))
-    Imin = CartesianIndex(ntuple(d -> imin, Val(N)))
-    Imax = CartesianIndex(ntuple(d -> imax, Val(N)))
-    return RectangularBox{N}(Imin, Imax)
-end
-RectangularBox(rngs::UnitIndexRange...) = RectangularBox(rngs)
-RectangularBox{N}(rngs::UnitIndexRange...) where {N} = RectangularBox{N}(rngs)
-function RectangularBox(rngs::UnitIndexRanges{N}) where {N}
-    I1 = CartesianIndex(map(r -> Int(first(r)), rngs))
-    I2 = CartesianIndex(map(r -> Int(last(r)), rngs))
-    return RectangularBox{N}(I1, I2)
-end
-RectangularBox{N}(rngs::UnitIndexRanges{N}) where {N} = RectangularBox(rngs)
-
-RectangularBox(R::CartesianIndices) =
-    RectangularBox(first_cartesian_index(R), last_cartesian_index(R))
-RectangularBox{N}(R::CartesianIndices{N}) where {N} =
-    RectangularBox(first_cartesian_index(R), last_cartesian_index(R))
-
+yields the element type `T` of the result of applying function `f` to
+source `A`, optionally with kernel/neighborhood `B`.
 
 """
-    ismmbox(B)
-
-yields whether neighborhood `B` has the same effect as a rectangular box for
-mathematical morphology operations.  This may be used to use fast separable
-versions of mathematical morphology operations like the van Herk-Gil-Werman
-algorithm.
-
-See also: [`LocalFilters.RectangularBox`](@ref).
-"""
-ismmbox(::RectangularBox) = true
-ismmbox(B::Kernel{Bool}) = all(identity, coefs(B))
-ismmbox(B::Kernel{T}) where {T<:AbstractFloat} =
-    all(x -> x == zero(T), coefs(B))
-ismmbox(::Neighborhood) = false
-
-_range(dim::Integer) = _range(Int(dim))
-
-function _range(dim::Int)
-    dim ≥ 1 ||
-        throw(ArgumentError("neighborhood dimension(s) must be at least one"))
-    imin = -(dim >> 1)
-    imax = dim + imin - 1
-    return imin:imax
-end
-
-#------------------------------------------------------------------------------
-# METHODS FOR KERNELS
-
-eltype(B::Kernel) = eltype(typeof(B))
-eltype(::Type{<:Kernel{T,N}}) where {T,N} = T
-ndims(B::Kernel) = ndims(typeof(B))
-ndims(::Type{<:Kernel{T,N}}) where {T,N} = N
-length(B::Kernel) = length(coefs(B))
-size(B::Kernel) = size(coefs(B))
-size(B::Kernel, d) = size(coefs(B), d)
-getindex(B::Kernel, I::CartesianIndex) = getindex(coefs(B), I + offset(B))
-setindex!(B::Kernel, val, I::CartesianIndex) =
-    setindex!(coefs(B), val, I + offset(B))
+result_eltype(::typeof(+), ::AbstractArray{T}) where {T} = T
+result_eltype(::typeof(+), ::AbstractArray{T}) where {T<:Integer} =
+    # Widen type for integers smaller than standard ones.
+    (sizeof(T) < sizeof(Int) ? widen(T) : T)
 
 """
-    LocalFilters.coefs(B)
+    LocalFilters.is_morpho_math_box(R)
 
-yields the array of coefficients embedded in kernel `B`.
-
-See also: [`LocalFilters.offset`](@ref).
-
-"""
-coefs(B::Kernel) = B.coefs
+yields whether structuring element `R` has the same effect as an
+hyperrectangular box for mathematical morphology operations.  This may be used
+to use fast separable versions of mathematical morphology operations like the
+van Herk-Gil-Werman algorithm.
 
 """
-    LocalFilters.offset(B)
-
-yields the index offset of the array of coefficients embedded in kernel `B`.
-That is, `B[k] ≡ coefs(B)[k + offset(B)]`.
-
-See also: [`LocalFilters.coefs`](@ref).
-
-"""
-offset(B::Kernel) = B.offset
-
-# Kernel constructors given a Kernel instance.
-Kernel(K::Kernel) = K
-Kernel{T}(K::Kernel{T}) where {T} = K
-Kernel{T}(K::Kernel{S}) where {S,T} = Kernel(convert_coefs(T, coefs(K)),
-                                             first_cartesian_index(K))
-Kernel{T,N}(K::Kernel{T,N}) where {T,N} = K
-Kernel{T,N}(K::Kernel{S,N}) where {S,T,N} = Kernel{T}(K)
-
-# Kernel constructors given a RectangularBox instance.
-Kernel(B::RectangularBox{N}) where {N} = Kernel{Bool,N}(B)
-Kernel{T}(B::RectangularBox{N}) where {T,N} = Kernel{T,N}(B)
-Kernel{T,N}(B::RectangularBox{N}) where {T,N} =
-    Kernel{T,N,Array{T,N}}(ones(T, size(B)), first_cartesian_index(B))
-
-# Kernel constructors given an array of coefficients.
-Kernel(A::AbstractArray) = Kernel(A, default_start(A))
-Kernel{T}(A::AbstractArray{T}) where {T} = Kernel(A)
-Kernel{T}(A::AbstractArray{S}) where {S,T} = Kernel(convert_coefs(T, A))
-Kernel{T,N}(A::AbstractArray{T,N}) where {T,N} = Kernel(A)
-Kernel{T,N}(A::AbstractArray{S,N}) where {S,T,N} = Kernel{T}(A)
-
-# Kernel constructors given an array of coefficients and starting indices.
-Kernel(A::AbstractArray{T,N}, start::CartesianIndex{N}) where {T,N} =
-    Kernel{T,N,typeof(A)}(A, start)
-Kernel{T}(A::AbstractArray{T,N}, start::CartesianIndex{N}) where {T,N} =
-    Kernel{T,N,typeof(A)}(A, start)
-Kernel{T,N}(A::AbstractArray{T,N}, start::CartesianIndex{N}) where {T,N} =
-    Kernel{T,N,typeof(A)}(A, start)
-
-# Kernel constructors given an array of coefficients and any argument
-# suitable to define a Cartesian region.
-
-function Kernel(A::AbstractArray{T,N}, bnds::CartesianRegion{N}) where {T,N}
-    # Bounds for indexing the kernel.
-    kmin, kmax = limits(bnds)
-
-    # Bounds for indexing the array of coefficients.
-    jmin, jmax = limits(A)
-
-    # Check size is identical for all dimensions.
-    all(d -> (jmax[d] - jmin[d]) == (kmax[d] - kmin[d]), 1:N) ||
-        throw(DimensionMismatch("dimensions must be the same"))
-
-    # Make a kernel with the correct initial index.
-    return Kernel(A, kmin)
-end
-
-Kernel{T}(A::AbstractArray{T,N}, bnds::CartesianRegion{N}) where {T,N} =
-    Kernel(A, bnds)
-Kernel{T}(A::AbstractArray{S,N}, bnds::CartesianRegion{N}) where {S,T,N} =
-    Kernel(convert_coefs(T, A), bnds)
-Kernel{T,N}(A::AbstractArray{S,N}, bnds::CartesianRegion{N}) where {S,T,N} =
-    Kernel{T}(A, bnds)
-
-Kernel(A::AbstractArray, rngs::UnitIndexRange...) = Kernel(A, rngs)
-Kernel{T}(A::AbstractArray{S}, rngs::UnitIndexRange...) where {S,T} =
-    Kernel{T}(A, bnds)
-Kernel{T,N}(A::AbstractArray{S,N}, rngs::UnitIndexRange...) where {S,T,N} =
-    Kernel{T}(A, rngs)
-
-# Another ways to specify the element type of the kernel coefficients is to
-# have their type the first parameter.
-@deprecate Kernel(T::Type, B, args...) Kernel{T}(B, args...) false
-
-# Methods to convert other neighborhoods.  Beware that booleans mean something
-# specific, i.e. the result is a so-called *flat* structuring element
-# when a kernel whose coefficients are boolean is converted to some
-# floating-point type.  See [`convert_coefs`](@ref).
-
-# Make a flat structuring element from a boolean mask.
-Kernel(tup::Tuple{<:Any,<:Any}, msk::AbstractArray{Bool}, args...) =
-    Kernel(convert_coefs(tup, msk), args...)
-
-Kernel(tup::Tuple{<:Any,<:Any}, B::Kernel{Bool}) =
-    Kernel(convert_coefs(tup, coefs(B)), first_cartesian_index(B))
-
-# Make a kernel from a function and anything suitable to define a Cartesian
-# region.  The element type of the kernel coefficients can be imposed.
-Kernel(f::Function, bnds::CartesianRegion) =
-    Kernel(map(f, cartesian_region(bnds)), first_cartesian_index(bnds))
-function Kernel{T}(f::Function, bnds::CartesianRegion{N}) where {T,N}
-    kmin, kmax = limits(bnds)
-    dims = map(_length, Tuple(kmin), Tuple(kmax))
-    W = Array{T,N}(undef, dims)
-    offs = first_cartesian_index(W) - kmin
-    @inbounds for i in cartesian_region(bnds)
-        W[i + offs] = f(i)
-    end
-    return Kernel{T,N,Array{T,N}}(W, kmin)
-end
-Kernel{T,N}(f::Function, bnds::CartesianRegion{N}) where {T,N} =
-    Kernel{T}(f, bnds)
-
-# Conversion of the data type of the kernel coefficients.
-for F in (:Float64, :Float32, :Float16)
-    @eval begin
-        Base.$F(K::Kernel{$F}) = K
-        Base.$F(K::Kernel{T}) where {T} = Kernel{$F}(K)
-    end
-end
+is_morpho_math_box(::CartesianIndices) = true
+is_morpho_math_box(R::AbstractArray{Bool}) = all(R)
+is_morpho_math_box(R::AbstractArray{<:AbstractFloat}) = all(iszero, R)
 
 """
     strel(T, A)
 
 yields a *structuring element* suitable for mathematical morphology operations.
-The result is a `Kernel` whose elements have type `T` (which can be `Bool` or a
-floating-point type).  Argument `A` can be a Cartesian box or a `Kernel`
-with boolean elements.
+The result is an array whose elements have type `T` (which can be `Bool` or a
+floating-point type).  Argument `A` can be a hyperrectangular Cartesian sliding
+window or an array with boolean elements.
 
 If `T` is a floating-point type, then the result is a so-called *flat*
 structuring element whose coefficients are `zero(T)` inside the shape defined
 by `A` and `-T(Inf)` elsewhere.
 
 """
-strel(::Type{Bool}, K::Kernel{Bool,N}) where {N} = K
-strel(::Type{T}, K::Kernel{Bool}) where {T<:AbstractFloat} =
-    Kernel(convert_coefs((zero(T), -T(Inf)), coefs(K)), first_cartesian_index(K))
-strel(::Type{Bool}, B::RectangularBox) = Kernel{Bool}(B)
-strel(::Type{T}, B::RectangularBox) where {T<:AbstractFloat} =
-    Kernel(zeros(T, size(B)), first_cartesian_index(B))
+strel(::Type{Bool}, A::AbstractArray{Bool}) = A
+strel(::Type{T}, A::AbstractArray{Bool}) where {T<:AbstractFloat} =
+    map(x -> ifelse(x, zero(T), -T(Inf)), A)
+strel(::Type{Bool}, A::CartesianIndices) =
+    OffsetArray(UniformArray(true, size(A)), ranges(A))
+strel(T::Type{<:AbstractFloat}, A::CartesianIndices) =
+    OffsetArray(UniformArray(zero(T), size(A)), ranges(A))
 
 """
-    convert_coefs(T, A)
-
-yields an array of kernel coefficients equivalent to array `A` but whose
-elements have type `T`.
-
-If `T` is a floating-point type and `A` is a boolean array, then the values of
-the result are `one(T)` where `A` is `true` and `zero(T)` elsewhere.  To use
-different values (for instance, to define *flat* *structuring* *elements*), you
-may call:
-
-    convert_coefs((vtrue, vfalse), A)
-
-with `A` a boolean array to get an array whose elements are equal to `vtrue`
-where `A` is `true` and to `vfalse` otherwise.
-
-See also: [`strel`](@ref).
-
-"""
-convert_coefs(::Type{T}, A::AbstractArray{T,N}) where {T,N} = A
-
-function convert_coefs(::Type{T}, A::AbstractArray{S,N}) where {S,T,N}
-    B = similar(Array{T,N}, axes(A))
-    @inbounds @simd for i in eachindex(A, B)
-        B[i] = A[i]
-    end
-    return B
-end
-
-convert_coefs(tup::Tuple{<:Any,<:Any}, A::AbstractArray{Bool}) =
-    convert_coefs(promote(tup...), A)
-
-function convert_coefs(tup::Tuple{T,T}, A::AbstractArray{Bool,N}) where {T,N}
-    B = similar(Array{T,N}, axes(A))
-    vtrue, vfalse = tup
-    @inbounds for i in eachindex(A, B)
-        B[i] = A[i] ? vtrue : vfalse
-    end
-    return B
-end
-
-"""
-    LocalFilters.reverse(B::LocalFilters.Neighborhood)
-
-yields neighborhood `B` reversed along all its dimensions.  This can be used
-to correlate by `B` rather than convolving by `B`.
-
-"""
-reverse(box::RectangularBox) =
-    RectangularBox(-last_cartesian_index(box), -first_cartesian_index(box))
-
-function reverse(ker::Kernel{T,N}) where {T,N}
-    kmin = -last_cartesian_index(ker)
-    kmax = -first_cartesian_index(ker)
-    rev = Kernel(Array{T}(undef, size(ker)), kmin)
-    @inbounds for k in cartesian_region(kmin, kmax)
-        rev[k] = ker[-k]
-    end
-    return rev
-end
-
-function strict_floor(::Type{T}, x)::T where {T}
-    n = floor(T, x)
-    return (n < x ? n : n - one(T))
-end
-
-"""
-    LocalFilters.ball(N, r)
+    LocalFilters.ball(Dims{N}, r)
 
 yields a boolean mask which is a `N`-dimensional array with all dimensions odd
 and equal and set to true where position is inside a `N`-dimensional ball of
 radius `r`.
 
+To have a mask with centered index ranges, call:
+
+    LocalFilters.centered(LocalFilters.ball(Dims{N}, r))
+
 """
-function ball(rank::Integer, radius::Real)
+function ball(::Type{Dims{N}}, radius::Real) where {N}
     b = radius + 1/2
-    r = strict_floor(Int, b)
+    r = ceil(Int, b - one(b))
     dim = 2*r + 1
-    dims = ntuple(d->dim, rank)
+    dims = ntuple(d->dim, Val(N))
     arr = Array{Bool}(undef, dims)
-    qmax = strict_floor(Int, b^2)
+    bb = b^2
+    qmax = ceil(Int, bb - one(bb))
     _ball!(arr, 0, qmax, r, 1:dim, tail(dims))
     return arr
 end
+
+@deprecate ball(N::Integer, radius::Real) ball(Dims{to_int(N)}, radius) false
 
 @inline function _ball!(arr::AbstractArray{Bool,N},
                         q::Int, qmax::Int, r::Int,

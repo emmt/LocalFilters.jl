@@ -1,16 +1,19 @@
 name = "LocalFilters"
-authors = ["Éric Thiébaut <https://github.com/emmt>"]
 uuid = "085fde7c-5f94-55e4-8448-8bbb5db6dde9"
-version = "1.2.2"
+authors = ["Éric Thiébaut <https://github.com/emmt>"]
+version = "2.0.0-alpha"
 
 [deps]
+EasyRanges = "bd0ea217-0861-4661-bed1-3e8ea598dd25"
+OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
+StructuredArrays = "2e8cd123-6858-488d-b42d-068777248635"
 
 [compat]
 julia = "1.0"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "Compat"]

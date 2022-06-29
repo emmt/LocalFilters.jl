@@ -14,43 +14,52 @@
 module LocalFilters
 
 export
-    Neighborhood,
-    RectangularBox,
-    bilateralfilter!,
-    bilateralfilter,
-    bottom_hat,
-    closing!,
-    closing,
+    # Re-exports from Base.Order
+    Forward,
+    Reverse,
+
+    # Exports from this package.
     convolve!,
     convolve,
-    dilate!,
-    dilate,
-    erode!,
-    erode,
-    localextrema!,
-    localextrema,
+    correlate!,
+    correlate,
+    kernel,
     localfilter!,
     localfilter,
     localmean!,
     localmean,
-    opening!,
-    opening,
-    strel,
-    top_hat
+    strel
 
-import Base: CartesianIndices,
-    axes, eltype, ndims, size, length, first, last, tail,
-    getindex, setindex!, convert, reverse
+    #bilateralfilter!,
+    #bilateralfilter,
+    #bottom_hat,
+    #closing!,
+    #closing,
+    #dilate!,
+    #dilate,
+    #erode!,
+    #erode,
+    #localextrema!,
+    #localextrema,
+    #opening!,
+    #opening,
+    #top_hat
+
+using OffsetArrays, StructuredArrays, EasyRanges
+using EasyRanges: ranges, to_int
+using Base.Order # yields Ordering, Forward, Reverse
+using Base: @propagate_inbounds, tail
 
 function localfilter end
 function localfilter! end
 
 include("types.jl")
 include("basics.jl")
-include("filters.jl")
-include("morphology.jl")
-include("separable.jl")
-include("bilateral.jl")
-import .BilateralFilter: bilateralfilter!, bilateralfilter
+include("generic.jl")
+#include("separable.jl")
+include("linear.jl")
+#include("morphology.jl")
+#include("bilateral.jl")
+#import .BilateralFilter: bilateralfilter!, bilateralfilter
 
 end
