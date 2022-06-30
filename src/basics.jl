@@ -434,6 +434,23 @@ strel(T::Type{<:AbstractFloat}, A::CartesianIndices) =
     OffsetArray(UniformArray(zero(T), size(A)), ranges(A))
 
 """
+    LocalFilters.store!(A, I, x)
+
+stores value `x` in array `A` at index `I`, taking care of rounding `x` if it
+is of floating-point type while the elements of `A` are integers.  This method
+propagates the current in-bounds settings.
+
+"""
+@inline @propagate_inbounds function store!(A::AbstractArray{T}, I,
+                                            x::AbstractFloat) where {T<:Integer}
+    A[I] = round(T, x)
+end
+
+@inline @propagate_inbounds function store!(A::AbstractArray, I, x)
+    A[I] = x
+end
+
+"""
     LocalFilters.ball(Dims{N}, r)
 
 yields a boolean mask which is a `N`-dimensional array with all dimensions odd
@@ -481,27 +498,3 @@ end
         x += 1
     end
 end
-
-"""
-    LocalFilter.has_nans(A)
-
-yields whether array `A` has NaN's.
-
-"""
-has_nans(A::AbstractArray{<:Real}) = false
-has_nans(A::AbstractArray) = true # so that min() and max() are used for exotic types
-function has_nans(A::AbstractArray{<:AbstractFloat})
-    flag = false
-    @inbounds @simd for i in eachindex(A)
-        flag |= isnan(A[i])
-    end
-    return flag
-end
-
-# FIXME: This does not solve the signed zero issue because (-0.0) < (+0.0) is
-# false.
-fast_min(a, b) = fast_min(promote(a, b)...)
-fast_min(a::T, b::T) where {T} = (a < b ? a : b)
-
-fast_max(a, b) = fast_max(promote(a, b)...)
-fast_max(a::T, b::T) where {T} = (a > b ? a : b)

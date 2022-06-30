@@ -95,31 +95,3 @@ exported by `LocalFilters`.
 
 """
 struct ReverseFilterOrdering <: FilterOrdering end
-
-"""
-    f = LocalFilters.ConstantProducer(val)
-
-yields a callable object `f` such that `f(args...; kwds...) === val` always
-holds.  This is similar to `Returns` which appears in Julia 1.7.
-
-This is useful to avoid closures which are quite inefficient and thus have a
-strong impact on performances when called repeatedly in loops.  Typically when
-calling [`localfilter!`](@ref) with an initializer whose value is a constant
-but given by an anonymous function or a closure depending on a local variable,
-the code:
-
-    v0 = ... # initial state variable
-    localfilter!(dst, A, B, ConstantProducer(v0), update, store!)
-
-is much faster than:
-
-    v0 = ... # initial state variable
-    localfilter!(dst, A, B, a -> v0, update, store!)
-
-""" ConstantProducer
-
-struct ConstantProducer{T} <: Function
-    val::T
-end
-
-(obj::ConstantProducer)(args...; kwds...) = getfield(obj, :val)
