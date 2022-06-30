@@ -31,12 +31,18 @@ This is also the union of types accepted by the
 const Axis = Union{Integer,IntegerRange}
 
 """
-    LocalFilters.Indices(A...)
+    LocalFilters.Indices(A...) -> indices
 
 yields a callable object that can be used to produce ranges of indices for each
-of the arrays `A...`.  These ranges are all of the same type: linear index
+of the arrays `A...`.  These ranges will all be of the same type: linear index
 ranges, if all arrays `A...` are vectors implementing fast linear indexing,
 Cartesian index ranges otherwise.
+
+The returned object is similar to the `eachindex` method but specialized for a
+style of indexing, it can be used as `indices(B...)` with `B...` any number of
+the arrays in `A...` to yield a suitable index range to access all the entries
+of array(s) `B...`.  If `B...` consists in several arrays, they must have the
+same indices.
 
 """
 struct Indices{S<:IndexStyle} <: Function end

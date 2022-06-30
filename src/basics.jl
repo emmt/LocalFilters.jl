@@ -20,6 +20,43 @@ Base.IndexStyle(::Type{<:Indices{S}}) where {S} = S()
 @inline (::Indices{IndexLinear})(A::AbstractVector) = to_int(Base.axes1(A))
 @inline (::Indices{IndexCartesian})(A::AbstractArray) = CartesianIndices(A)
 
+@inline (I::Indices)(A::AbstractArray, B::AbstractArray) =
+    (have_same_indices(A, B); I(A))
+@inline (I::Indices)(A::AbstractArray, B::AbstractArray...) =
+    (have_same_indices(A, B...); I(A))
+
+"""
+    LocalFilters.have_same_indices(Bool, A...)
+
+yields whether all arrays `A...` have the same indices.
+
+    LocalFilters.have_same_indices(A...)
+
+throws an exception if not all arrays `A...` have the same indices.
+
+"""
+have_same_indices(::Type{Bool}, A::AbstractArray) = true
+have_same_indices(::Type{Bool}, A::AbstractArray...) = false
+have_same_indices(::Type{Bool}, A::AbstractArray{N}, B::AbstractArray{N}) where {N} =
+    axes(A) == axes(B)
+@inline function have_same_indices(::Type{Bool}, A::AbstractArray{N},
+                                   B::AbstractArray{N}...) where {N}
+    return all_yield(axes(A), axes, B...)
+end
+have_same_indices(A::AbstractArray...) =
+    have_same_indices(Bool, A...) || throw(DimensionMismatch(
+        "arrays must have the same indices"))
+
+"""
+    LocalFilters.all_yield(x, f, args...)
+
+yields whether `f(arg) == x` holds for all `arg` in `args...`.
+
+"""
+@inline all_yield(x, f::Function) = false
+@inline all_yield(x, f::Function, A) = (f(A) == x)
+@inline all_yield(x, f::Function, A, B...) = all_yield(x, f, A) && all_yield(x, f, B...)
+
 Indices(::S) where {S<:IndexStyle} = Indices{S}()
 #Indices(::S, A::AbstractArray) where {S<:IndexStyle} = Indices{S}()
 #Indices(::S, A::AbstractArray, B::AbstractArray...) where {S<:IndexStyle} =
