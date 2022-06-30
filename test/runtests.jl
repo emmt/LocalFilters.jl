@@ -1,24 +1,27 @@
-isdefined(Main, :LocalFilters) || include("../src/LocalFilters.jl")
-isdefined(Main, :NaiveLocalFilters) || include("NaiveLocalFilters.jl")
+#isdefined(Main, :LocalFilters) || include("../src/LocalFilters.jl")
+#isdefined(Main, :NaiveLocalFilters) || include("NaiveLocalFilters.jl")
 
-module LocalFiltersTests
+module TestingLocalFilters
 
-using Compat
+#using Compat
 using Test
+using OffsetArrays
 using LocalFilters
-using LocalFilters: Neighborhood, RectangularBox, Kernel,
-    axes, first_cartesian_index, last_cartesian_index, limits, cartesian_region, ball, coefs,
-    ismmbox, strict_floor, _range
+using LocalFilters:
+    Box, Indices, kernel_range, kernel, ball, limits,
+    is_morpho_math_box, check_indices, localindices, ranges, centered, replicate
 
-struct Empty{N} <: Neighborhood{N} end
+# A bit of type-piracy for more readable error messages.
+Base.show(io::IO, x::CartesianIndices) =
+    print(io, "CartesianIndices($(x.indices))")
 
+#=
 # Selector for reference methods.
 const REF = Val(:Base)
 
 const ATOL = 0.0
 const GTOL = 4*eps(Float64)
 
-replicate(a, n::Integer) = ntuple(i->a, n)
 compare(a::AbstractArray, b::AbstractArray) = maximum(abs(a - b))
 samevalues(a::AbstractArray, b::AbstractArray) = minimum(a .== b)
 identical(a::RectangularBox{N}, b::RectangularBox{N}) where {N} =
@@ -33,11 +36,11 @@ function nearlysame(a::Kernel{Ta,N}, b::Kernel{Tb,N};
     first_cartesian_index(a) == first_cartesian_index(b) || return false
     last_cartesian_index(a) == last_cartesian_index(b) || return false
     if atol == 0 && gtol == 0
-        for i in cartesian_region(a)
+        for i in neighborhood(a)
             a[i] == b[i] || return false
         end
     else
-        for i in cartesian_region(a)
+        for i in neighborhood(a)
             ai, bi = a[i], b[i]
             abs(ai - bi) ≤ atol + gtol*max(abs(ai), abs(bi)) || return false
         end
@@ -125,31 +128,168 @@ end
 
 f1(x) = 1 + x*x
 f2(x) = x > 0.5
+=#
+
+ball3x3 = Bool[1 1 1;
+               1 1 1;
+               1 1 1];
+
+ball5x5 = Bool[0 1 1 1 0;
+               1 1 1 1 1;
+               1 1 1 1 1;
+               1 1 1 1 1;
+               0 1 1 1 0];
+
+ball7x7 = Bool[0 0 1 1 1 0 0;
+               0 1 1 1 1 1 0;
+               1 1 1 1 1 1 1;
+               1 1 1 1 1 1 1;
+               1 1 1 1 1 1 1;
+               0 1 1 1 1 1 0;
+               0 0 1 1 1 0 0];
 
 @testset "LocalFilters" begin
 
-    @testset "Miscellaneous" begin
-        for T in (Int, Float32)
-            @test limits(T) === (typemin(T), typemax(T))
+    @testset "Basics" begin
+        # Indices
+        let A = 1:4, B = [1,2,3], I = Indices(A, B)
+            @test IndexStyle(I) === IndexLinear()
+            @test I === Indices(A)
+            @test I === Indices(B)
+            @test I(A) === eachindex(IndexStyle(I), A)
+            @test I(B) === eachindex(IndexStyle(I), B)
         end
-        for dim in (11, 12)
-            @test _range(Int8(dim)) === _range(dim)
+        let A = [1 2; 3 4; 5 6], B = [1 2 3; 4 5 6], I = Indices(A, B)
+            @test IndexStyle(I) === IndexCartesian()
+            @test I === Indices(A)
+            @test I === Indices(B)
+            @test I(A) === eachindex(IndexStyle(I), A)
+            @test I(B) === eachindex(IndexStyle(I), B)
         end
-        @test_throws ArgumentError _range(0)
-        @test strict_floor(Int, 5*(1 + eps(Float64))) == 5
-        @test strict_floor(Int, 5.0) == 4
+
+        # first_centered_index
+        @test_throws ArgumentError LocalFilters.first_centered_index(-1)
+        @test LocalFilters.first_centered_index(Int16(5)) === -2
+        @test LocalFilters.first_centered_index(Int16(4)) === -2
+
+        # Boxes.
+        #@test Box(...)
+
+        # kernel_range
+        @test_throws ArgumentError kernel_range(-1)
+        @test isempty(kernel_range(0))
+        @test kernel_range(0) === 0:-1
+        @test kernel_range(1) === 0:0
+        @test kernel_range(4) === -2:1
+        @test kernel_range(5) === -2:2
+        @test kernel_range(-4:5) === -4:5
+        @test kernel_range(-4:1:5) === -4:1:5
+        @test kernel_range(-4:2:7) === -4:2:6
+        @test kernel_range(1,3) === 1:3
+        @test kernel_range(1,2,3) === 1:2:3
+        @test kernel_range(Int16(-3),Int8(5)) === -3:5
+        @test kernel_range(Base.OneTo(7)) === Base.OneTo{Int}(7)
+        @test kernel_range(Base.OneTo(Int16(7))) === Base.OneTo{Int}(7)
+
+        # kernel
+        # FIXME: @test length(kernel()) == 0
+        # FIXME: @test kernel(()) == 0
+        # FIXME: @test kernel(Dims{0}) == 0
+        @test kernel(Dims{2}, 6) === kernel(6, 6)
+        @test kernel(Dims{2}, 6) === Box(-3:2,-3:2)
+        @test kernel(Dims{2}, 5, 6) === Box(-2:2,-3:2)
+        @test kernel(5, 6) === Box(-2:2,-3:2)
+        @test kernel(-2:4, 6) === Box(-2:4,-3:2)
+        @test kernel(CartesianIndex(-2,1,0), CartesianIndex(4,9,5)) === Box(-2:4, 1:9, 0:5)
+        @test kernel(-2:4, 1:9, 0:5) === Box(-2:4, 1:9, 0:5)
+        for args in ((6, -1:3, 2:4),
+                     (CartesianIndex(-2,1,0), CartesianIndex(4,9,5)))
+            @test kernel(args...) === kernel(args)
+            @test kernel(Dims{3}, args...) ===
+                kernel(Dims{3}, args)
+        end
+        let R = CartesianIndices((6, -1:3, 2:4))
+            @test kernel(R) === Box(R)
+            @test kernel(Dims{3}, R) === Box(R)
+            @test Box(R) === Box{3}(R)
+        end
+        if VERSION ≥ v"1.6"
+            # Ranges can have a step in CartesianIndices
+            @test kernel(CartesianIndices((1:2:6,))) === Box(1:2:6)
+            @test kernel(CartesianIndices((1:1:6,))) === Box(1:1:6)
+        end
+
+        # ordering
+        let B = reshape(collect(1:20), (4,5)), R = Box(CartesianIndices(B))
+            @test B[ForwardFilter(CartesianIndex(2,3), CartesianIndex(3,5))] == B[1,2]
+            @test B[ReverseFilter(CartesianIndex(2,3), CartesianIndex(-1,1))] == B[3,2]
+            @test R[ForwardFilter(CartesianIndex(2,3), CartesianIndex(3,5))] == true
+            @test R[ReverseFilter(CartesianIndex(2,3), CartesianIndex(-1,1))] == true
+        end
+
+        # centered
+        let B = reshape(collect(1:20), (4,5)), R = CartesianIndices(B)
+            @test axes(centered(B)) == (-2:1, -2:2)
+            @test axes(centered(centered(B))) === axes(centered(B))
+            @test ranges(centered(R)) === (-2:1, -2:2)
+        end
+
+        # replicate
+        @test replicate(NTuple{3}, 'a') === ('a', 'a', 'a')
+        @test replicate(NTuple{3,Char}, 'a') === ('a', 'a', 'a')
+        @test replicate(NTuple{2,Int}, 'a') === (97, 97)
+
+        # limits
+        @test limits(Float32) === (-Float32(Inf), Float32(Inf))
+        @test limits(Int8) === (Int8(-128),Int8(127))
+
+        # check_indices
+        let dims = (4,5), A = reshape(collect(1:prod(dims)), dims),
+            B = ones(dims), C = rand(Float32, dims), D = centered(C)
+            @test_throws DimensionMismatch check_indices(A, B, C, D)
+            @test check_indices(A) === check_indices(D)
+            @test check_indices(A,B) === check_indices(D)
+            @test check_indices(A,B,C) === check_indices(D)
+            @test check_indices(Bool,A) === true
+            @test check_indices(Bool,A,B) === true
+            @test check_indices(Bool,A,B,C) === true
+            @test check_indices(Bool,A,B,C,D) === false
+            @test check_indices(Bool,centered(A),D) === true
+            @test check_indices(Bool) === false
+            @test check_indices(Bool,axes(A)) === false
+            @test check_indices(Bool,axes(A),B) === true
+            @test check_indices(Bool,axes(A),B,C) === true
+            @test check_indices(Bool,axes(A),B,C,D) === false
+        end
+
+        # result_eltype
+        # is_morpho_math_box
+        # strel
+
+        # ball
+        @test ball(Dims{2}, 1) == ball3x3
+        @test ball(Dims{2}, 2) == ball5x5
+        @test ball(Dims{2}, 3) == ball7x7
     end
 
+    @testset "Local mean" begin
+        let A = ones(Float64, 20)
+            @test localmean(A, 3) == A
+            @test localmean(A, ForwardFilter, 3) == A
+            @test localmean(A, ReverseFilter, 3) == A
+        end
+    end
+#=
     @testset "Neighborhoods" begin
         for (dims, rngs) in (((3,), (-1:1,)),
                              ((3, 4, 5), (-1:1, -2:1, -2:2)))
             N = length(dims)
-            box = Neighborhood(dims)
+            box = neighborhood(dims)
             fse = strel(Bool, box) # flat structuring element
-            Imin, Imax = limits(box)
+            Imin, Imax = first(box), last(box)
             A = rand(dims...)
             msk = rand(Bool, dims)
-            ker = Kernel(A)
+            ker = centered(A)
 
             # Test limits(), first_cartesian_index() and last_cartesian_index().
             @test first_cartesian_index(CartesianIndices(rngs)) === Imin
@@ -163,21 +303,21 @@ f2(x) = x > 0.5
             @test limits(A) === (oneunit(CartesianIndex{N}),
                                  CartesianIndex(size(A)))
 
-            # Test cartesian_region().
+            # Test neighborhood().
             region = CartesianIndices(rngs)
-            @test cartesian_region(Imin,Imax) === region
-            @test cartesian_region(CartesianIndices(rngs)) === region
-            @test cartesian_region(box) === region
-            @test cartesian_region(A) === CartesianIndices(A)
+            @test neighborhood(Imin,Imax) === region
+            @test neighborhood(CartesianIndices(rngs)) === region
+            @test neighborhood(box) === region
+            @test neighborhood(A) === CartesianIndices(A)
 
             # Neighborhood constructors.
-            @test Neighborhood(box) === box
-            @test Neighborhood(ker) === ker
-            @test Neighborhood(A) === ker
-            @test Neighborhood(dims...) === box
-            @test Neighborhood(rngs) === box
-            @test Neighborhood(rngs...) === box
-            @test Neighborhood(CartesianIndices(rngs)) === box
+            @test neighborhood(box) === box
+            @test neighborhood(ker) === ker
+            @test neighborhood(A) === ker
+            @test neighborhood(dims...) === box
+            @test neighborhood(rngs) === box
+            @test neighborhood(rngs...) === box
+            @test neighborhood(CartesianIndices(rngs)) === box
             @test convert(Neighborhood, box) === box
             @test convert(Neighborhood, ker) === ker
             @test convert(Neighborhood, rngs) === box
@@ -194,8 +334,8 @@ f2(x) = x > 0.5
             @test convert(RectangularBox, dims) === box
             dim = dims[end]
             rng = rngs[end]
-            @test RectangularBox{N}(dim) === RectangularBox(ntuple(d -> dim, N))
-            @test RectangularBox{N}(rng) === RectangularBox(ntuple(d -> rng, N))
+            @test neighborhood(Dims{N}, dim) === RectangularBox(ntuple(d -> dim, N))
+            @test neighborhood(Dims{N}, rng) === RectangularBox(ntuple(d -> rng, N))
 
             # Conversions RectangularBox <-> CartesianIndices.
             @test CartesianIndices(box) === CartesianIndices(rngs)
@@ -237,14 +377,6 @@ f2(x) = x > 0.5
                              atol=0, gtol=eps(Float32))
             @test checkindexing!(ker)
 
-            # Conversion Neighborhood <-> CartesianIndices.
-            @test Neighborhood(CartesianIndices(rngs)) === box
-            @test convert(Neighborhood, CartesianIndices(rngs)) === box
-            @test convert(Neighborhood{N}, CartesianIndices(rngs)) === box
-            @test CartesianIndices(box) === CartesianIndices(rngs)
-            @test convert(CartesianIndices, box) === CartesianIndices(rngs)
-            @test convert(CartesianIndices{N}, box) === CartesianIndices(rngs)
-
             # Other basic methods.
             @test length(box) === length(CartesianIndices(rngs))
             @test size(box) === size(CartesianIndices(rngs))
@@ -254,13 +386,13 @@ f2(x) = x > 0.5
             @test size(ker) === size(A)
             @test size(ker) === ntuple(d -> size(ker, d), N)
             @test axes(ker) === ntuple(d -> axes(ker, d), N)
-            @test ismmbox(fse) == true
-            @test ismmbox(box) == true
-            boolker = Neighborhood(ones(Bool,dims))
-            @test ismmbox(boolker) == true
+            @test is_morpho_math_box(fse) == true
+            @test is_morpho_math_box(box) == true
+            boolker = neighborhood(ones(Bool,dims))
+            @test is_morpho_math_box(boolker) == true
             boolker[zero(CartesianIndex{N})] = false
-            @test ismmbox(boolker) == false
-            @test ismmbox(Empty{N}()) == false
+            @test is_morpho_math_box(boolker) == false
+            #@test is_morpho_math_box(Empty{N}()) == false
 
             # Test reverse().
             revbox = reverse(box)
@@ -272,7 +404,6 @@ f2(x) = x > 0.5
             @test samevalues(coefs(revker), reversealldims(coefs(ker)))
         end
     end
-
     for (arrdims, boxdims) in (((341,),    (3,)),
                                ((62,81),   (5,3)),
                                ((23,28,27),(3,7,5)))
@@ -357,24 +488,6 @@ f2(x) = x > 0.5
         end
     end
 
-    ball3x3 = Bool[1 1 1;
-                   1 1 1;
-                   1 1 1];
-    ball5x5 = Bool[0 1 1 1 0;
-                   1 1 1 1 1;
-                   1 1 1 1 1;
-                   1 1 1 1 1;
-                   0 1 1 1 0];
-    ball7x7 = Bool[0 0 1 1 1 0 0;
-                   0 1 1 1 1 1 0;
-                   1 1 1 1 1 1 1;
-                   1 1 1 1 1 1 1;
-                   1 1 1 1 1 1 1;
-                   0 1 1 1 1 1 0;
-                   0 0 1 1 1 0 0];
-    @test samevalues(ball3x3, ball(2, 1))
-    @test samevalues(ball5x5, ball(2, 2))
-    @test samevalues(ball7x7, ball(2, 3))
 
     @testset "2D test with a 5x5 ball" begin
         a = rand(162,181)
@@ -401,7 +514,7 @@ f2(x) = x > 0.5
             A = rand(T, dims)
             B = Array{eltype(A),ndims(A)}(undef, size(A))
             C = Array{eltype(A),ndims(A)}(undef, size(A))
-            box = RectangularBox{N}(5)
+            box = neighborhood(Dims{N}, 5)
             rng = -2:2
             result = erode(REF, A, box)
             @test samevalues(erode(A, :, rng), result)
@@ -464,7 +577,7 @@ f2(x) = x > 0.5
         σr = 1.2
         σs = 2.5
         width = LocalFilters.BilateralFilter.default_width(σs)
-        box = RectangularBox{2}(width)
+        box = neighborhood(Dims{2}, width)
         B0 = bilateralfilter(A, σr, σs)
         B1 = bilateralfilter(A, σr, σs, box)
         B2 = bilateralfilter(Float32, A, σr, σs, width)
@@ -473,6 +586,7 @@ f2(x) = x > 0.5
         @test similarvalues(B2, B0; atol=0, gtol=8*eps(Float32))
         @test similarvalues(B3, B0; atol=0, gtol=4*eps(Float32))
     end
+=#
 end
 
 end # module

@@ -29,13 +29,13 @@ end
 end
 
 """
-    localfilter!(dst, A, [ord = Forward,] B, initial, update, store!) -> dst
+    localfilter!(dst, A, [ord = ForwardFilter,] B, initial, update, store!) -> dst
 
 overwrites the destination `dst` with the result of a local filter applied to
 the source `A`, on a relative neighborhood defined by `B`, and implemented by
 the functions `initial`, `update`, and `store!`.  The purpose of these functions
 is explained by the following pseudo-codes implementing the local filtering.
-If `ord = Forward`:
+If `ord = ForwardFilter`:
 
     @inbounds for i ∈ Sup(A)
         v = initial(dst, A, B)
@@ -45,7 +45,7 @@ If `ord = Forward`:
         store!(dst, i, v)
     end
 
-else if `ord = Reverse`:
+else if `ord = ReverseFilter`:
 
     @inbounds for i ∈ Sup(A)
         v = initial(dst, A, B)
@@ -106,36 +106,34 @@ correlation example can be rewritten as
     B::Union{Window{N},AbstractArray{<:Any,N}},
     initial,
     update::Function,
-    store!::Function) where {N} =
-        unsafe_localfilter!(dst, A, Forward, B, initial, update, store!)
+    store!::Function) where {N} = localfilter!(
+        dst, A, ForwardFilter, B, initial, update, store!)
 
 # This version builds a kernel.
 @inline @propagate_inbounds localfilter!(
     dst,
     A::AbstractArray{<:Any,N},
-    ord::Ordering,
+    ord::FilterOrdering,
     B::Window{N},
     initial,
     update::Function,
-    store!::Function) where {N} =
-        unsafe_localfilter!(dst, A, ord, kernel(Dims{N}, B),
-                            initial, update, store!)
+    store!::Function) where {N} = localfilter!(
+        dst, A, ord, kernel(Dims{N}, B), initial, update, store!)
 
 # This version converts the initial value into a constant producer.
 @inline @propagate_inbounds localfilter!(
     dst,
     A::AbstractArray{<:Any,N},
-    ord::Ordering,
+    ord::FilterOrdering,
     B::AbstractArray{<:Any,N},
     initial,
     update::Function,
-    store!::Function) where {N} =
-        unsafe_localfilter!(dst, A, ord, B, ConstantProducer(initial),
-                            update, store!)
+    store!::Function) where {N} = localfilter!(
+        dst, A, ord, B, ConstantProducer(initial), update, store!)
 
 @inline @propagate_inbounds function localfilter!(dst::AbstractArray{<:Any,N},
                                                   A::AbstractArray{<:Any,N},
-                                                  ord::Ordering,
+                                                  ord::FilterOrdering,
                                                   B::AbstractArray{<:Any,N},
                                                   initial::Function,
                                                   update::Function,
@@ -143,8 +141,8 @@ correlation example can be rewritten as
     indices = Indices(dst, A, B)
     for i in indices(dst)
         v = initial(A[i]) # FIXME: this is unsafe, only the bilateral filter needs it?
-        @inbounds @simd for j in subset(indices(A), ord, indices(B), i)
-            v = update(v, A[j], getval(ord, B, i, j))
+        @inbounds @simd for j in localindices(indices(A), ord, indices(B), i)
+            v = update(v, A[j], B[ord(i,j)])
         end
         store!(dst, i, v)
     end
@@ -160,90 +158,78 @@ end
 
 @inline @propagate_inbounds function localfilter!(dst,
                                                   A::AbstractArray{<:Any,N},
-                                                  ord::Ordering,
+                                                  ord::FilterOrdering,
                                                   B::AbstractArray{<:Any,N},
                                                   initial::Function,
                                                   update::Function,
                                                   store!::Function) where {N}
-    indices = Indices(dst, A, B)
+    indices = Indices(A, B)
     for i in indices(A)
         @inbounds v = initial(A[i])
-        @inbounds @simd for j in subset(indices(A), ord, indices(B), i)
-            v = update(v, A[j], getval(ord, B, i, j))
+        @inbounds @simd for j in localindices(indices(A), ord, indices(B), i)
+            v = update(v, A[j], B[ord(i,j)])
         end
         store!(dst, i, v)
     end
     return dst
 end
 
-
-
 """
-    localfilter!(dst, A, [ord=Forward,] B, filter!) -> dst
+    localfilter!(dst, A, [ord=ForwardFilter,] ker, filter!) -> dst
 
-overwrites `dst` with the result of filtering the source `A` by the kernel `B`,
-with ordering `ord`, and the function `filter!` which is called for every
-Cartesian index `i` of `A` as:
+overwrites `dst` with the result of filtering the source `A` by the kernel `ker`,
+with ordering `ord`, and the function `filter!` which is called as:
 
-     filter!(dst, A, ord, B, i, J)
+    filter!(dst, A, ord, B, i, J)
 
-with `J` the subset of Cartesian indices in the local neighborhood of `i` and
-other arguments identical to those passed to `localfilter!`.  The function
-`filter!` shall compute the result of the local filtering operation and store
-it in the destination `dst`.
+for every index `i` of `dst` or of `A` depending whether `dst` has the same
+number of dimensions as `A` or not and with `J` the subset of indices in the
+local neighborhood of `i` and:
 
-* If `ord = Forward`, then `J` is the subset of all indices `j` such that
+    B = kernel(Dims{N}, ker)
+
+the array representing the filter kernel.  The function `filter!` shall compute
+the result of the local filtering operation and store it in the destination
+`dst` at position `i`.
+
+- If `ord = ForwardFilter`, then `J` is the subset of all indices `j` such that
   `A[j]` and `B[j-i]` are in-bounds.  This is the natural ordering to implement
   discrete correlations.
 
-* If `ord = Reverse`, then `J` is the subset of all indices `j` such that
+- If `ord = ReverseFilter`, then `J` is the subset of all indices `j` such that
   `A[j]` and `B[i-j]` are in-bounds.  This is the natural ordering to implement
   discrete convolutions.
 
-The method [`LocalFilters.getval(ord,B,i,j)`](@ref) yields either `B[j-i]` or
-`B[i-j]` depending on whether `ord = Forward` or `ord = Reverse`.  This method
-can be used to implement `filter!` is such a way that it is agnostic to the
-ordering.
+To be agnostic to the ordering, just use `B[ord(i,j)]` in the code of `filter!`
+to automatically yield either `B[j-i]` or `B[i-j]` depending on whether `ord`
+is `ForwardFilter` or `ReverseFilter`.
 
 """
-@inline function localfilter!(dst::AbstractVector,
-                              A::AbstractVector,
-                              ord::Ordering,
-                              B::IntegerRange,
-                              filter!::Function)
-    A_inds = eachindex(IndexLinear(), A)
-    B_inds = to_int(B)
-    @inbounds for i in eachindex(IndexLinear(), dst)
-        J = subset(A_inds, ord, B_inds, i)
-        filter!(dst, A, ord, B, i, J)
-    end
-    return dst
-end
-
-@inline function localfilter!(dst::AbstractArray{<:Any,N},
+@inline function localfilter!(dst,
                               A::AbstractArray{<:Any,N},
-                              ord::Ordering,
-                              B::CartesianIndices{N},
+                              B::Union{Window{N},AbstractArray{<:Any,N}},
                               filter!::Function) where {N}
-    A_inds = CartesianIndices(A)
-    B_inds = B
-    @inbounds for i in CartesianIndices(dst)
-        J = subset(A_inds, ord, B_inds, i)
-        filter!(dst, A, ord, B, i, J)
-    end
-    return dst
+    # Provide default ordering.
+    return localfilter!(dst, A, ForwardFilter, B, filter!)
+end
+
+@inline function localfilter!(dst,
+                              A::AbstractArray{<:Any,N},
+                              ord::FilterOrdering,
+                              B::Window{N},
+                              filter!::Function) where {N}
+    # Build kernel.
+    return localfilter!(dst, A, ForwardFilter, kernel(Dims{N}, B), filter!)
 end
 
 @inline function localfilter!(dst::AbstractArray{<:Any,N},
                               A::AbstractArray{<:Any,N},
-                              ord::Ordering,
+                              ord::FilterOrdering,
                               B::AbstractArray{<:Any,N},
                               filter!::Function) where {N}
     indices = Indices(dst, A, B)
-    A_inds = indices(A)
-    B_inds = indices(B)
     @inbounds for i in indices(dst)
-        J = subset(A_inds, ord, B_inds, i)
+        J = localindices(indices(A), ord, indices(B), i)
         filter!(dst, A, ord, B, i, J)
     end
     return dst
@@ -251,47 +237,14 @@ end
 
 # When destination is not an array with the same number of dimensions as the
 # source, the outer loop is on the indices of the source.  This may be unsafe.
-@inline  @propagate_inbounds function
-    unsafe_localfilter!(dst,
-                        A::AbstractVector,
-                        ord::Ordering,
-                        B::IntegerRange,
-                        filter!::Function)
-    A_inds = eachindex(IndexLinear(), A)
-    B_inds = to_int(B)
-    for i in A_inds
-        J = subset(A_inds, ord, B_inds, i)
-        filter!(dst, A, ord, B, i, J)
-    end
-    return dst
-end
-
-@inline @propagate_inbounds function
-    unsafe_localfilter!(dst,
-                        A::AbstractArray{<:Any,N},
-                        ord::Ordering,
-                        B::CartesianIndices{N},
-                        filter!::Function) where {N}
-    A_inds = CartesianIndices(A)
-    A_inds = B
-    for i in A_inds
-        J = subset(A_inds, ord, B_inds, i)
-        filter!(dst, A, ord, B, i, J)
-    end
-    return dst
-end
-
-@inline @propagate_inbounds function
-    unsafe_localfilter!(dst,
-                        A::AbstractArray{<:Any,N},
-                        ord::Ordering,
-                        B::AbstractArray{<:Any,N},
-                        filter!::Function) where {N}
+@inline function localfilter!(dst,
+                              A::AbstractArray{<:Any,N},
+                              ord::FilterOrdering,
+                              B::AbstractArray{<:Any,N},
+                              filter!::Function) where {N}
     indices = Indices(A, B)
-    A_inds = indices(A)
-    B_inds = indices(B)
-    for i in A_inds
-        J = subset(A_inds, ord, B_inds, i)
+    @inbounds for i in indices(A)
+        J = localindices(indices(A), ord, indices(B), i)
         filter!(dst, A, ord, B, i, J)
     end
     return dst

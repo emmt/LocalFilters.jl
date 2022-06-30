@@ -68,6 +68,35 @@ struct Box{N,R<:CartesianIndices{N}} <: AbstractArray{Bool,N}
 end
 
 """
+    LocalFilters.FilterOrdering
+
+is the super-type of the possible ordering of indices in local filtering
+operations.
+
+"""
+abstract type FilterOrdering end
+
+"""
+    LocalFilters.ForwardFilterOrdering
+
+is the singleton type of *forward* ordering of indices in local filter
+operations.  The singleton instance [`ForwardFilter`](@ref) of this type is
+exported by `LocalFilters`.
+
+"""
+struct ForwardFilterOrdering <: FilterOrdering end
+
+"""
+    LocalFilters.ForwardFilterOrdering
+
+is the singleton type of *reverse* ordering of indices in local filter
+operations.  The singleton instance [`ReverseFilter`](@ref) of this type is
+exported by `LocalFilters`.
+
+"""
+struct ReverseFilterOrdering <: FilterOrdering end
+
+"""
     f = LocalFilters.ConstantProducer(val)
 
 yields a callable object `f` such that `f(args...; kwds...) === val` always

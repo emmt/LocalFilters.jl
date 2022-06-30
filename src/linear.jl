@@ -12,7 +12,7 @@
 #
 
 """
-    localmean(A, [ord=Forward,] B=3)
+    localmean(A, [ord=ForwardFilter,] B=3)
 
 yields the local mean of `A` in a neighborhood defined by `B`.  The result is
 an array similar to `A`.  If `B` is not specified, the neighborhood is a
@@ -27,7 +27,7 @@ See also [`localmean!`](@ref) and [`localfilter!`](@ref).
 """ localmean
 
 """
-    localmean!(dst, A, [ord=Forward,] B=3) -> dst
+    localmean!(dst, A, [ord=ForwardFilter,] B=3) -> dst
 
 overwrites `dst` with the local mean of `A` in a neighborhood defined by `B`
 and returns `dst`.
@@ -39,11 +39,11 @@ See also [`localmean`](@ref) and [`localfilter!`](@ref).
 # Local mean inside a simple sliding window.
 function localmean!(dst::AbstractArray{<:Any,N},
                     A::AbstractArray{<:Any,N},
-                    ord::Ordering,
+                    ord::FilterOrdering,
                     B::Box{N}) where {N}
     indices = Indices(dst, A, B)
     @inbounds for i in indices(dst)
-        J = subset(indices(A), ord, indices(B), i)
+        J = localindices(indices(A), ord, indices(B), i)
         den = length(J)
         if den > 0
             num = zero(result_eltype(+, A))
@@ -61,15 +61,15 @@ end
 # Local mean with a shaped neighborhood.
 function localmean!(dst::AbstractArray{<:Any,N},
                     A::AbstractArray{<:Any,N},
-                    ord::Ordering,
+                    ord::FilterOrdering,
                     B::AbstractArray{Bool,N}) where {N}
     indices = Indices(dst, A, B)
     @inbounds for i in indices(dst)
         num = zero(result_eltype(+, A))
         den = 0
-        J = subset(indices(A), ord, indices(B), i)
+        J = localindices(indices(A), ord, indices(B), i)
         @simd for j in J
-            b = getval(ord, B, i, j)
+            b = B[ord(i,j)]
             num += ifelse(b, A[j], zero(eltype(A)))
             den += b
         end
@@ -85,16 +85,16 @@ end
 # Weighted local mean.
 function localmean!(dst::AbstractArray{<:Any,N},
                     A::AbstractArray{<:Any,N},
-                    ord::Ordering,
+                    ord::FilterOrdering,
                     B::AbstractArray{<:Any,N}) where {N}
     indices = Indices(dst, A, B)
     @inbounds for i in indices(dst)
         num = zero(result_eltype(+, A))
         den = zero(result_eltype(+, B))
-        J = subset(indices(A), ord, indices(B), i)
+        J = localindices(indices(A), ord, indices(B), i)
         @simd for j in J
             num += A[j]
-            den += getval(ord, B, i, j)
+            den += B[ord(i,j)]
         end
         if den != zero(den)
             store!(dst, i, num/den)
@@ -181,10 +181,10 @@ See also [`convolve`](@ref) and [`localfilter!`](@ref).
 """ convolve!
 
 """
-    multiply_add(A, [ord=Forward,] B=3) -> dst
+    multiply_add(A, [ord=ForwardFilter,] B=3) -> dst
 
-yields the discrete correlation (if `ord=Forward`) or the discrete convolution
-(if `ord=Reverse`) of `A` by `B`.  The result is an array similar to `A`.
+yields the discrete correlation (if `ord=ForwardFilter`) or the discrete convolution
+(if `ord=ReverseFilter`) of `A` by `B`.  The result is an array similar to `A`.
 
 See also [`multiply_add!`](@ref), [`correlate`](@ref), [`convolve`](@ref), and
 [`localfilter!`](@ref).
@@ -192,10 +192,10 @@ See also [`multiply_add!`](@ref), [`correlate`](@ref), [`convolve`](@ref), and
 """ multiply_add
 
 """
-    multiply_add!(dst, A, [ord=Forward,] B=3) -> dst
+    multiply_add!(dst, A, [ord=ForwardFilter,] B=3) -> dst
 
-overwrites `dst` with the discrete correlation (if `ord=Forward`) or the
-discrete convolution (if `ord=Reverse`) of `A` by `B`.
+overwrites `dst` with the discrete correlation (if `ord=ForwardFilter`) or the
+discrete convolution (if `ord=ReverseFilter`) of `A` by `B`.
 
 See also [`multiply_add`](@ref) and [`localfilter!`](@ref).
 
@@ -204,11 +204,11 @@ See also [`multiply_add`](@ref) and [`localfilter!`](@ref).
 # Local sum inside a simple sliding window.
 function multiply_add!(dst::AbstractArray{<:Any,N},
                        A::AbstractArray{<:Any,N},
-                       ord::Ordering,
+                       ord::FilterOrdering,
                        B::Box{N}) where {N}
     indices = Indices(dst, A, B)
     @inbounds for i in indices(dst)
-        J = subset(indices(A), ord, indices(B), i)
+        J = localindices(indices(A), ord, indices(B), i)
         v = zero(result_eltype(+, A))
         @simd for j in J
             v += A[j]
@@ -221,14 +221,14 @@ end
 # Local sum with a shaped neighborhood.
 function multiply_add!(dst::AbstractArray{<:Any,N},
                        A::AbstractArray{<:Any,N},
-                       ord::Ordering,
+                       ord::FilterOrdering,
                        B::AbstractArray{Bool,N}) where {N}
     indices = Indices(dst, A, B)
     @inbounds for i in indices(dst)
-        J = subset(indices(A), ord, indices(B), i)
+        J = localindices(indices(A), ord, indices(B), i)
         v = zero(result_eltype(+, A))
         @simd for j in J
-            v += mult(A[j], getval(ord, B, i, j))
+            v += mult(A[j], B[ord(i,j)])
         end
         store!(dst, i, v)
     end
@@ -246,14 +246,14 @@ mult(a, b) = a*b
 # Correlation/convolution.
 function multiply_add!(dst::AbstractArray{<:Any,N},
                        A::AbstractArray{<:Any,N},
-                       ord::Ordering,
+                       ord::FilterOrdering,
                        B::AbstractArray{<:Any,N}) where {N}
     indices = Indices(dst, A, B)
     @inbounds for i in indices(dst)
-        J = subset(indices(A), ord, indices(B), i)
+        J = localindices(indices(A), ord, indices(B), i)
         v = zero(promote_type(eltype(A), eltype(B)))
         @simd for j in J
-            v += A[j]*getval(ord, B, i, j)
+            v += A[j]*B[ord(i,j)]
         end
         store!(dst, i, v)
     end
@@ -266,38 +266,38 @@ for f in (:localmean, :multiply_add)
         # These versions provides a default ordering.
         function $f(A::AbstractArray{<:Any,N},
                     B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
-            return $f(A, Forward, B)
+            return $f(A, ForwardFilter, B)
         end
         function $f!(dst::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
                      B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
-            return $f!(dst, A, Forward, B)
+            return $f!(dst, A, ForwardFilter, B)
         end
 
         # These versions builds a kernel.
         function $f(A::AbstractArray{<:Any,N},
-                    ord::Ordering,
+                    ord::FilterOrdering,
                     B::Window{N} = 3) where {N}
             return $f(A, ord, kernel(Dims{N}, B))
         end
         function $f!(dst::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
-                     ord::Ordering,
+                     ord::FilterOrdering,
                      B::Window{N} = 3) where {N}
             return $f!(dst, A, ord, kernel(Dims{N}, B))
         end
 
         # This version provides the destination array.
         function $f(A::AbstractArray{<:Any,N},
-                    ord::Ordering,
+                    ord::FilterOrdering,
                     B::AbstractArray{<:Any,N}) where {N}
             return $f!(similar(A, result_eltype($f, A, B)), A, ord, B)
         end
     end
 end
 
-for (f, ord) in ((:correlate, :Forward),
-                 (:convolve,  :Reverse))
+for (f, ord) in ((:correlate, :ForwardFilter),
+                 (:convolve,  :ReverseFilter))
     f! = Symbol(f,:(!))
     @eval begin
         $f(A::AbstractArray) = multiply_add(A, $ord)

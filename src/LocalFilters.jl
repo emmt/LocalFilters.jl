@@ -14,11 +14,8 @@
 module LocalFilters
 
 export
-    # Re-exports from Base.Order
-    Forward,
-    Reverse,
-
-    # Exports from this package.
+    ForwardFilter,
+    ReverseFilter,
     convolve!,
     convolve,
     correlate!,
@@ -47,7 +44,6 @@ export
 
 using OffsetArrays, StructuredArrays, EasyRanges
 using EasyRanges: ranges, to_int
-using Base.Order # yields Ordering, Forward, Reverse
 using Base: @propagate_inbounds, tail
 
 function localfilter end

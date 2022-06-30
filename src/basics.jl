@@ -14,6 +14,8 @@
 Base.IndexStyle(A::Indices) = IndexStyle(typeof(A))
 Base.IndexStyle(::Type{<:Indices{S}}) where {S} = S()
 
+# `Indices` objects can be called like `eachindex` to yield the indices of an
+# array (see `abstractarray.jl`).
 @inline (::Indices{IndexLinear})(A::AbstractArray) = Base.OneTo{Int}(length(A))
 @inline (::Indices{IndexLinear})(A::AbstractVector) = to_int(Base.axes1(A))
 @inline (::Indices{IndexCartesian})(A::AbstractArray) = CartesianIndices(A)
@@ -41,9 +43,8 @@ valued range.
 yields an `Int`-valued index range similar to `start:step:stop`.  Beware that
 non-unit steps may not be fully supported in `LocalFilters`.
 
-See [`LocalFilters.kernel`](@ref),
-[`LocalFilters.first_centered_index`](@ref), [`LocalFilters.centered`](@ref),
-and alias [`LocalFilters.WindowRange`](@ref).
+See [`LocalFilters.kernel`](@ref), [`LocalFilters.first_centered_index`](@ref),
+and [`LocalFilters.centered`](@ref).
 
 """
 kernel_range(rng::IntegerRange) = to_int(rng)
@@ -61,7 +62,7 @@ kernel_range(start::Integer, step::Integer, stop::Integer) =
     to_int(start):to_int(step):to_int(stop)
 
 """
-    LocalFilters.kernel([Dims{N},] args...)
+    kernel([Dims{N},] args...)
 
 yields an `N`-dimensional abstract array builds from `args...` and which can be
 used as a kernel in local filtering operations.
@@ -73,14 +74,15 @@ used as a kernel in local filtering operations.
   [`LocalFilters.kernel_range`](@ref)).
 
 * If `Dims{N}` is provided and `args...` is a single integer or range, it is
-  interpreted as being the same for all dimensions.
+  interpreted as being the same for all dimensions.  Thus `kernel(Dims{3},5)`
+  yields a 3-dimensional array with index range `-2:2` in every dimension.
 
-* If `args...` is a pair of Cartesian indices, say `I_first` and `I_last`, a
-  uniformly true abstract array is returned whose first and last indices are
-  given by `args...`.
+* If `args...` is a pair of Cartesian indices or a 2-tuple of Cartesian
+  indices, say `I_first` and `I_last`, a uniformly true abstract array is
+  returned whose first and last indices are `I_first` and `I_last`.
 
-* If `args...` is a Cartesian range, a uniformly true abstract array is
-  returned whose axes are given by `args...`.
+* If `args...` is a Cartesian range, say `R::CartesianIndices{N}`, a uniformly
+  true abstract array is returned whose axes are given by `R`.
 
 * If `args...` is an array of any other type than a Cartesian range,
   it is returned unchanged.
@@ -95,7 +97,7 @@ See also [`LocalFilters.kernel_range`](@ref) and
 [`LocalFilters.cartesian_limits`](@ref).
 
 """
-kernel(x::Axis...) = box(x)
+kernel(x::Axis...) = Box(x)
 kernel(::Type{Dims{N}}, x::Axis...) where {N} = Box{N}(x...)
 
 kernel(x::Tuple{Vararg{Axis}}) = Box(x)
@@ -113,9 +115,11 @@ kernel(::Type{Dims{N}}, x::NTuple{2,CartesianIndex{N}}) where {N} = Box(x...)
 kernel(a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} = Box(a, b)
 kernel(::Type{Dims{N}}, a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} =
     Box(a, b)
+
+# Error catcher.
 kernel(::Type{Dims{N}}, x...) where {N} =
     throw(ArgumentError(
-        "cannot create an instance of CartesianIndices{$N} for argument of type $(typeof(x))"))
+        "cannot create a $N-dimensional kernel for argument(s) of type $(typeof(x))"))
 
 # Implement abstract array interface for Box objects which are uniformly true
 # arrays.
@@ -124,7 +128,28 @@ Base.axes(A::Box) = ranges(CartesianIndices(A))
 Base.size(A::Box) = map(length, axes(A))
 Base.CartesianIndices(A::Box) = getfield(A, :inds)
 Base.IndexStyle(::Type{<:Box}) = IndexLinear()
-@inline Base.getindex(A::Box, I...) = true # FIXME: check indices
+@inline function Base.getindex(A::Box, I...)
+    @boundscheck checkbounds(A, I...)
+    return true
+end
+Base.setindex!(A::Box, x, I...) =
+    error("arrays of type `LocalFilters.Box` are read-only")
+
+# Fast reversing of boxes.
+Base.reverse(A::Box) = Box(map(reverse_range, axes(A)))
+reverse_range(x::AbstractUnitRange{<:Integer}) = begin
+    first_x, last_x = EasyRanges.first_last(x)
+    return (-last_x):(-first_x)
+end
+reverse_range(x::IntegerRange) = begin
+    # Always yields a range with a nonnegative step.
+    first_x, step_x, last_x = EasyRanges.first_step_last(x)
+    if step_x ≥ 0
+        return (-last_x):(step_x):(-first_x)
+    else
+        return (-first_x):(-step_x):(-last_x)
+    end
+end
 
 # `Box` constructors, also see the `kernel` method.
 Box{N}(x::Axis) where {N} = Box(replicate(NTuple{N}, kernel_range(x)))
@@ -135,77 +160,102 @@ Box(x::NTuple{N,Axis}) where {N} = Box(CartesianIndices(map(kernel_range, x)))
 Box{N}(a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} = Box(a, b)
 Box(a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} =
     Box(CartesianIndices(map(kernel_range, Tuple(a), Tuple(b))))
+Box{N}(R::CartesianIndices{N}) where {N} = Box(R)
 Box{N}(A::AbstractArray{N}) where {N} = Box(A)
 Box(A::AbstractArray) = Box(CartesianIndices(A))
 Box(A::Box) = A
 
 """
-    LocalFilters.subset(A_inds, ord, B_inds, i) -> J
+    ForwardFilter
+
+is an exported constant object used to indicate *forward* ordering of indices
+in local filter operations.  It can be called as:
+
+    ForwardFilter(i, j) -> j - i
+
+to yield the index in the filter kernel.  See also [`ReverseFilter`](@ref) for
+*reverse* ordering and [`LocalFilters.localindices`](@ref) for building a range
+of valid indices `j`.
+
+"""
+const ForwardFilter = ForwardFilterOrdering()
+
+"""
+    ReverseFilter
+
+is an exported constant object used to indicate *reverse* ordering of indices
+in local filter operations.  It can be called as:
+
+    ReverseFilter(i, j) -> i - j
+
+to yield the index in the filter kernel.  See also [`ForwardFilter`](@ref) for
+*forward* ordering and [`LocalFilters.localindices`](@ref) for building a range
+of valid indices `j`.
+
+"""
+const ReverseFilter = ReverseFilterOrdering()
+
+@inline (ord::FilterOrdering)(i::Integer, j::Integer) = ord(to_int(i), to_int(j))
+
+@inline (::ForwardFilterOrdering)(i::Int, j::Int) = j - i
+@inline (::ForwardFilterOrdering)(i::T, j::T) where {N,T<:CartesianIndex{N}} = j - i
+
+@inline (::ReverseFilterOrdering)(i::Int, j::Int) = i - j
+@inline (::ReverseFilterOrdering)(i::T, j::T) where {N,T<:CartesianIndex{N}} = i - j
+
+"""
+    LocalFilters.localindices(A_inds, ord, B_inds, i) -> J
 
 yields the subset `J` of all indices `j` such that:
 
-* `A[j]` and `B[j-i]` are in-bounds if `ord = Forward`;
+- `A[j]` and `B[j-i]` are in-bounds if `ord = ForwardFilter`;
 
-* `A[j]` and `B[i-j]` are in-bounds if `ord = Reverse`;
+- `A[j]` and `B[i-j]` are in-bounds if `ord = ReverseFilter`;
 
 with `A` and `B` any arrays whose index ranges are given by `A_inds` and
-`B_inds`.
+`B_inds`.  To make the code agnostic to the ordering, use `A[i]` and
+`B[ord(i,j)]` to retrieve the values in `A` and `B`.
+
+Index ranges `A_inds` and `B_inds` and index `i` must be of the same kind:
+
+- linear index ranges for `A_inds` and `B_inds` and linear index for `i`;
+
+- Cartesian index ranges for `A_inds` and `B_inds` and Cartesian index for `i`
+  of same number of dimensions.
+
+Constructor [`LocalFilters.Indices`](@ref) may by used to retrieve the index
+ranges of `A` and `B` in a consistent way.
+
+Method [`LocalFilters.getbal(ord,B,i,j)`](@ref) may be called to get the value
+in `B` according to the ordering `ord`.
 
 """
-@inline function subset(A::CartesianIndices{N},
-                        ::typeof(Forward),
-                        B::CartesianIndices{N},
-                        I::CartesianIndex{N}) where {N}
+@inline function localindices(A::IntegerRange,
+                              ::ForwardFilterOrdering,
+                              B::IntegerRange,
+                              I::Integer)
     return @range A ∩ (I + B)
 end
 
-@inline function subset(A::CartesianIndices{N},
-                        ::typeof(Reverse),
-                        B::CartesianIndices{N},
-                        I::CartesianIndex{N}) where {N}
-    return @range A ∩ (I - B)
-end
-
-@inline function subset(A::IntegerRange,
-                        ::typeof(Forward),
-                        B::IntegerRange,
-                        I::Integer)
+@inline function localindices(A::CartesianIndices{N},
+                              ::ForwardFilterOrdering,
+                              B::CartesianIndices{N},
+                              I::CartesianIndex{N}) where {N}
     return @range A ∩ (I + B)
 end
 
-@inline function subset(A::IntegerRange,
-                        ::typeof(Reverse),
-                        B::IntegerRange,
-                        I::Integer)
+@inline function localindices(A::IntegerRange,
+                              ::ReverseFilterOrdering,
+                              B::IntegerRange,
+                              I::Integer)
     return @range A ∩ (I - B)
 end
 
-"""
-    LocalFilters.getval(ord, B, i, j)
-
-yields the value of the kernel `B` according to ordering `ord` and for indices
-`i` and `j` respectively in the destination and in the source.  If `B` is a
-Cartesian window, `true` is returned; otherwise `B[j-i]` is returned if `ord =
-Forward` and `B[i-j]` is returned if `ord = Reverse`.
-
-"""
-@inline function getval(::typeof(Forward), B::Box, i, j)
-    # FIXME: check bounds (and idem for others)
-    return true
-end
-
-@inline function getval(::typeof(Reverse), B::Box, i, j)
-    return true
-end
-
-@inline @propagate_inbounds function getval(::typeof(Forward),
-                                            B::AbstractArray, i, j)
-    return B[j-i]
-end
-
-@inline @propagate_inbounds function getval(::typeof(Reverse),
-                                            B::AbstractArray, i, j)
-    return B[i-j]
+@inline function localindices(A::CartesianIndices{N},
+                              ::ReverseFilterOrdering,
+                              B::CartesianIndices{N},
+                              I::CartesianIndex{N}) where {N}
+    return @range A ∩ (I - B)
 end
 
 """
@@ -356,9 +406,11 @@ to use fast separable versions of mathematical morphology operations like the
 van Herk-Gil-Werman algorithm.
 
 """
-is_morpho_math_box(::CartesianIndices) = true
+is_morpho_math_box(::Box) = true
 is_morpho_math_box(R::AbstractArray{Bool}) = all(R)
 is_morpho_math_box(R::AbstractArray{<:AbstractFloat}) = all(iszero, R)
+is_morpho_math_box(::CartesianIndices) =
+    error("Cartesian range must be converted to a kernel")
 
 """
     strel(T, A)
@@ -429,3 +481,27 @@ end
         x += 1
     end
 end
+
+"""
+    LocalFilter.has_nans(A)
+
+yields whether array `A` has NaN's.
+
+"""
+has_nans(A::AbstractArray{<:Real}) = false
+has_nans(A::AbstractArray) = true # so that min() and max() are used for exotic types
+function has_nans(A::AbstractArray{<:AbstractFloat})
+    flag = false
+    @inbounds @simd for i in eachindex(A)
+        flag |= isnan(A[i])
+    end
+    return flag
+end
+
+# FIXME: This does not solve the signed zero issue because (-0.0) < (+0.0) is
+# false.
+fast_min(a, b) = fast_min(promote(a, b)...)
+fast_min(a::T, b::T) where {T} = (a < b ? a : b)
+
+fast_max(a, b) = fast_max(promote(a, b)...)
+fast_max(a::T, b::T) where {T} = (a > b ? a : b)
