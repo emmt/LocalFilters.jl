@@ -6,6 +6,8 @@
 work/
 articles/
 docs/build
+Manifest.toml
 
 # Backup files
 *~
+
