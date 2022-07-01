@@ -48,12 +48,18 @@ using Base: @propagate_inbounds, tail
 
 function localfilter end
 function localfilter! end
+function erode end
+function erode! end
+function dilate end
+function dilate! end
+function bilateralfilter end
+function bilateralfilter! end
 
 include("types.jl")
 include("utils.jl")
 include("generic.jl")
-#include("separable.jl")
 include("linear.jl")
+include("separable.jl")
 #include("morphology.jl")
 #include("bilateral.jl")
 #import .BilateralFilter: bilateralfilter!, bilateralfilter
