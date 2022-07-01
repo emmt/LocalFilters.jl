@@ -383,8 +383,8 @@ function localfilter!(dst::AbstractArray{T,N},
                       rng::Axis,
                       wrk::Vector{T}) where {T,N}
     1 ≤ dim ≤ N || throw(ArgumentError("out of bounds dimension"))
-    isempty(K) &&  throw(ArgumentError("invalid filter size"))
-    unsafe_localfilter!(dst, A, Val(Int(dim)), filter_range(ord, rng), wrk)
+    isempty(rng) &&  throw(ArgumentError("invalid filter size"))
+    unsafe_localfilter!(dst, A, Val(Int(dim)), op, filter_range(ord, rng), wrk)
     return dst
 end
 
