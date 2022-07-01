@@ -50,7 +50,7 @@ function localfilter end
 function localfilter! end
 
 include("types.jl")
-include("basics.jl")
+include("utils.jl")
 include("generic.jl")
 #include("separable.jl")
 include("linear.jl")

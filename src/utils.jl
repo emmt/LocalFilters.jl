@@ -1,7 +1,7 @@
 #
-# basics.jl --
+# utils.jl --
 #
-# Basic methods for local filters.
+# Useful methods for local filters.
 #
 #------------------------------------------------------------------------------
 #
@@ -232,12 +232,12 @@ of valid indices `j`.
 """
 const ReverseFilter = ReverseFilterOrdering()
 
-@inline (ord::FilterOrdering)(i::Integer, j::Integer) = ord(to_int(i), to_int(j))
-
 @inline (::ForwardFilterOrdering)(i::Int, j::Int) = j - i
+@inline (::ForwardFilterOrdering)(i::Integer, j::Integer) = Int(j) - Int(i)
 @inline (::ForwardFilterOrdering)(i::T, j::T) where {N,T<:CartesianIndex{N}} = j - i
 
 @inline (::ReverseFilterOrdering)(i::Int, j::Int) = i - j
+@inline (::ReverseFilterOrdering)(i::Integer, j::Integer) = Int(i) - Int(j)
 @inline (::ReverseFilterOrdering)(i::T, j::T) where {N,T<:CartesianIndex{N}} = i - j
 
 """
