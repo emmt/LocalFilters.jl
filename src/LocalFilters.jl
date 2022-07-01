@@ -60,7 +60,7 @@ include("utils.jl")
 include("generic.jl")
 include("linear.jl")
 include("separable.jl")
-#include("morphology.jl")
+include("morphology.jl")
 #include("bilateral.jl")
 #import .BilateralFilter: bilateralfilter!, bilateralfilter
 
