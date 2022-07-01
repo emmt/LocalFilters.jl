@@ -16,31 +16,30 @@ module LocalFilters
 export
     ForwardFilter,
     ReverseFilter,
+    bilateralfilter!,
+    bilateralfilter,
+    bottom_hat,
+    closing!,
+    closing,
     convolve!,
     convolve,
     correlate!,
     correlate,
+    dilate!,
+    dilate,
+    erode!,
+    erode,
     kernel,
+    localextrema!,
+    localextrema,
     localfilter!,
     localfilter,
     localmean!,
     localmean,
-    strel
-
-    #bilateralfilter!,
-    #bilateralfilter,
-    #bottom_hat,
-    #closing!,
-    #closing,
-    #dilate!,
-    #dilate,
-    #erode!,
-    #erode,
-    #localextrema!,
-    #localextrema,
-    #opening!,
-    #opening,
-    #top_hat
+    opening!,
+    opening,
+    strel,
+    top_hat
 
 using OffsetArrays, StructuredArrays, EasyRanges
 using EasyRanges: ranges, to_int
@@ -61,7 +60,6 @@ include("generic.jl")
 include("linear.jl")
 include("separable.jl")
 include("morphology.jl")
-#include("bilateral.jl")
-#import .BilateralFilter: bilateralfilter!, bilateralfilter
+include("bilateral.jl")
 
 end

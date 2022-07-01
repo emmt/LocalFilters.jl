@@ -13,68 +13,130 @@
 
 module BilateralFilter
 
-export bilateralfilter!, bilateralfilter
-
 using ..LocalFilters
-using ..LocalFilters: Neighborhood, RectangularBox, Kernel, axes, store!
+using ..LocalFilters:
+    Axis, Box, FilterOrdering, Indices, ranges, Window,
+    localindices, kernel
+
+import ..LocalFilters: bilateralfilter!, bilateralfilter
 
 using Base: @propagate_inbounds
 
 """
+    AbstractTypeStableFunction{T}
+
+is the super-type of callable object with guaranteed returned type `T`.
+
+"""
+abstract type AbstractTypeStableFunction{T} <:Function end
+
+Base.promote_op(::AbstractTypeStableFunction{T}, ::Type...) where {T} = T
+
+"""
+    TypeStableFunction{T}(f) -> obj
+    TypeStableFunction(f, args...) -> obj
+
+yield a callable object that wraps function `f` for guaranteed returned type
+`T`.  Alternatively, the type(s) `args...` of the function argument(s) can be
+used to deduce the returned type `T`.  Then the following holds:
+
+    obj(x...) === convert(T, f(x...))::T
+
+"""
+struct TypeStableFunction{T,F<:Function} <: AbstractTypeStableFunction{T}
+    func::F
+end
+
+TypeStableFunction{T}(f::F) where {T,F<:Function} = TypeStableFunction{T,F}(f)
+TypeStableFunction{T}(f::TypeStableFunction) where {T} =
+    TypeStableFunction{T}(f.func)
+TypeStableFunction(f::F, args::Type...) where {F<:Function} =
+    TypeStableFunction{Base.promote_op(f, args...),F}(f)
+
+AbstractTypeStableFunction{T}(f::Function) where {T} =
+    TypeStableFunction{T}(f)
+
+@inline (obj::TypeStableFunction{T})(args...) where {T} =
+    convert(T, obj.func(args...))::T
+
+"""
     LocalFilters.BilateralFilter.GaussianWindow{T}(σ) -> f
 
-yields a functor `f` with the shape of a Gaussian of standard deviation `σ` but
-with a peak value of one, i.e. `f(0) -> 1`.  The functor `f` can be applied to
-a single value `x`, to 2 values `x` and `x0` to yield `f(x - x0)`, or to a
-coordinate difference expressed as a Cartesian index.
+yields a callable object `f` with the shape of a Gaussian of standard deviation
+`σ` but with a peak value of one, i.e. `f(0) -> 1`.  The functor `f` can be
+applied to a single value, to 2 values, say `x` and `y`, to yield
+`f(y - x)`, or to a coordinate difference expressed as a Cartesian index.
 
 Type parameter `T` is to specify the numerical type of the parameter of the
 functor.  It can be omitted if `σ` is real.
 
 """
-struct GaussianWindow{T} <: Function
+struct GaussianWindow{T<:AbstractFloat,S} <: AbstractTypeStableFunction{T}
     η::T # η = -1/2σ² is the factor in the exponential
-    GaussianWindow{T}(σ) where {T} = new{T}(-1/(2*σ^2))
+    σ::S # keep in original precision for lossless conversion
+    GaussianWindow{T}(σ::S) where {T,S} = new{T,S}(-1/(2*σ^2), σ)
 end
-GaussianWindow(σ::Real) = GaussianWindow{float(typeof(σ))}(σ)
 
-(f::GaussianWindow)(I::CartesianIndex{N}) where {N} =
+GaussianWindow(σ::Real) = GaussianWindow{float(typeof(σ))}(σ)
+GaussianWindow(f::GaussianWindow) = f
+GaussianWindow{T}(f::GaussianWindow{T}) where {T} = f
+GaussianWindow{T}(f::GaussianWindow) where {T} = GaussianWindow{T}(f.σ)
+
+AbstractTypeStableFunction{T}(f::GaussianWindow) where {T} =
+    GaussianWindow{T}(f)
+
+(f::GaussianWindow{T})(I::CartesianIndex{N}) where {T,N} =
     exp(sum((k) -> I[k]^2, 1:N)*f.η) # FIXME: use @generated
 
-(f::GaussianWindow)(x::T, x0::T) where {T} = f(x - x0)
+(f::GaussianWindow)(x::T, y::T) where {T} = f(y - x)
 (f::GaussianWindow{T})(x) where {T} = exp(convert(T,x)^2*f.η)
 
+# Default window width for a Gaussian distance_filter with given standard
+# deviation σ.
+default_width(σ::Real) = 2*round(Int, 3σ) + 1
+
+# Extend convert method.
+for f in (:AbstractTypeStableFunction, :TypeStableFunction, :GaussianWindow)
+    @eval begin
+        Base.convert(::Type{$f{T}}, f::$f{T}) where {T} = f
+        Base.convert(::Type{$f{T}}, f::Function) where {T} = $f{T}(f)
+    end
+end
 
 """
-    bilateralfilter([T=float(eltype(A)),] A, F, G, ...)
+    bilateralfilter([T=float(eltype(A)),] A, F, [ord=ForwardFilter,] G...=3)
 
 yields the result of applying the bilateral filter on array `A`.
 
-Argument `F` specifies how to smooth the differences in values.  It may be
-function which takes two values from `A` as arguments and returns a nonnegative
-weight.  It may be a real which is assumed to be the standard deviation of a
-Gaussian.
+Argument `F` specifies how to smooth the differences in values.  It can be:
+
+- a function, say `f`, which is called as `f(A[i],A[j])` to yield a nonnegative
+  weight for `i` the central index and `j` the index in a nearby position;
+
+- a positive real, say `σ`, which is assumed to be the standard deviation of a
+  Gaussian.
 
 Arguments `G, ...` specify the settings of the distance filter for smoothing
 differences in coordinates.  There are several possibilities:
 
-- `G, ...` can be a [`LocalFilters.Kernel`](@ref) instance (specified as a
-  single argument).
+- `G... = wgt` an array of nonnegative weights or of booleans.  The axes of
+  `wgt` must have offsets so that the zero index is part of the indices of
+  `wgt`.
 
-- Argument `G` may be a function taking as argument the Cartesian index of the
-  coordinate differences and returning a nonnegative weight.  Argument `G` may
-  also be a real specifying the standard deviation of the Gaussian used to
-  compute weights.  Subsequent arguments `...` are to specify the neighborhood
-  where to apply the distance filter function, they can be a
-  [`Neighborhood`](@ref) object such as a [`RectangularBox`](@ref) or anything
-  that may defined a neighborhood such as an odd integer assumed to be the
-  width of the neighborhood along every dimensions of `A`.  If a standard
-  deviation `σ` is specified for `G` with no subsequent arguments, a default
-  window of size `±3σ` is assumed.
+- `G... = f, w` with `f` a function and `w` any kind of argument that can be
+  used to build a window `win` specifying the extension of the neighborhood.
+  The value of the distance filter will be `max(f(i),0)` for all Cartesian
+  index `i` of `win` such that `win[i]` is true.  See [`kernel`](@ref) for the
+  different ways to specify a window.
 
-Optional argument `T` can be used to force the element type used for (most)
-computations.  This argument is needed if the element type of `A` is not a
-real.
+- `G... = σ` or , `G... = σ, w` with `σ` a positive real assumed to be the
+  standard deviation of a Gaussian function and `w` any kind of argument that
+  can be used to build a window `win` specifying the extension of the
+  neighborhood.  If `w` is not specified, a default window of size `±3σ` is
+  assumed.
+
+Optional argument `T` can be used to force the element type of the result.
+This argument is needed if the element type of `A` is not a real.
 
 See [`bilateralfilter!`](@ref) for an in-place version of this function and see
 [Wikipedia](https://en.wikipedia.org/wiki/Bilateral_filter) for a description
@@ -86,10 +148,10 @@ bilateralfilter(A::AbstractArray{<:Real}, args...) =
     bilateralfilter(float(eltype(A)), A, args...)
 
 bilateralfilter(T::Type, A::AbstractArray, args...) =
-    bilateralfilter!(T, similar(A, T), A, args...)
+    bilateralfilter!(similar(A, T), A, args...)
 
 """
-    bilateralfilter!([T=float(eltype(A)),] dst, A, F, G, ...) -> dst
+    bilateralfilter!(dst, A, F, [ord=ForwardFilter,] G...) -> dst
 
 overwrites `dst` with the result of applying the bilateral filter on array `A`
 and returns `dst`.
@@ -98,86 +160,213 @@ See [`bilateralfilter`](@ref) for a description of the other arguments than
 `dst` and see [Wikipedia](https://en.wikipedia.org/wiki/Bilateral_filter) for a
 description of the bilateral filter.
 
-"""
-function bilateralfilter!(dst::AbstractArray{<:Real,N},
+""" bilateralfilter!
+
+# Provide ordering to use with the distance filter.
+function bilateralfilter!(dst::AbstractArray{<:Any,N},
+                          A::AbstractArray{<:Any,N}, F, G...) where {N}
+    return bilateralfilter!(dst, A, F, ForwardFilter, G...)
+end
+
+# Provide the value and distance filters.
+function bilateralfilter!(dst::AbstractArray{<:Any,N},
+                          A::AbstractArray{<:Any,N}, F,
+                          ord::FilterOrdering, G...) where {N}
+    # Get the (unconverted) type returned by the value filter.
+    Tf = value_filter_type(T, F)
+
+    # Get the (unconverted) element type of the distance filter and simplify
+    # trailing arguments.
+    Tg, Gp = distance_filter(Dims{N}, G...)
+
+    # Determine the resulting weights type.
+    Tw = weight_type(Tf, Tg)
+    F2 = value_filter(Tw, F)
+
+    # Call the main function with filters of suitable types.
+    return bilateralfilter!(dst, A, value_filter(Tw, F),
+                            ord, distance_filter(Tw, Gp))
+end
+
+# Yield the type returned by default by the value filter (at least single
+# precision floating-point for a Gaussian window).
+value_filter_type(T::Type, f::Function) = Base.promote_op(f, T)
+function value_filter_type(T::Type, σ::Real)
+    (isfinite(σ) && σ > 0) || throw(ArgumentError(
+        "standard deviation of the value filter must be finite and positive"))
+    return promote_type(real(T), Float32)
+end
+
+# First pass to determine the distance filter.  Yiel a 2-tuple: an element type
+# and anything else that may be used in the second pass to effectivelu build
+# the filter as an array.
+distance_filter(::Type{Dims{N}}, wgt::AbstractArray{T,N}) where {T,N} = (T, wgt)
+distance_filter(::Type{Dims{N}}, win::Window{N}) where {N} = kernel(Dims{N}, win)
+function distance_filter(::Type{Dims{N}}, σ::Real = 3,
+                         win::Window{N} = default_width(σ)) where {N}
+    (isfinite(σ) && σ > 0) || throw(ArgumentError(
+        "standard deviation of the distance filter must be finite and positive"))
+    return (Float32, (σ,  kernel(Dims{N}, win)))
+end
+distance_filter(::Type{Dims{N}}, f::Function, win::Window{N}) where {N} =
+    (Base.promote_op(f, CartesianIndex{N}), (f, kernel(Dims{N}, win)))
+
+# Yield the type of the weights given that of the value and distance filters.
+weight_type(Tf::Type{<:Real}, Tg::Type{Bool}) = Tf
+weight_type(Tf::Type{<:Real}, Tg::Type{<:Real}) = promote_type(Tf, Tg)
+weight_type(Tf::Type{<:Complex}, Tg::Type) =
+    throw(ArgumentError("value filter must not yield complex type"))
+
+# Yield a callable object to be used as the *value filter* in the bilateral
+# filter.
+value_filter(T::Type, f::Function) = AbstractTypeStableFunction{T}(f)
+value_filter(T::Type, σ::Real) = GaussianWindow{T}(σ)
+
+# Second pass to build/convert the distance filter.  Argument T is the type of
+# the weights.
+distance_filter(::Type{T}, win::AbstractArray{Bool}) where {T} = win
+distance_filter(::Type{T}, wgt::AbstractArray{T}) where {T} = wgt
+distance_filter(::Type{T}, wgt::AbstractArray) where {T} = AbstractArray{T}(wgt)
+function distance_filter(::Type{T}, G::Tuple{Function,
+                                             AbstractArray{Bool}}) where {T}
+    f, win = G
+    return distance_filter!(
+        OffsetArray(Array{T}(undef, size(win)), axes(win)),
+        AbstractTypeStableFunction{T}(f), win)
+end
+function distance_filter(::Type{T}, G::Tuple{Real,
+                                             AbstractArray{Bool}}) where {T}
+    σ, win = G
+    return distance_filter!(
+        OffsetArray(Array{T}(undef, size(win)), axes(win)),
+        GaussianWindow{T}(σ), win)
+end
+function distance_filter!(wgt::AbstractArray{T,N},
+                          f::AbstractTypeStableFunction{T},
+                          win::Box{N}) where {T,N}
+    @inbounds for i in eachindex(CartesianIndex, wgt, win)
+        wgt[i] = max(f(i), zero(T))
+    end
+    return wgt
+end
+function distance_filter!(wgt::AbstractArray{T,N},
+                          f::AbstractTypeStableFunction{T},
+                          win::AbstractArray{Bool,N}) where {T,N}
+    @inbounds for i in eachindex(CartesianIndex, wgt, win)
+        if win[i]
+            wgt[i] = max(f(i), zero(T))
+        else
+            wgt[i] = zero(T)
+        end
+    end
+    return wgt
+end
+
+# This function is to make sure that A[i] is valid for all indices i of dst
+# in the bilateral filter as implemented below.
+function check_distance_filter_indices(inds::Union{CartesianIndices,
+                                                   OrdinalRange{<:Integer,
+                                                                <:Integer}})
+    zero(eltype(inds)) ∈ inds || throw(ArgumentError(
+        "index zero must belong to the indices of the distance filter"))
+end
+
+# Distance filter is a simple sliding window.
+function bilateralfilter!(dst::AbstractArray{<:Any,N},
                           A::AbstractArray{<:Any,N},
-                          args...) where {N}
-    # Provide type for computations.
-    return bilateralfilter!(float(eltype(dst)), dst, A, args...)
+                          F::AbstractTypeStableFunction{T},
+                          ord::FilterOrdering,
+                          G::Box{N}) where {T,N}
+    indices = Indices(dst, A, G)
+    check_distance_filter_indices(indices(G))
+    @inbounds for i in indices(dst)
+        J = localindices(indices(A), ord, indices(G), i)
+        if isempty(J)
+            dst[i] = zero(eltype(dst))
+        else
+            den = zero(T)
+            num = zero(promote_type(T, eltype(A)))
+            Ai = A[i] # ok thanks to check_distance_filter_indices
+            for j in localindices(indices(A), ord, indices(G), i)
+                Aj = A[j]
+                w = F(Ai, Aj)
+                den += w
+                num += w*Aj
+            end
+            if den > zero(den)
+                store!(dst, i, num/den)
+            else
+                dst[i] = zero(eltype(dst))
+            end
+        end
+    end
+    return dst
 end
 
-function bilateralfilter!(::Type{T},
-                          dst::AbstractArray{<:Any,N},
+# Distance filter is an array of booleans.
+function bilateralfilter!(dst::AbstractArray{<:Any,N},
                           A::AbstractArray{<:Any,N},
-                          F::Function,
-                          G::Kernel{<:Any,N}) where {T,N}
-    # The state is the tuple: (central_value, numerator, denominator).
-    return localfilter!(dst, A, Kernel{T}(G),
-                        (val) -> (val, zero(T), zero(T)),
-                        (v, val, ker) -> update(v, val, ker,
-                                                convert(T, F(val, v[1]))),
-                        final!)
+                          F::AbstractTypeStableFunction{T},
+                          ord::FilterOrdering,
+                          G::AbstractArray{Bool,N}) where {T,N}
+    indices = Indices(dst, A, G)
+    check_distance_filter_indices(indices(G))
+    @inbounds for i in indices(dst)
+        J = localindices(indices(A), ord, indices(G), i)
+        if isempty(J)
+            dst[i] = zero(eltype(dst))
+        else
+            den = zero(T)
+            num = zero(promote_type(T, eltype(A)))
+            Ai = A[i] # ok thanks to check_distance_filter_indices
+            for j in localindices(indices(A), ord, indices(G), i)
+                if G[ord(i,j)]
+                    Aj = A[j]
+                    w = F(Ai, Aj)
+                    den += w
+                    num += w*Aj
+                end
+            end
+            if den > zero(den)
+                store!(dst, i, num/den)
+            else
+                dst[i] = zero(eltype(dst))
+            end
+        end
+    end
+    return dst
 end
 
-function bilateralfilter!(::Type{T},
-                          dst::AbstractArray{<:Any,N},
+# Distance filter is an array of weights.
+function bilateralfilter!(dst::AbstractArray{<:Any,N},
                           A::AbstractArray{<:Any,N},
-                          F::Function,
-                          G::Function,
-                          B::RectangularBox{N}
-                          ) where {T,N}
-    return bilateralfilter!(T, dst, A, F, Kernel{T}(G, B))
+                          F::AbstractTypeStableFunction{T},
+                          ord::FilterOrdering,
+                          G::AbstractArray{T,N}) where {T,N}
+    indices = Indices(dst, A, G)
+    check_distance_filter_indices(indices(G))
+    @inbounds for i in indices(dst)
+        J = localindices(indices(A), ord, indices(G), i)
+        if isempty(J)
+            dst[i] = zero(eltype(dst))
+        else
+            den = zero(T)
+            num = zero(promote_type(T, eltype(A)))
+            Ai = A[i] # ok thanks to check_distance_filter_indices
+            @simd for j in localindices(indices(A), ord, indices(G), i)
+                Aj = A[j]
+                w = F(Ai, Aj)*G[ord(i,j)]
+                den += w
+                num += w*Aj
+            end
+            if den > zero(den)
+                store!(dst, i, num/den)
+            else
+                dst[i] = zero(eltype(dst))
+            end
+        end
+    end
+    return dst
 end
-
-function bilateralfilter!(::Type{T},
-                          dst::AbstractArray{<:Any,N},
-                          A::AbstractArray{<:Any,N},
-                          F::Function,
-                          G::Function,
-                          width::Integer
-                          ) where {T,N}
-    (width > 0 && isodd(width)) || throw(ArgumentError(
-        "width of neighborhood must be at least one and odd"))
-    h = Int(width) >> 1 # half-width
-    I = CartesianIndex(ntuple(i -> h, Val(N)))
-    B = RectangularBox{N}(-I, I)
-    return bilateralfilter!(T, dst, A, F, G, B)
-end
-
-# Range filter specifed by its standard deviation.
-function bilateralfilter!(::Type{T},
-                          dst::AbstractArray{<:Any,N},
-                          A::AbstractArray{<:Any,N},
-                          σr::Real,
-                          args...) where {T,N}
-    (isfinite(σr) && σr > 0) || throw(ArgumentError(
-        "standard deviation must be finite and positive"))
-    F = GaussianWindow{T}(σr)
-    return bilateralfilter!(T, dst, A, F, args...)
-end
-
-# Distance filter specifed by its standard deviation and the neighborhood.
-function bilateralfilter!(::Type{T},
-                          dst::AbstractArray{<:Any,N},
-                          A::AbstractArray{<:Any,N},
-                          F::Function,
-                          σs::Real,
-                          B = default_width(σs)) where {T,N}
-    (isfinite(σs) && σs > 0) || throw(ArgumentError(
-        "standard deviation must be finite and positive"))
-    G = GaussianWindow{T}(σs)
-    return bilateralfilter!(T, dst, A, F, G, B)
-end
-
-# Default window width for a Gaussian kernel with given standard deviation σ.
-default_width(σ::Real) = 2*round(Int, 3σ) + 1
-
-function update(v::Tuple{V,T,T}, val::V, ws::T, wr::T) where {V,T}
-    w = wr*ws
-    return (v[1], v[2] + convert(T, val)*w, v[3] + w)
-end
-
-@inline @propagate_inbounds final!(dst, i, v::Tuple{V,T,T}) where {T,V} =
-    store!(dst, i, (v[3] > zero(T) ? v[2]/v[3] : zero(T)))
 
 end # module
