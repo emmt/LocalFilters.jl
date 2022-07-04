@@ -31,6 +31,16 @@ This is also the union of types accepted by the
 const Axis = Union{Integer,IntegerRange}
 
 """
+    CartesianUnitRange{N}
+
+is an alias for a `N`-dimensional Cartesian index range with unit step.  Since
+Julia 1.6, non-unit step Cartesian ranges may be defined.
+
+"""
+const CartesianUnitRange{N} = CartesianIndices{
+    N,<:NTuple{N,AbstractUnitRange{Int}}}
+
+"""
     LocalFilters.Indices(A...) -> indices
 
 yields a callable object that can be used to produce ranges of indices for each
@@ -57,7 +67,7 @@ converted into a kernel by the [`LocalFilters.kernel`](@ref) method or by the
 
 """
 const Window{N} = Union{Axis,NTuple{N,Axis},NTuple{2,CartesianIndex{N}},
-                        CartesianIndices{N}}
+                        CartesianUnitRange{N}}
 
 """
     LocalFilters.Box{N}(args...)
