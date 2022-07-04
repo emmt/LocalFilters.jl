@@ -79,8 +79,13 @@ number of dimensions, it may be omitted if it can be deduced from the
 arguments.
 
 """
-struct Box{N,R<:CartesianIndices{N}} <: AbstractArray{Bool,N}
+struct Box{N,R<:CartesianUnitRange{N}} <: AbstractArray{Bool,N}
     inds::R
+    function Box(inds::R) where {N,R<:CartesianIndices{N}}
+        R <: CartesianUnitRange{N} && return new{N,R}(inds)
+        unit_inds = CartesianIndices(map(unit_range, ranges(inds)))
+        return new{N,typeof(unit_inds)}(unit_inds)
+    end
 end
 
 """

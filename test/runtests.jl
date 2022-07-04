@@ -8,8 +8,9 @@ using Test
 using OffsetArrays
 using LocalFilters
 using LocalFilters:
-    Box, Indices, kernel_range, kernel, ball, limits,
-    is_morpho_math_box, check_indices, localindices, ranges, centered, replicate
+    Box, Indices, kernel_offset, kernel_range, kernel, ball, limits,
+    is_morpho_math_box, check_indices, localindices,
+    ranges, centered, replicate
 
 # A bit of type-piracy for more readable error messages.
 Base.show(io::IO, x::CartesianIndices) =
@@ -167,10 +168,10 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
             @test I(B) === eachindex(IndexStyle(I), B)
         end
 
-        # first_centered_index
-        @test_throws ArgumentError LocalFilters.first_centered_index(-1)
-        @test LocalFilters.first_centered_index(Int16(5)) === -2
-        @test LocalFilters.first_centered_index(Int16(4)) === -2
+        # kernel_offset
+        @test_throws ArgumentError kernel_offset(-1)
+        @test kernel_offset(Int16(5)) === -3
+        @test kernel_offset(Int16(4)) === -3
 
         # Boxes.
         #@test Box(...)
@@ -183,10 +184,9 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
         @test kernel_range(4) === -2:1
         @test kernel_range(5) === -2:2
         @test kernel_range(-4:5) === -4:5
-        @test kernel_range(-4:1:5) === -4:1:5
-        @test kernel_range(-4:2:7) === -4:2:6
+        @test kernel_range(-4:1:5) === -4:5
+        @test_throws ArgumentError kernel_range(-4:2:7)
         @test kernel_range(1,3) === 1:3
-        @test kernel_range(1,2,3) === 1:2:3
         @test kernel_range(Int16(-3),Int8(5)) === -3:5
         @test kernel_range(Base.OneTo(7)) === Base.OneTo{Int}(7)
         @test kernel_range(Base.OneTo(Int16(7))) === Base.OneTo{Int}(7)
@@ -215,8 +215,8 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
         end
         if VERSION ≥ v"1.6"
             # Ranges can have a step in CartesianIndices
-            @test kernel(CartesianIndices((1:2:6,))) === Box(1:2:6)
-            @test kernel(CartesianIndices((1:1:6,))) === Box(1:1:6)
+            @test_throws ArgumentError kernel(CartesianIndices((1:2:6,)))
+            @test kernel(CartesianIndices((1:1:6,))) === Box(1:6)
         end
 
         # ordering

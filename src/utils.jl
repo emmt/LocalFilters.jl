@@ -16,7 +16,7 @@ Base.IndexStyle(::Type{<:Indices{S}}) where {S} = S()
 
 # `Indices` objects can be called like `eachindex` to yield the indices of an
 # array (see `abstractarray.jl`).
-@inline (::Indices{IndexLinear})(A::AbstractArray) = Base.OneTo{Int}(length(A))
+@inline (::Indices{IndexLinear})(A::AbstractArray) = OneTo{Int}(length(A))
 @inline (::Indices{IndexLinear})(A::AbstractVector) = to_int(Base.axes1(A))
 @inline (::Indices{IndexCartesian})(A::AbstractArray) = CartesianIndices(A)
 
@@ -68,35 +68,78 @@ Indices(A::AbstractArray) = Indices{IndexCartesian}()
 Indices(A::AbstractArray, B::AbstractArray...) = Indices{IndexCartesian}()
 
 """
-    LocalFilters.kernel_range(x)
+    LocalFilters.unit_range(r)
 
-yields an `Int`-valued index range based on `x`.  If `x` is an integer, a
-centered range of this length is returned (for even lengths, the same
-conventions as in `fftshift` are used).  Otherwise, `x` must be an integer
-valued range.
+converts `r` into an `Int`-valued unit step index range.  `r` may be a linear
+or a Cartesian index range.
 
-    LocalFilters.kernel_range(start, [step = 1,] stop)
+    LocalFilters.unit_range(start, stop)
 
-yields an `Int`-valued index range similar to `start:step:stop`.  Beware that
-non-unit steps may not be fully supported in `LocalFilters`.
-
-See [`LocalFilters.kernel`](@ref), [`LocalFilters.first_centered_index`](@ref),
-and [`LocalFilters.centered`](@ref).
+yields the `Int`-valued unit step range `Int(start):Int(stop)`.
 
 """
-kernel_range(rng::IntegerRange) = to_int(rng)
+unit_range(r::OneTo{Int}) = r
+unit_range(r::OneTo{<:Integer}) = OneTo{Int}(length(r))
 
-function kernel_range(len::Integer)
-    len ≥ 0 || throw(ArgumentError("invalid range length"))
-    n = to_int(len)
-    start = first_centered_index(n)
-    return kernel_range(start, n - 1 + start)
+unit_range(r::AbstractUnitRange{Int}) = r
+unit_range(r::AbstractUnitRange{<:Integer}) = Int(first(r)):Int(last(r))
+
+unit_range(start::Integer, stop::Integer) = Int(start):Int(stop)
+
+function unit_range(r::IntegerRange)
+    s = step(r)
+    abs(s) == one(s) || throw(ArgumentError("non-unit step range"))
+    if s ≥ zero(s)
+        return Int(first(r)):Int(last(r))
+    else
+        return -Int(last(r)):-Int(first(r))
+    end
 end
 
-kernel_range(start::Integer, stop::Integer) = to_int(start):to_int(stop)
+function unit_range(r::CartesianIndices)
+    r isa CartesianUnitRange && return r
+    return CartesianIndices(map(unit_range, ranges(r)))
+end
 
-kernel_range(start::Integer, step::Integer, stop::Integer) =
-    to_int(start):to_int(step):to_int(stop)
+"""
+   LocalFilters.kernel_offset(len)
+
+yields the index offset along a centered dimension of length `len`.  That is,
+`-div(Int(len)+2,2)`.  For even dimension lengths, this amounts to using the
+same conventions as in `fftshift`.
+
+See [`LocalFilters.kernel_range`](@ref) and [`LocalFilters.centered`](@ref).
+
+"""
+function kernel_offset(len::Integer)
+    len ≥ 0 || throw(ArgumentError("invalid dimension length"))
+    return -((Int(len) + 2) >> 1)
+end
+
+"""
+    LocalFilters.kernel_range(rng)
+    LocalFilters.kernel_range(len)
+    LocalFilters.kernel_range(start, stop)
+
+yield an unit-step `Int`-valued index range based on range `rng`, dimension
+length `len`, or first and last indices `start` and `stop`.  In the case of a
+given dimension length, a centered range of this length is returned (for even
+lengths, the same conventions as in `fftshift` are used).  Otherwise, `x` must
+be an integer valued range.
+
+See [`LocalFilters.kernel`](@ref), [`LocalFilters.kernel_offset`](@ref), and
+[`LocalFilters.centered`](@ref).
+
+"""
+kernel_range(rng::IntegerRange) = unit_range(rng)
+
+function kernel_range(len::Integer)
+    n = Int(len)
+    off = kernel_offset(n)
+    return kernel_range(off + 1, off + n)
+end
+
+kernel_range(start::Integer, stop::Integer) = unit_range(start, stop)
 
 """
     kernel([Dims{N},] args...)
@@ -122,8 +165,8 @@ used as a kernel in local filtering operations.
 * If `args...` is a Cartesian range, say `R::CartesianIndices{N}`, a uniformly
   true abstract array is returned whose axes are given by `R`.
 
-* If `args...` is an array of any other type than a Cartesian range,
-  it is returned unchanged.
+* If `args...` is an abstract array of any other type than an instance of
+  `CartesianIndices`, it is returned unchanged.
 
 Optional leading argument `Dims{N}` can be specified to assert the number of
 dimensions of the result or to provide the number of dimensions when it cannot
@@ -310,35 +353,18 @@ different semantic.
 Argument `A` can also be an index range (linear or Cartesian), in which case
 a centered index range of same size is returned.
 
-See [`LocalFilters.kernel_range`](@ref),
-[`LocalFilters.first_centered_index`](@ref).
+See [`LocalFilters.kernel_range`](@ref), [`LocalFilters.kernel_offset`](@ref).
 
 """
-centered(A::AbstractArray) =
-    OffsetArray(A, map(x -> first_centered_index(x) - 1, size(A)))
+centered(A::AbstractArray) = OffsetArray(A, map(kernel_offset, size(A)))
 centered(A::OffsetArray) = centered(parent(A))
 centered(R::CartesianIndices{N}) where {N} =
     CartesianIndices(map(centered, ranges(R)))
 centered(R::AbstractUnitRange{<:Integer}) = kernel_range(length(R))
 centered(R::IntegerRange) = begin
-    abs(step(R)) == 1 || throw(ArgumentError("invalid non-unit step index range"))
+    abs(step(R)) == 1 || throw(ArgumentError(
+        "invalid non-unit step index range"))
     return kernel_range(length(R))
-end
-
-"""
-   LocalFilters.first_centered_index(len)
-
-yields the first index along a centered dimension of length `len`.  That is,
-`-div(len,2)` converetd to `Int`.  For even dimension lengths, this amounts to
-using the same conventions as in `fftshift`.
-
-See [`LocalFilters.kernel_range`](@ref) and [`LocalFilters.entered`](@ref).
-
-"""
-function first_centered_index(len::Integer)
-    len ≥ 0 || throw(ArgumentError("invalid dimension length"))
-    n = to_int(len)
-    return -(n >> 1)
 end
 
 """

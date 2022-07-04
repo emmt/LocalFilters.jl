@@ -43,7 +43,7 @@ export
 
 using OffsetArrays, StructuredArrays, EasyRanges
 using EasyRanges: ranges, to_int
-using Base: @propagate_inbounds, tail
+using Base: @propagate_inbounds, tail, OneTo
 
 function localfilter end
 function localfilter! end
