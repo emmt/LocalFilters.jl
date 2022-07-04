@@ -15,11 +15,12 @@ module BilateralFilter
 
 using ..LocalFilters
 using ..LocalFilters:
-    Axis, Box, FilterOrdering, Indices, ranges, Window,
-    localindices, kernel
+    Axis, Box, FilterOrdering, Indices, BoundaryConditions, FlatBoundaries,
+    ranges, Window, localindices, kernel, store!
 
 import ..LocalFilters: bilateralfilter!, bilateralfilter
 
+using OffsetArrays
 using Base: @propagate_inbounds
 
 """
@@ -173,7 +174,7 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
                           A::AbstractArray{<:Any,N}, F,
                           ord::FilterOrdering, G...) where {N}
     # Get the (unconverted) type returned by the value filter.
-    Tf = value_filter_type(T, F)
+    Tf = value_filter_type(eltype(A), F)
 
     # Get the (unconverted) element type of the distance filter and simplify
     # trailing arguments.
@@ -201,7 +202,8 @@ end
 # and anything else that may be used in the second pass to effectivelu build
 # the filter as an array.
 distance_filter(::Type{Dims{N}}, wgt::AbstractArray{T,N}) where {T,N} = (T, wgt)
-distance_filter(::Type{Dims{N}}, win::Window{N}) where {N} = kernel(Dims{N}, win)
+distance_filter(::Type{Dims{N}}, win::Window{N}) where {N} =
+    (Bool, kernel(Dims{N}, win))
 function distance_filter(::Type{Dims{N}}, σ::Real = 3,
                          win::Window{N} = default_width(σ)) where {N}
     (isfinite(σ) && σ > 0) || throw(ArgumentError(
@@ -244,7 +246,7 @@ end
 function distance_filter!(wgt::AbstractArray{T,N},
                           f::AbstractTypeStableFunction{T},
                           win::Box{N}) where {T,N}
-    @inbounds for i in eachindex(CartesianIndex, wgt, win)
+    @inbounds for i in eachindex(IndexCartesian(), wgt, win)
         wgt[i] = max(f(i), zero(T))
     end
     return wgt
@@ -252,7 +254,7 @@ end
 function distance_filter!(wgt::AbstractArray{T,N},
                           f::AbstractTypeStableFunction{T},
                           win::AbstractArray{Bool,N}) where {T,N}
-    @inbounds for i in eachindex(CartesianIndex, wgt, win)
+    @inbounds for i in eachindex(IndexCartesian(), wgt, win)
         if win[i]
             wgt[i] = max(f(i), zero(T))
         else
@@ -262,15 +264,6 @@ function distance_filter!(wgt::AbstractArray{T,N},
     return wgt
 end
 
-# This function is to make sure that A[i] is valid for all indices i of dst
-# in the bilateral filter as implemented below.
-function check_distance_filter_indices(inds::Union{CartesianIndices,
-                                                   OrdinalRange{<:Integer,
-                                                                <:Integer}})
-    zero(eltype(inds)) ∈ inds || throw(ArgumentError(
-        "index zero must belong to the indices of the distance filter"))
-end
-
 # Distance filter is a simple sliding window.
 function bilateralfilter!(dst::AbstractArray{<:Any,N},
                           A::AbstractArray{<:Any,N},
@@ -278,26 +271,21 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
                           ord::FilterOrdering,
                           G::Box{N}) where {T,N}
     indices = Indices(dst, A, G)
-    check_distance_filter_indices(indices(G))
+    B = FlatBoundaries(indices(A))
     @inbounds for i in indices(dst)
-        J = localindices(indices(A), ord, indices(G), i)
-        if isempty(J)
-            dst[i] = zero(eltype(dst))
+        Ai = A[B(i)]
+        den = zero(T)
+        num = zero(promote_type(T, eltype(A)))
+        @simd for j in localindices(indices(A), ord, indices(G), i)
+            Aj = A[j]
+            w = F(Ai, Aj)
+            den += w
+            num += w*Aj
+        end
+        if den > zero(den)
+            store!(dst, i, num/den)
         else
-            den = zero(T)
-            num = zero(promote_type(T, eltype(A)))
-            Ai = A[i] # ok thanks to check_distance_filter_indices
-            for j in localindices(indices(A), ord, indices(G), i)
-                Aj = A[j]
-                w = F(Ai, Aj)
-                den += w
-                num += w*Aj
-            end
-            if den > zero(den)
-                store!(dst, i, num/den)
-            else
-                dst[i] = zero(eltype(dst))
-            end
+            store!(dst, i, Ai)
         end
     end
     return dst
@@ -310,28 +298,23 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
                           ord::FilterOrdering,
                           G::AbstractArray{Bool,N}) where {T,N}
     indices = Indices(dst, A, G)
-    check_distance_filter_indices(indices(G))
+    B = FlatBoundaries(indices(A))
     @inbounds for i in indices(dst)
-        J = localindices(indices(A), ord, indices(G), i)
-        if isempty(J)
-            dst[i] = zero(eltype(dst))
+        Ai = A[B(i)]
+        den = zero(T)
+        num = zero(promote_type(T, eltype(A)))
+        for j in localindices(indices(A), ord, indices(G), i)
+            if G[ord(i,j)]
+                Aj = A[j]
+                w = F(Ai, Aj)
+                den += w
+                num += w*Aj
+            end
+        end
+        if den > zero(den)
+            store!(dst, i, num/den)
         else
-            den = zero(T)
-            num = zero(promote_type(T, eltype(A)))
-            Ai = A[i] # ok thanks to check_distance_filter_indices
-            for j in localindices(indices(A), ord, indices(G), i)
-                if G[ord(i,j)]
-                    Aj = A[j]
-                    w = F(Ai, Aj)
-                    den += w
-                    num += w*Aj
-                end
-            end
-            if den > zero(den)
-                store!(dst, i, num/den)
-            else
-                dst[i] = zero(eltype(dst))
-            end
+            store!(dst, i, Ai)
         end
     end
     return dst
@@ -344,26 +327,21 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
                           ord::FilterOrdering,
                           G::AbstractArray{T,N}) where {T,N}
     indices = Indices(dst, A, G)
-    check_distance_filter_indices(indices(G))
+    B = FlatBoundaries(indices(A))
     @inbounds for i in indices(dst)
-        J = localindices(indices(A), ord, indices(G), i)
-        if isempty(J)
-            dst[i] = zero(eltype(dst))
+        Ai = A[B(i)]
+        den = zero(T)
+        num = zero(promote_type(T, eltype(A)))
+        @simd for j in localindices(indices(A), ord, indices(G), i)
+            Aj = A[j]
+            w = F(Ai, Aj)*G[ord(i,j)]
+            den += w
+            num += w*Aj
+        end
+        if den > zero(den)
+            store!(dst, i, num/den)
         else
-            den = zero(T)
-            num = zero(promote_type(T, eltype(A)))
-            Ai = A[i] # ok thanks to check_distance_filter_indices
-            @simd for j in localindices(indices(A), ord, indices(G), i)
-                Aj = A[j]
-                w = F(Ai, Aj)*G[ord(i,j)]
-                den += w
-                num += w*Aj
-            end
-            if den > zero(den)
-                store!(dst, i, num/den)
-            else
-                dst[i] = zero(eltype(dst))
-            end
+            store!(dst, i, Ai)
         end
     end
     return dst

@@ -20,6 +20,8 @@ using ..LocalFilters:
     FilterOrdering,
     ForwardFilterOrdering,
     ReverseFilterOrdering,
+    BoundaryConditions,
+    FlatBoundaries,
     Axis,
     kernel_range
 
@@ -131,20 +133,6 @@ end
     @inbounds parent(A)[i + offset(A)] = x
     return A
 end
-
-abstract type BoundaryConditions end
-struct FlatBoundaries{R<:AbstractUnitRange{Int}} <: BoundaryConditions
-    indices::R
-    # Inner constructor to refuse to build object is range is empty.
-    function FlatBoundaries(indices::R) where {R<:AbstractUnitRange{Int}}
-        isempty(indices) && throw(ArgumentError("empty index range"))
-        return new{R}(indices)
-    end
-end
-FlatBoundaries(A::AbstractVector) = FlatBoundaries(Base.axes1(A))
-FlatBoundaries(A::AbstractArray, d::Integer) = FlatBoundaries(axes(A,d))
-indices(A::FlatBoundaries) = getfield(A, :indices)
-(A::FlatBoundaries)(i::Int) = clamp(i, first(indices(A)), last(indices(A)))
 
 """
     localfilter([T=eltype(A),] A, dims, op, [ord=ForwardFilter,]

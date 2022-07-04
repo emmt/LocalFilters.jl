@@ -111,3 +111,29 @@ exported by `LocalFilters`.
 
 """
 struct ReverseFilterOrdering <: FilterOrdering end
+
+"""
+    LocalFilters.BoundaryConditions
+
+is the super-type of types representing boundary conditions.
+
+"""
+abstract type BoundaryConditions end
+
+"""
+    LocalFilters.FlatBoundaries(inds)
+
+yields an object representing *flat* boundary conditions for arrays
+with index range `inds`.
+
+"""
+struct FlatBoundaries{R<:Union{AbstractUnitRange{Int},
+                               CartesianUnitRange}} <: BoundaryConditions
+    indices::R
+    # Inner constructor to refuse to build object is range is empty.
+    function FlatBoundaries(indices::R) where {R<:Union{AbstractUnitRange{Int},
+                                                        CartesianUnitRange}}
+        isempty(indices) && throw(ArgumentError("empty index range"))
+        return new{R}(indices)
+    end
+end

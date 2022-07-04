@@ -72,7 +72,7 @@ Indices(A::AbstractArray, B::AbstractArray...) = Indices{IndexCartesian}()
 
 yields an `Int`-valued index range based on `x`.  If `x` is an integer, a
 centered range of this length is returned (for even lengths, the same
-conventions as in `fftshift` are used).  Otherwise, `x` must be a an integer
+conventions as in `fftshift` are used).  Otherwise, `x` must be an integer
 valued range.
 
     LocalFilters.kernel_range(start, [step = 1,] stop)
@@ -101,7 +101,7 @@ kernel_range(start::Integer, step::Integer, stop::Integer) =
 """
     kernel([Dims{N},] args...)
 
-yields an `N`-dimensional abstract array builds from `args...` and which can be
+yields an `N`-dimensional abstract array built from `args...` and which can be
 used as a kernel in local filtering operations.
 
 * If `args...` is composed of `N` integers and/or ranges or if it is an
@@ -112,7 +112,8 @@ used as a kernel in local filtering operations.
 
 * If `Dims{N}` is provided and `args...` is a single integer or range, it is
   interpreted as being the same for all dimensions.  Thus `kernel(Dims{3},5)`
-  yields a 3-dimensional array with index range `-2:2` in every dimension.
+  yields a 3-dimensional uniformly true array with index range `-2:2` in every
+  dimension.
 
 * If `args...` is a pair of Cartesian indices or a 2-tuple of Cartesian
   indices, say `I_first` and `I_last`, a uniformly true abstract array is
@@ -535,3 +536,20 @@ end
         x += 1
     end
 end
+
+# Boundary conditions.
+#
+# NOTE: Remember that the linear index range of a vector `V` are given by
+#       `axes(V,1)` while the linear index range of a multi-dimensional array
+#       `A` is given by `1:length(A)` (in fact `Base.OneTo(lenght(A))`).
+FlatBoundaries(A::AbstractVector) = FlatBoundaries(Base.axes1(A))
+FlatBoundaries(A::AbstractArray, d::Integer) = FlatBoundaries(axes(A,d))
+FlatBoundaries(A::AbstractArray) = FlatBoundaries(CartesianIndices(A))
+
+indices(B::FlatBoundaries) = getfield(B, :indices)
+
+(B::FlatBoundaries{<:AbstractUnitRange{Int}})(i::Int) = clamp(i, indices(B))
+(B::FlatBoundaries{<:AbstractUnitRange{Int}})(i::Integer) =
+    clamp(Int(i), indices(B))
+(B::FlatBoundaries{<:CartesianUnitRange{N}})(i::CartesianIndex{N}) where {N} =
+    CartesianIndex(map(clamp, Tuple(i), ranges(indices(B))))
