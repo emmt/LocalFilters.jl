@@ -1,7 +1,7 @@
 #
 # benchmarks.jl --
 #
-# Some speed tests for local filters.  Among others:
+# Some speed tests for local filters. Among others:
 #
 # * Naive (but otherwise fast) versions of filters which does not use the
 #   `localfilter!` driver nor the smart algorithms implemented in LocalFilters;

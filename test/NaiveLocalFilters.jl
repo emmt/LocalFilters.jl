@@ -1,7 +1,7 @@
 #
 # NaiveLocalFilters.jl -
 #
-# Naive (non-optimized) implementation of local filters.  This module provides
+# Naive (non-optimized) implementation of local filters. This module provides
 # reference implementations of methods for checking results and benchmarking.
 #
 #------------------------------------------------------------------------------
@@ -121,8 +121,8 @@ function dilate!(::Val{:Naive},
 end
 
 #------------------------------------------------------------------------------
-# Variants for computing interesecting regions.  This is the most critical
-# part for indexing a neighborhood (apart from using a non-naive algorithm).
+# Variants for computing interesecting regions. This is the most critical part
+# for indexing a neighborhood (apart from using a non-naive algorithm).
 
 # "Base" variant: use constructors and methods provided by the Base package.
 @inline function _cartesianregion(::Val{:Base},

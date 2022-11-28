@@ -14,13 +14,13 @@
 """
     localmean(A, [ord=ForwardFilter,] B=3)
 
-yields the local mean of `A` in a neighborhood defined by `B`.  The result is
-an array similar to `A`.  If `B` is not specified, the neighborhood is a
-hyperrectangular sliding window of size 3 in every dimension.  Otherwise, `B`
+yields the local mean of `A` in a neighborhood defined by `B`. The result is an
+array similar to `A`. If `B` is not specified, the neighborhood is a
+hyperrectangular sliding window of size 3 in every dimension. Otherwise, `B`
 may be specified as a Cartesian box, or as an array of booleans of same number
-of dimensions as `A`.  If `B` is a single odd integer (as it is by default),
-the neighborhood is assumed to be a hyperrectangular sliding window of size `B`
-in every dimension.
+of dimensions as `A`. If `B` is a single odd integer (as it is by default), the
+neighborhood is assumed to be a hyperrectangular sliding window of size `B` in
+every dimension.
 
 See also [`localmean!`](@ref) and [`localfilter!`](@ref).
 
@@ -147,7 +147,7 @@ See also [`correlate`](@ref) and [`localfilter!`](@ref).
 """
     convolve(A, B=3)
 
-yields the discrete convolution of array `A` by the kernel defined by `B`.  The
+yields the discrete convolution of array `A` by the kernel defined by `B`. The
 result `dst` is an array similar to `A`.
 
 Using `Sup(A)` to denote the set of valid indices for array `A` and assuming
@@ -183,8 +183,9 @@ See also [`convolve`](@ref) and [`localfilter!`](@ref).
 """
     multiply_add(A, [ord=ForwardFilter,] B=3) -> dst
 
-yields the discrete correlation (if `ord=ForwardFilter`) or the discrete convolution
-(if `ord=ReverseFilter`) of `A` by `B`.  The result is an array similar to `A`.
+yields the discrete correlation (if `ord=ForwardFilter`) or the discrete
+convolution (if `ord=ReverseFilter`) of `A` by `B`. The result is an array
+similar to `A`.
 
 See also [`multiply_add!`](@ref), [`correlate`](@ref), [`convolve`](@ref), and
 [`localfilter!`](@ref).

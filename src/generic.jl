@@ -17,8 +17,8 @@
 
 overwrites the destination `dst` with the result of a local filter applied to
 the source `A`, on a relative neighborhood defined by `B`, and implemented by
-`initial`, `update`, and `final`.  The purpose of these latter arguments is
-explained by the following pseudo-codes implementing the local filtering.  If
+`initial`, `update`, and `final`. The purpose of these latter arguments is
+explained by the following pseudo-codes implementing the local filtering. If
 `ord = ForwardFilter`:
 
     @inbounds for i ∈ indices(dst)
@@ -41,8 +41,8 @@ else if `ord = ReverseFilter`:
 
 where `indices(A)` denotes the range of indices of any array `A` while
 `indices(B) + i` and `i - indices(B)` respectively denote the set of indices
-`j` such that `j - i ∈ indices(B)` and `i - j ∈ indices(B)`.  In other words,
-`j ∈ indices(A) ∩ (i - indices(B))` means all indices `j` such that `j ∈
+`j` such that `j - i ∈ indices(B)` and `i - j ∈ indices(B)`. In other words, `j
+∈ indices(A) ∩ (i - indices(B))` means all indices `j` such that `j ∈
 indices(A)` and `i - j ∈ indices(B)` so that `A[j]` and `B[i-j]` are in-bounds.
 
 For example, implementing a local minimum filter (that is, an *erosion*), is as
@@ -110,16 +110,16 @@ neighborhood of `i` and:
 
     B′ = kernel(Dims{N}, B)
 
-the array representing the filter kernel.  The function `filter!` shall compute
+the array representing the filter kernel. The function `filter!` shall compute
 the result of the local filtering operation and store it in the destination
 `dst` at position `i`.
 
 - If `ord = ForwardFilter`, then `J` is the subset of all indices `j` such that
-  `A[j]` and `B[j-i]` are in-bounds.  This is the natural ordering to implement
+  `A[j]` and `B[j-i]` are in-bounds. This is the natural ordering to implement
   discrete correlations.
 
 - If `ord = ReverseFilter`, then `J` is the subset of all indices `j` such that
-  `A[j]` and `B[i-j]` are in-bounds.  This is the natural ordering to implement
+  `A[j]` and `B[i-j]` are in-bounds. This is the natural ordering to implement
   discrete convolutions.
 
 To be agnostic to the ordering, just use `B[ord(i,j)]` in the code of `filter!`

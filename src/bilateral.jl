@@ -38,8 +38,8 @@ Base.promote_op(::AbstractTypeStableFunction{T}, ::Type...) where {T} = T
     TypeStableFunction(f, args...) -> obj
 
 yield a callable object that wraps function `f` for guaranteed returned type
-`T`.  Alternatively, the type(s) `args...` of the function argument(s) can be
-used to deduce the returned type `T`.  Then the following holds:
+`T`. Alternatively, the type(s) `args...` of the function argument(s) can be
+used to deduce the returned type `T`. Then the following holds:
 
     obj(x...) === convert(T, f(x...))::T
 
@@ -64,12 +64,12 @@ AbstractTypeStableFunction{T}(f::Function) where {T} =
     LocalFilters.BilateralFilter.GaussianWindow{T}(σ) -> f
 
 yields a callable object `f` with the shape of a Gaussian of standard deviation
-`σ` but with a peak value of one, i.e. `f(0) -> 1`.  The functor `f` can be
-applied to a single value, to 2 values, say `x` and `y`, to yield
-`f(y - x)`, or to a coordinate difference expressed as a Cartesian index.
+`σ` but with a peak value of one, i.e. `f(0) -> 1`. The functor `f` can be
+applied to a single value, to 2 values, say `x` and `y`, to yield `f(y - x)`,
+or to a coordinate difference expressed as a Cartesian index.
 
 Type parameter `T` is to specify the numerical type of the parameter of the
-functor.  It can be omitted if `σ` is real.
+functor. It can be omitted if `σ` is real.
 
 """
 struct GaussianWindow{T<:AbstractFloat,S} <: AbstractTypeStableFunction{T}
@@ -109,7 +109,7 @@ end
 
 yields the result of applying the bilateral filter on array `A`.
 
-Argument `F` specifies how to smooth the differences in values.  It can be:
+Argument `F` specifies how to smooth the differences in values. It can be:
 
 - a function, say `f`, which is called as `f(A[i],A[j])` to yield a nonnegative
   weight for `i` the central index and `j` the index in a nearby position;
@@ -118,26 +118,26 @@ Argument `F` specifies how to smooth the differences in values.  It can be:
   Gaussian.
 
 Arguments `G, ...` specify the settings of the distance filter for smoothing
-differences in coordinates.  There are several possibilities:
+differences in coordinates. There are several possibilities:
 
-- `G... = wgt` an array of nonnegative weights or of booleans.  The axes of
+- `G... = wgt` an array of nonnegative weights or of booleans. The axes of
   `wgt` must have offsets so that the zero index is part of the indices of
   `wgt`.
 
 - `G... = f, w` with `f` a function and `w` any kind of argument that can be
   used to build a window `win` specifying the extension of the neighborhood.
   The value of the distance filter will be `max(f(i),0)` for all Cartesian
-  index `i` of `win` such that `win[i]` is true.  See [`kernel`](@ref) for the
+  index `i` of `win` such that `win[i]` is true. See [`kernel`](@ref) for the
   different ways to specify a window.
 
 - `G... = σ` or , `G... = σ, w` with `σ` a positive real assumed to be the
   standard deviation of a Gaussian function and `w` any kind of argument that
   can be used to build a window `win` specifying the extension of the
-  neighborhood.  If `w` is not specified, a default window of size `±3σ` is
+  neighborhood. If `w` is not specified, a default window of size `±3σ` is
   assumed.
 
-Optional argument `T` can be used to force the element type of the result.
-This argument is needed if the element type of `A` is not a real.
+Optional argument `T` can be used to force the element type of the result. This
+argument is needed if the element type of `A` is not a real.
 
 See [`bilateralfilter!`](@ref) for an in-place version of this function and see
 [Wikipedia](https://en.wikipedia.org/wiki/Bilateral_filter) for a description
@@ -198,7 +198,7 @@ function value_filter_type(T::Type, σ::Real)
     return promote_type(real(T), Float32)
 end
 
-# First pass to determine the distance filter.  Yiel a 2-tuple: an element type
+# First pass to determine the distance filter. Yield a 2-tuple: an element type
 # and anything else that may be used in the second pass to effectivelu build
 # the filter as an array.
 distance_filter(::Type{Dims{N}}, wgt::AbstractArray{T,N}) where {T,N} = (T, wgt)
@@ -224,7 +224,7 @@ weight_type(Tf::Type{<:Complex}, Tg::Type) =
 value_filter(T::Type, f::Function) = AbstractTypeStableFunction{T}(f)
 value_filter(T::Type, σ::Real) = GaussianWindow{T}(σ)
 
-# Second pass to build/convert the distance filter.  Argument T is the type of
+# Second pass to build/convert the distance filter. Argument T is the type of
 # the weights.
 distance_filter(::Type{T}, win::AbstractArray{Bool}) where {T} = win
 distance_filter(::Type{T}, wgt::AbstractArray{T}) where {T} = wgt

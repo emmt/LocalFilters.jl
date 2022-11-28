@@ -70,8 +70,8 @@ Indices(A::AbstractArray, B::AbstractArray...) = Indices{IndexCartesian}()
 """
     LocalFilters.unit_range(r)
 
-converts `r` into an `Int`-valued unit step index range.  `r` may be a linear
-or a Cartesian index range.
+converts `r` into an `Int`-valued unit step index range. `r` may be a linear or
+a Cartesian index range.
 
     LocalFilters.unit_range(start, stop)
 
@@ -104,8 +104,8 @@ end
 """
    LocalFilters.kernel_offset(len)
 
-yields the index offset along a centered dimension of length `len`.  That is,
-`-div(Int(len)+2,2)`.  For even dimension lengths, this amounts to using the
+yields the index offset along a centered dimension of length `len`. That is,
+`-div(Int(len)+2,2)`. For even dimension lengths, this amounts to using the
 same conventions as in `fftshift`.
 
 See [`LocalFilters.kernel_range`](@ref) and [`LocalFilters.centered`](@ref).
@@ -122,9 +122,9 @@ end
     LocalFilters.kernel_range(start, stop)
 
 yield an unit-step `Int`-valued index range based on range `rng`, dimension
-length `len`, or first and last indices `start` and `stop`.  In the case of a
+length `len`, or first and last indices `start` and `stop`. In the case of a
 given dimension length, a centered range of this length is returned (for even
-lengths, the same conventions as in `fftshift` are used).  Otherwise, `x` must
+lengths, the same conventions as in `fftshift` are used). Otherwise, `x` must
 be an integer valued range.
 
 See [`LocalFilters.kernel`](@ref), [`LocalFilters.kernel_offset`](@ref), and
@@ -149,12 +149,12 @@ used as a kernel in local filtering operations.
 
 * If `args...` is composed of `N` integers and/or ranges or if it is an
   `N`-tuple of integers and/or ranges, a uniformly true abstract array is
-  returned whose axes are specified by `args...`.  Each integer argument is
+  returned whose axes are specified by `args...`. Each integer argument is
   converted in a centered unit range of this length (see
   [`LocalFilters.kernel_range`](@ref)).
 
 * If `Dims{N}` is provided and `args...` is a single integer or range, it is
-  interpreted as being the same for all dimensions.  Thus `kernel(Dims{3},5)`
+  interpreted as being the same for all dimensions. Thus `kernel(Dims{3},5)`
   yields a 3-dimensional uniformly true array with index range `-2:2` in every
   dimension.
 
@@ -170,7 +170,7 @@ used as a kernel in local filtering operations.
 
 Optional leading argument `Dims{N}` can be specified to assert the number of
 dimensions of the result or to provide the number of dimensions when it cannot
-be guessed from the arguments.  For example, when `args...` is a single integer
+be guessed from the arguments. For example, when `args...` is a single integer
 length or range which should be interpreted as being the same for all
 dimensions.
 
@@ -250,11 +250,11 @@ Box(A::Box) = A
     ForwardFilter
 
 is an exported constant object used to indicate *forward* ordering of indices
-in local filter operations.  It can be called as:
+in local filter operations. It can be called as:
 
     ForwardFilter(i, j) -> j - i
 
-to yield the index in the filter kernel.  See also [`ReverseFilter`](@ref) for
+to yield the index in the filter kernel. See also [`ReverseFilter`](@ref) for
 *reverse* ordering and [`LocalFilters.localindices`](@ref) for building a range
 of valid indices `j`.
 
@@ -265,11 +265,11 @@ const ForwardFilter = ForwardFilterOrdering()
     ReverseFilter
 
 is an exported constant object used to indicate *reverse* ordering of indices
-in local filter operations.  It can be called as:
+in local filter operations. It can be called as:
 
     ReverseFilter(i, j) -> i - j
 
-to yield the index in the filter kernel.  See also [`ForwardFilter`](@ref) for
+to yield the index in the filter kernel. See also [`ForwardFilter`](@ref) for
 *forward* ordering and [`LocalFilters.localindices`](@ref) for building a range
 of valid indices `j`.
 
@@ -297,7 +297,7 @@ yields the subset `J` of all indices `j` such that:
 - `A[j]` and `B[i-j]` are in-bounds if `ord = ReverseFilter`;
 
 with `A` and `B` any arrays whose index ranges are given by `A_inds` and
-`B_inds`.  To make the code agnostic to the ordering, use `A[i]` and
+`B_inds`. To make the code agnostic to the ordering, use `A[i]` and
 `B[ord(i,j)]` to retrieve the values in `A` and `B`.
 
 Index ranges `A_inds` and `B_inds` and index `i` must be of the same kind:
@@ -350,11 +350,11 @@ on indices so that the axes of `B` are *centered* (for even dimension lengths,
 the same conventions as in `fftshift` are used).
 
 This method is purposely not exported because it could introduce some
-confusions.  For example `OffsetArrays.centered` is similar but has a slightly
+confusions. For example `OffsetArrays.centered` is similar but has a slightly
 different semantic.
 
-Argument `A` can also be an index range (linear or Cartesian), in which case
-a centered index range of same size is returned.
+Argument `A` can also be an index range (linear or Cartesian), in which case a
+centered index range of same size is returned.
 
 See [`LocalFilters.kernel_range`](@ref), [`LocalFilters.kernel_offset`](@ref).
 
@@ -468,7 +468,7 @@ result_eltype(::typeof(+), ::AbstractArray{T}) where {T<:Integer} =
     LocalFilters.is_morpho_math_box(R)
 
 yields whether structuring element `R` has the same effect as an
-hyperrectangular box for mathematical morphology operations.  This may be used
+hyperrectangular box for mathematical morphology operations. This may be used
 to use fast separable versions of mathematical morphology operations like the
 van Herk-Gil-Werman algorithm.
 
@@ -484,7 +484,7 @@ is_morpho_math_box(::CartesianIndices) =
 
 yields a *structuring element* suitable for mathematical morphology operations.
 The result is an array whose elements have type `T` (which can be `Bool` or a
-floating-point type).  Argument `A` can be a hyperrectangular Cartesian sliding
+floating-point type). Argument `A` can be a hyperrectangular Cartesian sliding
 window or an array with boolean elements.
 
 If `T` is a floating-point type, then the result is a so-called *flat*
@@ -504,7 +504,7 @@ strel(T::Type{<:AbstractFloat}, A::CartesianIndices) =
     LocalFilters.store!(A, I, x)
 
 stores value `x` in array `A` at index `I`, taking care of rounding `x` if it
-is of floating-point type while the elements of `A` are integers.  This method
+is of floating-point type while the elements of `A` are integers. This method
 propagates the current in-bounds settings.
 
 """

@@ -14,8 +14,8 @@
 """
     erode(A, [ord=ForwardFilter,] B=3) -> Amin
 
-yields the erosion of `A` by the structuring element defined by `B`.  The
-erosion is the array of local minima of `A`.  The returned result `Amin` is
+yields the erosion of `A` by the structuring element defined by `B`. The
+erosion is the array of local minima of `A`. The returned result `Amin` is
 similar to `A` (same size and type).
 
 If `B` is not a kernel (that is, if `B` is not an array or is an instance of
@@ -26,7 +26,7 @@ If the structuring element `B` is equivalent to a simple hyperrectangular
 sliding window (which is the case by default), the much faster van
 Herk-Gil-Werman algorithm is used.
 
-An erosion is one of the most basic operations of mathematical morphology.  See
+An erosion is one of the most basic operations of mathematical morphology. See
 [`erode!`](@ref) for an in-place version of the method, [`dilate`](@ref) for
 retrieving the local maxima, and [`localextrema`](@ref) for performing an
 erosion and a dilation in a single pass.
@@ -41,8 +41,8 @@ defined by `B` and returns `Amin`.
 
 If the structuring element `B` is equivalent to a simple hyperrectangular
 sliding window (which is the case by default), the much faster van
-Herk-Gil-Werman algorithm is used and the operation can be done in-place.  That
-is, `A` and `Amin` can be the same arrays.  In that case, the following syntax
+Herk-Gil-Werman algorithm is used and the operation can be done in-place. That
+is, `A` and `Amin` can be the same arrays. In that case, the following syntax
 is allowed:
 
     erode!(A, [ord=ForwardFilter,] B=3) -> A
@@ -54,8 +54,8 @@ See [`erode`](@ref) for an out-of-place version and for more information.
 """
     dilate(A, [ord=ForwardFilter,] B=3) -> Amax
 
-yields the dilation of `A` by the structuring element defined by `B`.  The
-dilation is the array of local maxima of `A`.  The returned result `Amax` is
+yields the dilation of `A` by the structuring element defined by `B`. The
+dilation is the array of local maxima of `A`. The returned result `Amax` is
 similar to `A` (same size and type).
 
 If `B` is not a kernel (that is, if `B` is not an array or is an instance of
@@ -66,7 +66,7 @@ If the structuring element `B` is equivalent to a simple hyperrectangular
 sliding window (which is the case by default), the much faster van
 Herk-Gil-Werman algorithm is used.
 
-A dilation is one of the most basic operations of mathematical morphology.  See
+A dilation is one of the most basic operations of mathematical morphology. See
 [`dilate!`](@ref) for an in-place version of the method, [`erode`](@ref) for
 retrieving the local minima, and [`localextrema`](@ref) for performing an
 erosion and a dilation in a single pass.
@@ -81,8 +81,8 @@ defined by `B` and returns `Amax`.
 
 If the structuring element `B` is equivalent to a simple hyperrectangular
 sliding window (which is the case by default), the much faster van
-Herk-Gil-Werman algorithm is used and the operation can be done in-place.  That
-is, `A` and `Amin` can be the same arrays.  In that case, the following syntax
+Herk-Gil-Werman algorithm is used and the operation can be done in-place. That
+is, `A` and `Amin` can be the same arrays. In that case, the following syntax
 is allowed:
 
     dilate!(A, [ord=ForwardFilter,] B=3) -> A
@@ -256,7 +256,7 @@ end
     localextrema(A, [ord=ForwardFilter,] B=3) -> Amin, Amax
 
 yields the results of performing an erosion and a dilation of `A` by the
-structuring element defined by `B` in a single pass.  Calling this method is
+structuring element defined by `B` in a single pass. Calling this method is
 usually almost twice as fast as calling [`erode`](@ref) and [`dilate`](@ref).
 
 See [`localextrema!`](@ref) for an in-place version of the method, and
@@ -356,8 +356,8 @@ end
 """
     closing(A, [ord=ForwardFilter,] B=3) -> dst
 
-yields a closing of array `A` by the structuring element defined by `B`.  A
-closing is a dilation followed by an erosion.  The result `dst` is an array
+yields a closing of array `A` by the structuring element defined by `B`. A
+closing is a dilation followed by an erosion. The result `dst` is an array
 similar to `A`.
 
 See [`closing!`](@ref) for an in-place version of the method, [`opening`](@ref)
@@ -370,9 +370,9 @@ of these operations.
     closing!(dst, wrk, A, B=3) -> dst
 
 overwrites `dst` with the result of a closing of `A` by the structuring element
-defined by `B` using `wrk` as a workspace array.  The arguments `dst`, `wrk`,
+defined by `B` using `wrk` as a workspace array. The arguments `dst`, `wrk`,
 and `A` must be similar arrays, `dst` and `A` may be identical, but `wrk` must
-not be the same array as `A` or `dst`.  The destination `dst` is returned.
+not be the same array as `A` or `dst`. The destination `dst` is returned.
 
 See [`closing`](@ref) for a description of this kind of filter and for the
 meaning of the arguments.
@@ -382,8 +382,8 @@ meaning of the arguments.
 """
     opening(A, B=3) -> dst
 
-yields an opening of array `A` by the structuring element defined by `B`.  An
-opening is an erosion followed by a dilation.  The result `dst` is an array
+yields an opening of array `A` by the structuring element defined by `B`. An
+opening is an erosion followed by a dilation. The result `dst` is an array
 similar to `A`.
 
 See [`opening!`](@ref) for an in-place version of the method, [`closing`](@ref)
@@ -396,9 +396,9 @@ of these operations.
     opening!(dst, wrk, A, B=3) -> dst
 
 overwrites `dst` with the result of an opening of `A` by the structuring
-element defined by `B` using `wrk` as a workspace array.  The arguments `dst`,
+element defined by `B` using `wrk` as a workspace array. The arguments `dst`,
 `wrk`, and `A` must be similar arrays, `dst` and `A` may be identical, but
-`wrk` must not be the same array as `A` or `dst`.  The destination `dst` is
+`wrk` must not be the same array as `A` or `dst`. The destination `dst` is
 returned.
 
 See [`opening`](@ref) for a description of this kind of filter and for the
@@ -457,14 +457,14 @@ end
     top_hat(A, B=3 [, C]) -> dst
 
 performs a *summit detection* by applying a top-hat filter to array `A` using
-the structuring element defined by `B` for the feature detection.  Top-hat
+the structuring element defined by `B` for the feature detection. Top-hat
 filtering is equivalent to:
 
     dst = A .- opening(A, B)
 
 Optional argument `C` specifies the structuring element for smoothing `A` prior
-to top-hat filtering.  If `B` and `C` are specified as the radii of the
-structuring elements, then `C` should be smaller than `B`.  For instance:
+to top-hat filtering. If `B` and `C` are specified as the radii of the
+structuring elements, then `C` should be smaller than `B`. For instance:
 
     top_hat(bitmap, 3, 1)
 
@@ -481,8 +481,8 @@ See [`bottom_hat`](@ref) for a related operation,
 
 overwrites `dst` with the result of a top-hat filter applied to `A` with
 structuring element `B`, and using `wrk` as a workspace whose contents is not
-preserved.  The arguments `A`, `dst`, and `wrk` must be similar but different
-arrays.  The destination `dst` is returned.
+preserved. The arguments `A`, `dst`, and `wrk` must be similar but different
+arrays. The destination `dst` is returned.
 
 See also [`top_hat`](@ref) for more details.
 
@@ -498,7 +498,7 @@ Bottom-hat filtering is equivalent to:
     dst = closing(A, B) .- A
 
 Optional argument `C` specifies the structuring element for smoothing `A` prior
-to bottom-hat filtering.  If `B` and `C` are specified as the radii of the
+to bottom-hat filtering. If `B` and `C` are specified as the radii of the
 structuring elements, then `C` should be smaller than `B`.
 
 See [`top_hat`](@ref) for a related operation,
@@ -510,10 +510,9 @@ See [`top_hat`](@ref) for a related operation,
     LocalFilters.bottom_hat!(dst, wrk, A, B=3) -> dst
 
 overwrites `dst` with the result of a bottom-hat filter applied to `A` with
-structuring element `B` and optional smoothing element `C`.  Argument `wrk` is
-a workspace array whose contents is not preserved.  The arguments `A`, `dst`,
-and `wrk` must be similar but different arrays.  The destination `dst` is
-returned.
+structuring element `B` and optional smoothing element `C`. Argument `wrk` is a
+workspace array whose contents is not preserved. The arguments `A`, `dst`, and
+`wrk` must be similar but different arrays. The destination `dst` is returned.
 
 See also [`bottom_hat`](@ref) for more details.
 
@@ -530,7 +529,7 @@ for (f, pf) in ((:top_hat,    :closing),
         $f(A::AbstractArray, B, C) = $f(A, ForwardFilter, B, C)
         $f(A::AbstractArray, ord::FilterOrdering, B, C) = $f(A, ord, B, ord, C)
 
-        # Provide destination and workspace.  Out-of-place top/bottom hat
+        # Provide destination and workspace. Out-of-place top/bottom hat
         # filters require 2 allocations without a pre-filtering, 3 allocations
         # with a pre-filtering.
         $f(A::AbstractArray, ord::FilterOrdering, B) =
