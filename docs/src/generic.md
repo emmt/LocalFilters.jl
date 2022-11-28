@@ -30,9 +30,9 @@ end
 
 where `Sup(A)` denotes the support of `A` (that is the set of indices of `A`)
 and `i - Sup(B)` denotes the set of indices `j` such that `i - j ∈ Sup(B)` with
-`Sup(B)` the support of `B`.  In other words, `j ∈ Sup(A) ∩ (i - Sup(B))` means
+`Sup(B)` the support of `B`. In other words, `j ∈ Sup(A) ∩ (i - Sup(B))` means
 all indices `j` such that `j ∈ Sup(A)` and `i - j ∈ Sup(B)`, hence `A[j]` and
-`B[i-j]` are in-bounds.  Here, indices `i` and `j` are multi-dimensional
+`B[i-j]` are in-bounds. Here, indices `i` and `j` are multi-dimensional
 Cartesian indices thus `Sup(A)` is the analogous of `CartesianIndices(A)` in
 Julia.
 
@@ -53,7 +53,7 @@ the methods:
 !!! warning
     The loop(s) in `localfilter!` are performed without bounds checking of the
     destination and it is the caller's responsibility to insure that the
-    destination have the correct size.  It is however always possible to write
+    destination have the correct size. It is however always possible to write
     `store!` so that it performs bounds checking.
 
 

@@ -11,11 +11,11 @@ dilate(A, R=3) -> Amax
 ```
 
 which respectively return the local minima `Amin` and the local maxima `Amax`
-of argument `A` in a *structuring element* defined by `R`.  The notion of
+of argument `A` in a *structuring element* defined by `R`. The notion of
 *structuring element* in mathematical morphology is equlvalent to that of
-*neighborhood* in `LocalFilters`.  The returned result is similar to `A` (same
-size and type).  If `R` is not specified, a default hyperrectangular moving
-window of size 3 in every dimension of `A` is used.  If the structuring element
+*neighborhood* in `LocalFilters`. The returned result is similar to `A` (same
+size and type). If `R` is not specified, a default hyperrectangular moving
+window of size 3 in every dimension of `A` is used. If the structuring element
 `R` is a simple hyperrectangular moving window, the much faster van
 Herk-Gil-Werman algorithm is used
 
@@ -41,7 +41,7 @@ localextrema!(Amin, Amax, A, R=3) -> Amin, Amax
 
 If the structuring element `R` is a simple hyperrectangular moving window, the
 much faster van Herk-Gil-Werman algorithm is used and the operation can be done
-in-place.  That is, `A` and `Amin` can be the same arrays.  In that case, the
+in-place. That is, `A` and `Amin` can be the same arrays. In that case, the
 following syntax is allowed:
 
 ```julia
@@ -57,8 +57,8 @@ opening(A, R=3)
 ```
 
 respectively perform a closing or an opening of array `A` by the structuring
-element `R`.  If `R` is not specified, a default hyperrectangular moving window
-of size 3 in every dimension of `A` is used.  A closing is a dilation followed
+element `R`. If `R` is not specified, a default hyperrectangular moving window
+of size 3 in every dimension of `A` is used. A closing is a dilation followed
 by an erosion, whereas an opening is an erosion followed by a dilation.
 
 The in-place versions are:
@@ -69,27 +69,27 @@ opening!(dst, wrk, A, R=3) -> dst
 ```
 
 which perform the operation on the source `A` and store the result in
-destination `dst` using `wrk` as a workspace array.  The 3 arguments `dst`,
+destination `dst` using `wrk` as a workspace array. The 3 arguments `dst`,
 `wrk`, and `A` must be similar arrays; `dst` and `A` may be identical, but
-`wrk` must not be the same array as `A` or `dst`.  The destination `dst` is
+`wrk` must not be the same array as `A` or `dst`. The destination `dst` is
 returned.
 
 
 ## Top-hat and bottom-hat filters
 
 Methods [`top_hat`](@ref) and [`bottom_hat`](@ref) perform a summit/valley
-detection by applying a top-hat filter to an array.  They are called as:
+detection by applying a top-hat filter to an array. They are called as:
 
 ```julia
 top_hat(A, R[, S]) -> dst
 bottom_hat(A, R[, S]) -> dst
 ```
 
-to yield the result of the filter applied to array `A`.  Argument `R` defines
-the structuring element for the feature detection.  Optional argument `S`
+to yield the result of the filter applied to array `A`. Argument `R` defines
+the structuring element for the feature detection. Optional argument `S`
 specifies the structuring element for smoothing `A` prior to the
-top-/bottom-hat filter.  If `R` and `S` are specified as the radii of the
-structuring elements, then `S` should be smaller than `R`.  For instance:
+top-/bottom-hat filter. If `R` and `S` are specified as the radii of the
+structuring elements, then `S` should be smaller than `R`. For instance:
 
 ```julia
 top_hat(bitmap, 3, 1)
@@ -106,6 +106,6 @@ bottom_hat!(dst, wrk, A, R[, S]) -> dst
 ```
 
 apply the top-/bottom-hat filter on the source `A` and store the result in the
-destination `dst` using `wrk` as a workspace array.  The 3 arguments `dst`,
-`wrk`, and `A` must be similar but different arrays.  The destination `dst` is
+destination `dst` using `wrk` as a workspace array. The 3 arguments `dst`,
+`wrk`, and `A` must be similar but different arrays. The destination `dst` is
 returned.

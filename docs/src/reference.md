@@ -1,7 +1,7 @@
 # Reference
 
 The following summarizes the documentation of types and methods provided by the
-`LocalFilters` package.  This information is also available from the REPL by
+`LocalFilters` package. This information is also available from the REPL by
 typing `?` followed by the name of a method or a type.
 
 

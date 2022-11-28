@@ -13,7 +13,7 @@ mathematical morphology, etc., and provides support to build custom local
 filters.
 
 This page summarizes the principles and the features of `LocalFilters`, the
-[Reference Manual](doc-dev-url) provides more exhaustive documentation.  This
+[Reference Manual](doc-dev-url) provides more exhaustive documentation. This
 document is structured as follows:
 
 * [Available filters](#available-filters) lists ready to use filters.
@@ -39,7 +39,7 @@ Packages with overlapping functionalities:
 
 ## Available filters
 
-`LocalFilters` provides a number of linear and non-linear filters.  All methods
+`LocalFilters` provides a number of linear and non-linear filters. All methods
 have an *in-place* counterpart which can be called to avoid allocations.
 
 ### Linear filters
@@ -82,9 +82,9 @@ morphology](https://en.wikipedia.org/wiki/Mathematical_morphology) operations:
   `S`).
 
 In mathematical morphology, the structuring element `B` defines the local
-neighborhood of each index in the source array.  It can be a sliding
+neighborhood of each index in the source array. It can be a sliding
 hyperrectangular Cartesian window or an array of booleans to define a more
-complex neighborhood shape.  If `B` is a single odd integer (as it is by
+complex neighborhood shape. If `B` is a single odd integer (as it is by
 default), the structuring element is assumed to be a sliding window of size `B`
 along every dimension of `A`.
 
@@ -120,9 +120,9 @@ end
 
 where `Sup(A)` denotes the support of `A` (that is the set of indices of `A`)
 and `i - Sup(B)` denotes the set of indices `j` such that `i - j ∈ Sup(B)` with
-`Sup(B)` the support of `B`.  In other words, `j ∈ Sup(A) ∩ (i - Sup(B))` means
+`Sup(B)` the support of `B`. In other words, `j ∈ Sup(A) ∩ (i - Sup(B))` means
 all indices `j` such that `j ∈ Sup(A)` and `i - j ∈ Sup(B)`, hence `A[j]` and
-`B[i-j]` are in-bounds.  In `LocalFilters`, indices `i` and `j` are
+`B[i-j]` are in-bounds. In `LocalFilters`, indices `i` and `j` are
 multi-dimensional Cartesian indices, thus `Sup(A)` is the analogous of
 `CartesianIndices(A)` in Julia.
 

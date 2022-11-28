@@ -15,10 +15,10 @@ neighborhood `B`:
 localmean(A, B=3) -> dst
 ```
 
-The result `dst` is an array similar to `A`.  If `B` is not specified, the
+The result `dst` is an array similar to `A`. If `B` is not specified, the
 neighborhood is a hyperrectangular moving window of size 3 in every dimension.
 Otherwise, `B` may be specified as a Cartesian box, or as an array of booleans
-of same number of dimensions as `A`.  If `B` is a single odd integer (as it is
+of same number of dimensions as `A`. If `B` is a single odd integer (as it is
 by default), the neighborhood is assumed to be a hyperrectangular moving window
 of size `B` in every dimension.
 
@@ -34,8 +34,8 @@ to overwrite `dst` with the local mean of `A` in the neighborhood defined by
 
 ## Convolution
 
-The [`convolve`](@ref) method yields the discrete convolution of an array
-by a kernel.  Its syntax is:
+The [`convolve`](@ref) method yields the discrete convolution of an array by a
+kernel. Its syntax is:
 
 ```julia
 convolve(A, B) -> dst
