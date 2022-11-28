@@ -61,7 +61,7 @@ struct Indices{S<:IndexStyle} <: Function end
     LocalFilters.Window{N}
 
 is the union of types of arguments which are not a kernel but which may define
-a simple `N`-dimensional hyperrectangular sliding window and that can be
+a simple `N`-dimensional hyper-rectangular sliding window and that can be
 converted into a kernel by the [`LocalFilters.kernel`](@ref) method or by the
 [`LocalFilters.Box`](@ref) constructor.
 
@@ -73,9 +73,10 @@ const Window{N} = Union{Axis,NTuple{N,Axis},NTuple{2,CartesianIndex{N}},
     LocalFilters.Box{N}(args...)
 
 yields an abstract array whose elements are all `true` and whose axes are
-defined by `args...`. This kind of object is used to represent hyperrectangular
-sliding windows in `LocalFilters`. Type parameter `N` is the number of
-dimensions, it may be omitted if it can be deduced from the arguments.
+defined by `args...`. This kind of object is used to represent
+hyper-rectangular sliding windows in `LocalFilters`. Type parameter `N` is the
+number of dimensions, it may be omitted if it can be deduced from the
+arguments.
 
 """
 struct Box{N,R<:CartesianUnitRange{N}} <: AbstractArray{Bool,N}

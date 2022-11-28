@@ -16,10 +16,10 @@
 
 yields the local mean of `A` in a neighborhood defined by `B`. The result is an
 array similar to `A`. If `B` is not specified, the neighborhood is a
-hyperrectangular sliding window of size 3 in every dimension. Otherwise, `B`
+hyper-rectangular sliding window of size 3 in every dimension. Otherwise, `B`
 may be specified as a Cartesian box, or as an array of booleans of same number
 of dimensions as `A`. If `B` is a single odd integer (as it is by default), the
-neighborhood is assumed to be a hyperrectangular sliding window of size `B` in
+neighborhood is assumed to be a hyper-rectangular sliding window of size `B` in
 every dimension.
 
 See also [`localmean!`](@ref) and [`localfilter!`](@ref).

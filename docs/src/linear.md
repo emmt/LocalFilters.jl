@@ -16,11 +16,11 @@ localmean(A, B=3) -> dst
 ```
 
 The result `dst` is an array similar to `A`. If `B` is not specified, the
-neighborhood is a hyperrectangular moving window of size 3 in every dimension.
+neighborhood is a hyper-rectangular moving window of size 3 in every dimension.
 Otherwise, `B` may be specified as a Cartesian box, or as an array of booleans
 of same number of dimensions as `A`. If `B` is a single odd integer (as it is
-by default), the neighborhood is assumed to be a hyperrectangular moving window
-of size `B` in every dimension.
+by default), the neighborhood is assumed to be a hyper-rectangular moving
+window of size `B` in every dimension.
 
 To avoid allocations, use the in-place version [`localmean!`](@ref) and call:
 

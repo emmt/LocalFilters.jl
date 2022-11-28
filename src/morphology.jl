@@ -22,7 +22,7 @@ If `B` is not a kernel (that is, if `B` is not an array or is an instance of
 `CartesianIndices`), [`kernel(Dims{N},B)`](@ref) is called to build a kernel
 with `N` the number of dimensions of `A`.
 
-If the structuring element `B` is equivalent to a simple hyperrectangular
+If the structuring element `B` is equivalent to a simple hyper-rectangular
 sliding window (which is the case by default), the much faster van
 Herk-Gil-Werman algorithm is used.
 
@@ -39,7 +39,7 @@ erosion and a dilation in a single pass.
 overwrites `Amin` with the erosion of the array `A` by the structuring element
 defined by `B` and returns `Amin`.
 
-If the structuring element `B` is equivalent to a simple hyperrectangular
+If the structuring element `B` is equivalent to a simple hyper-rectangular
 sliding window (which is the case by default), the much faster van
 Herk-Gil-Werman algorithm is used and the operation can be done in-place. That
 is, `A` and `Amin` can be the same arrays. In that case, the following syntax
@@ -62,7 +62,7 @@ If `B` is not a kernel (that is, if `B` is not an array or is an instance of
 `CartesianIndices`), [`kernel(Dims{N},B)`](@ref) is called to build a kernel
 with `N` the number of dimensions of `A`.
 
-If the structuring element `B` is equivalent to a simple hyperrectangular
+If the structuring element `B` is equivalent to a simple hyper-rectangular
 sliding window (which is the case by default), the much faster van
 Herk-Gil-Werman algorithm is used.
 
@@ -79,7 +79,7 @@ erosion and a dilation in a single pass.
 overwrites `Amax` with a dilation of the array `A` by the structuring element
 defined by `B` and returns `Amax`.
 
-If the structuring element `B` is equivalent to a simple hyperrectangular
+If the structuring element `B` is equivalent to a simple hyper-rectangular
 sliding window (which is the case by default), the much faster van
 Herk-Gil-Werman algorithm is used and the operation can be done in-place. That
 is, `A` and `Amin` can be the same arrays. In that case, the following syntax

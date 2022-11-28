@@ -49,8 +49,11 @@ have an *in-place* counterpart which can be called to avoid allocations.
 * `localmean(A,B=3)` performs a local averaging of `A` in a neighborhood defined
   by `B`.
 
-* `convolve(A,B)` performs a discrete convolution of `A` by the kernel `B`.
+* `correlate(A,B)` performs a discrete correlation of `A` by the kernel `B`.
   This is the most general linear filter.
+
+* `convolve(A,B)` performs a discrete convolution of `A` by the kernel `B`.
+  This is the same as a discrete correlation of `A` by the symmetrical of `B`.
 
 
 ### Mathematical morphology
@@ -83,7 +86,7 @@ morphology](https://en.wikipedia.org/wiki/Mathematical_morphology) operations:
 
 In mathematical morphology, the structuring element `B` defines the local
 neighborhood of each index in the source array. It can be a sliding
-hyperrectangular Cartesian window or an array of booleans to define a more
+hyper-rectangular Cartesian window or an array of booleans to define a more
 complex neighborhood shape. If `B` is a single odd integer (as it is by
 default), the structuring element is assumed to be a sliding window of size `B`
 along every dimension of `A`.
@@ -109,31 +112,31 @@ In `LocalFilters`, a local filtering operation, say `dst = filter(A, B)` with
 associated with the filter, is implemented by the following pseudo-code:
 
 ```julia
-for i ∈ Sup(A)
-    v = initial(A[i])
-    for j ∈ Sup(A) ∩ (i - Sup(B))
-        v = update(v, A[i], B[i-j])
+for i ∈ indices(dst)
+    v = initial
+    for j ∈ indices(A) ∩ (indices(B) + i)
+        v = update(v, A[j], B[j-i])
     end
-    store!(dst, i, v)
+    dst[i] = final(v)
 end
 ```
 
-where `Sup(A)` denotes the support of `A` (that is the set of indices of `A`)
-and `i - Sup(B)` denotes the set of indices `j` such that `i - j ∈ Sup(B)` with
-`Sup(B)` the support of `B`. In other words, `j ∈ Sup(A) ∩ (i - Sup(B))` means
-all indices `j` such that `j ∈ Sup(A)` and `i - j ∈ Sup(B)`, hence `A[j]` and
-`B[i-j]` are in-bounds. In `LocalFilters`, indices `i` and `j` are
-multi-dimensional Cartesian indices, thus `Sup(A)` is the analogous of
+where `indices(A)` denotes the set of indices of `A` while `indices(B) + i`
+denotes the set of indices `j` such that `j - i ∈ indices(B)` with `indices(B)`
+the set of indices of `B`. In other words, `j ∈ indices(A) ∩ (indices(B) + i)`
+means all indices `j` such that `j ∈ indices(A)` and `j - i ∈ indices(B)`,
+hence `A[j]` and `B[j-i]` are in-bounds. In `LocalFilters`, indices `i` and `j`
+are multi-dimensional Cartesian indices, thus `indices(A)` is the analogous of
 `CartesianIndices(A)` in Julia.
 
 The behavior of the filter is completely determined by the neighborhood or
-kernel `B`, by the type of the state variable `v` and by the methods `initial`,
-`update`, and `store!`.
+kernel `B`, by the type of the state variable `v`, its `initial` value for each
+entry of the destination, and by the methods `update` and `final`.
 
 Such a filter can be applied by calling `localfilter!` as:
 
 ```julia
-localfilter!(dst, A, B, initial, update, store!) -> dst
+localfilter!(dst, A, B, initial, update, final) -> dst
 ```
 
 As shown by the following examples, this simple scheme allows the
@@ -143,18 +146,18 @@ implementation of a variety of linear and non-linear local filters:
   `B` of booleans is done with:
 
   ```julia
-  initial(a) = (zero(a), 0)
+  initial = (zero(a), 0)
   update(v,a,b) = (ifelse(b, v[1] + a, v[1]), v[2] + 1)
-  store!(d,i,v) = d[i] = v[1]/v[2]
+  final(v) = v[1]/v[2]
   ```
 
 * Assuming `T = eltype(dst)` is a suitable element type for the result, a
   **discrete convolution** of `A` by `B` can be implemented with:
 
   ```julia
-  initial(a) = zero(T)
+  initial = zero(T)
   update(v,a,b) = v + a*b
-  store!(d,i,v) = d[i] = v
+  final(v) = v
   ```
 
 * Computing a local maximum (that is, a **dilation** in mathematical morphology
@@ -162,9 +165,9 @@ implementation of a variety of linear and non-linear local filters:
   with:
 
   ```julia
-  initial(a) = typemin(a)
+  initial = typemin(a)
   update(v,a,b) = (b && v < a ? a : v)
-  store!(d,i,v) = d[i] = v
+  final(v) = v
   ```
 
 

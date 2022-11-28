@@ -467,7 +467,7 @@ result_eltype(::typeof(+), ::AbstractArray{T}) where {T<:Integer} =
     LocalFilters.is_morpho_math_box(R)
 
 yields whether structuring element `R` has the same effect as an
-hyperrectangular box for mathematical morphology operations. This may be used
+hyper-rectangular box for mathematical morphology operations. This may be used
 to use fast separable versions of mathematical morphology operations like the
 van Herk-Gil-Werman algorithm.
 
@@ -483,7 +483,7 @@ is_morpho_math_box(::CartesianIndices) =
 
 yields a *structuring element* suitable for mathematical morphology operations.
 The result is an array whose elements have type `T` (which can be `Bool` or a
-floating-point type). Argument `A` can be a hyperrectangular Cartesian sliding
+floating-point type). Argument `A` can be a hyper-rectangular Cartesian sliding
 window or an array with boolean elements.
 
 If `T` is a floating-point type, then the result is a so-called *flat*

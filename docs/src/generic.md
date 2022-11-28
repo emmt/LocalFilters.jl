@@ -10,45 +10,42 @@ A local filtering operation can be performed by calling the
 [`localfilter!`](@ref) method as follows:
 
 ```julia
-localfilter!(dst, A, B, initial, update, store!) -> dst
+localfilter!(dst, A, B, initial, update, final) -> dst
 ```
 
 where `dst` is the destination, `A` is the source, `B` defines the
-neighborhood, `initial`, `update`, and `store!` are three functions whose
+neighborhood, `initial`, `update`, and `final` are three functions whose
 purpose is explained by the following pseudo-code implementing the local
 filtering:
 
 ```julia
-@inbounds for i ∈ Sup(A)
-    v = initial(A[i])
-    for j ∈ Sup(A) ∩ (i - Sup(B))
-        v = update(v, A[j], B[i-j])
+@inbounds for i ∈ indices(dst)
+    v = initial
+    for j ∈ indices(A) ∩ (indices(B) + i)
+        v = update(v, A[j], B[j-i])
     end
-    store!(dst, i, v)
+    dst[i] = final(v)
 end
 ```
 
-where `Sup(A)` denotes the support of `A` (that is the set of indices of `A`)
-and `i - Sup(B)` denotes the set of indices `j` such that `i - j ∈ Sup(B)` with
-`Sup(B)` the support of `B`. In other words, `j ∈ Sup(A) ∩ (i - Sup(B))` means
-all indices `j` such that `j ∈ Sup(A)` and `i - j ∈ Sup(B)`, hence `A[j]` and
-`B[i-j]` are in-bounds. Here, indices `i` and `j` are multi-dimensional
-Cartesian indices thus `Sup(A)` is the analogous of `CartesianIndices(A)` in
-Julia.
+where `indices(A)` denotes the set of indices of `A` while `indices(B) + i`
+denotes the set of indices `j` such that `j - i ∈ indices(B)` with `indices(B)`
+the set of indices of `B`. In other words, `j ∈ indices(A) ∩ (indices(B) + i)`
+means all indices `j` such that `j ∈ indices(A)` and `j - i ∈ indices(B)`,
+hence `A[j]` and `B[j-i]` are in-bounds. In `LocalFilters`, indices `i` and `j`
+are multi-dimensional Cartesian indices, thus `indices(A)` is the analogous of
+`CartesianIndices(A)` in Julia.
 
 The behavior of the filter is fully determined by the *neighborhood* `B` (see
 Section [*Neighborhoods, structuring elements, and
-kernels*](neighborhoods.html)), by the type of the state variable `v`, and by
-the methods:
-
-- `initial(a)` which yields the initial value of the state variable `v` given
-  `a = A[i]`;
+kernels*](neighborhoods.html)), by the type and initial value of the state
+variable `v`, and by the methods:
 
 - `update(v, a, b)` which yields the updated state variable `v` given the state
-  variable `v`, `a = A[j]`, and `b = B[i-j]`;
+  variable `v`, `a = A[j]`, and `b = B[j-i]`;
 
-- `store!(dst, i, v)` which extracts the result of the filter from the state
-  variable `v` and stores it at index `i` in the destination `dst`.
+- `final(v)` which extracts the result of the filter from the state variable
+  `v`.
 
 !!! warning
     The loop(s) in `localfilter!` are performed without bounds checking of the
@@ -63,8 +60,7 @@ For example, implementing a local minimum filter (that is, an *erosion*), is as
 simple as:
 
 ```julia
-localfilter!(dst, A, B,
-             (a)     -> typemax(a),
+localfilter!(dst, A, B, typemax(a),
              (v,a,b) -> min(v,a),
              (d,i,v) -> @inbounds(d[i] = v))
 ```

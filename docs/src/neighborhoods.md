@@ -14,7 +14,7 @@ used for `B`:
   morphology operations (see Section [*Non-linear morphological
   filters*](morphology.html)) if its purpose is to define the indices in the
   source relatively to a given index in the destination. Such neighborhoods can
-  be hyperrectangular Cartesian sliding windows represented by a
+  be hyper-rectangular Cartesian sliding windows represented by a
   [`RectangularBox`](@ref) instance or regions with more complex shapes which
   are represented by arrays with offset axes and boolean entries (`true` where
   entries are part of the neighborhood).
@@ -55,7 +55,7 @@ From the user point of view, there are three kinds of neighborhoods:
 
 ### Syntaxes for neighborhoods
 
-* The *default neighborhood* is a centered hyperrectangular Cartesian sliding
+* The *default neighborhood* is a centered hyper-rectangular Cartesian sliding
   window of width 3 in each of its dimensions. He *Cartesian* means that the
   edges of the neighborhood are algned with the array axes.
 

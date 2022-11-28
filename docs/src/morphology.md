@@ -14,9 +14,9 @@ which respectively return the local minima `Amin` and the local maxima `Amax`
 of argument `A` in a *structuring element* defined by `R`. The notion of
 *structuring element* in mathematical morphology is equlvalent to that of
 *neighborhood* in `LocalFilters`. The returned result is similar to `A` (same
-size and type). If `R` is not specified, a default hyperrectangular moving
+size and type). If `R` is not specified, a default hyper-rectangular moving
 window of size 3 in every dimension of `A` is used. If the structuring element
-`R` is a simple hyperrectangular moving window, the much faster van
+`R` is a simple hyper-rectangular moving window, the much faster van
 Herk-Gil-Werman algorithm is used
 
 The [`localextrema`](@ref) method combines these two operations in one call:
@@ -39,7 +39,7 @@ dilate!(Amax, A, R=3) -> Amax
 localextrema!(Amin, Amax, A, R=3) -> Amin, Amax
 ```
 
-If the structuring element `R` is a simple hyperrectangular moving window, the
+If the structuring element `R` is a simple hyper-rectangular moving window, the
 much faster van Herk-Gil-Werman algorithm is used and the operation can be done
 in-place. That is, `A` and `Amin` can be the same arrays. In that case, the
 following syntax is allowed:
@@ -57,7 +57,7 @@ opening(A, R=3)
 ```
 
 respectively perform a closing or an opening of array `A` by the structuring
-element `R`. If `R` is not specified, a default hyperrectangular moving window
+element `R`. If `R` is not specified, a default hyper-rectangular moving window
 of size 3 in every dimension of `A` is used. A closing is a dilation followed
 by an erosion, whereas an opening is an erosion followed by a dilation.
 
