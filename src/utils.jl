@@ -365,8 +365,7 @@ centered(R::CartesianIndices{N}) where {N} =
     CartesianIndices(map(centered, ranges(R)))
 centered(R::AbstractUnitRange{<:Integer}) = kernel_range(length(R))
 centered(R::IntegerRange) = begin
-    abs(step(R)) == 1 || throw(ArgumentError(
-        "invalid non-unit step index range"))
+    abs(step(R)) == 1 || throw(ArgumentError("invalid non-unit step range"))
     return kernel_range(length(R))
 end
 
