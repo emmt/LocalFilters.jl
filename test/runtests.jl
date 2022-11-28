@@ -8,7 +8,7 @@ using Test
 using OffsetArrays
 using LocalFilters
 using LocalFilters:
-    FilterOrdering,
+    FilterOrdering, ForwardFilterOrdering, ReverseFilterOrdering,
     Box, Indices, kernel_offset, kernel_range, kernel, ball, limits,
     is_morpho_math_box, check_indices, localindices,
     ranges, centered, replicate
@@ -278,7 +278,7 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
             @test ForwardFilter(Int16(i), Int16(j)) === j - i
             @test ReverseFilter(Int16(i), Int16(j)) === i - j
         end
-        let i = CartesianIndex(3,4,5), j = CartesianInddex(-1,7,3)
+        let i = CartesianIndex(3,4,5), j = CartesianIndex(-1,7,3)
             @test ForwardFilter(i, j) === j - i
             @test ReverseFilter(i, j) === i - j
         end
