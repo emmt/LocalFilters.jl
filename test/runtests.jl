@@ -8,6 +8,7 @@ using Test
 using OffsetArrays
 using LocalFilters
 using LocalFilters:
+    FilterOrdering,
     Box, Indices, kernel_offset, kernel_range, kernel, ball, limits,
     is_morpho_math_box, check_indices, localindices,
     ranges, centered, replicate
@@ -173,9 +174,6 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
         @test kernel_offset(Int16(5)) === -3
         @test kernel_offset(Int16(4)) === -3
 
-        # Boxes.
-        #@test Box(...)
-
         # kernel_range
         @test_throws ArgumentError kernel_range(-1)
         @test isempty(kernel_range(0))
@@ -190,6 +188,9 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
         @test kernel_range(Int16(-3),Int8(5)) === -3:5
         @test kernel_range(Base.OneTo(7)) === Base.OneTo{Int}(7)
         @test kernel_range(Base.OneTo(Int16(7))) === Base.OneTo{Int}(7)
+
+        # Boxes.
+        #@test Box(...)
 
         # kernel
         # FIXME: @test length(kernel()) == 0
@@ -260,6 +261,26 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
             @test check_indices(Bool,axes(A),B) === true
             @test check_indices(Bool,axes(A),B,C) === true
             @test check_indices(Bool,axes(A),B,C,D) === false
+        end
+
+        # ForwardFilter/ReverseFilter
+        @test reverse(ForwardFilter) === ReverseFilter
+        @test reverse(ReverseFilter) === ForwardFilter
+        @test (ForwardFilter isa FilterOrdering) == true
+        @test (ForwardFilter isa ForwardFilterOrdering) == true
+        @test (ForwardFilter isa ReverseFilterOrdering) == false
+        @test (ReverseFilter isa FilterOrdering) == true
+        @test (ReverseFilter isa ForwardFilterOrdering) == false
+        @test (ReverseFilter isa ReverseFilterOrdering) == true
+        let i = 3, j = 7
+            @test ForwardFilter(i, j) === j - i
+            @test ReverseFilter(i, j) === i - j
+            @test ForwardFilter(Int16(i), Int16(j)) === j - i
+            @test ReverseFilter(Int16(i), Int16(j)) === i - j
+        end
+        let i = CartesianIndex(3,4,5), j = CartesianInddex(-1,7,3)
+            @test ForwardFilter(i, j) === j - i
+            @test ReverseFilter(i, j) === i - j
         end
 
         # result_eltype

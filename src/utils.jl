@@ -276,6 +276,9 @@ of valid indices `j`.
 """
 const ReverseFilter = ReverseFilterOrdering()
 
+Base.reverse(::ForwardFilterOrdering) = ReverseFilter
+Base.reverse(::ReverseFilterOrdering) = ForwardFilter
+
 @inline (::ForwardFilterOrdering)(i::Int, j::Int) = j - i
 @inline (::ForwardFilterOrdering)(i::Integer, j::Integer) = Int(j) - Int(i)
 @inline (::ForwardFilterOrdering)(i::T, j::T) where {N,T<:CartesianIndex{N}} = j - i
