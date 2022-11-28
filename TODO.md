@@ -1,24 +1,77 @@
-* Provide `@generated` or unrolled versions for small kernel sizes.
+## Possible changes for 1.3 branch
 
-* Make `CartesianBox` an official package and replace `RectangularBox` by
-  `CartesianBox`.
+This new minor version aims at better integration in the Julia ecosystem. More
+standard structures are used. Some inconsistencies are fixed (which slightly
+change the interpretaion of arguments in very specific cases).
+
+    window_range(rng::AbstractUnitRange{Int}) = rng
+    window_range(rng::AbstractUnitRange{<:Integer}) =
+        Int(first(rng)):Int(last(rng))
+    window_range(rng::AbstractRange{<:Integer}) =
+        throw(ArgumentError("invalid non-unit step range"))
+    function window_range(len::Integer)
+        len ≥ 1 || throw(ArgumentError("invalid range length"))
+        n = Int(len)
+        return -(n >> 1):(n - 1) >> 1
+    end
+    @test_throws ArgumentError window_range(0)
+    @test window_range(1) == 0:0
+    @test window_range(4) == -2:1
+    @test window_range(5) == -2:2
+
+    cartesian_window(A::AbstractArray) = cartesian_window(axes(A))
+    cartesian_window(rngs::Tuple{Vararg{Union{Integer,AbstractUnitRange{<:Integer}}}}) = CartesianIndices(map(window_range, rngs))
+    cartesian_window(rngs::Tuple{Vararg{AbstractUnitRange{<:Integer}}}) =
+            CartesianIndices(rngs)
+
+* Use more standard data structures:
+
+  * Replace `RectangularBox` by `CartesianIndices` (but restricted to unit-step
+    ranges).
+
+  * Replace `Kernel` by `OffsetArray` (see
+    https://github.com/alsam/OffsetArrays.jl).
+
+  * Suppress `Neighborhood` type.
+
+* Fix workspace allocation in top-/bottom-hat filters.
+
+* Make `LocalFilters.ball` type stable.
+
+* Factorize kernels such as the Gaussian ones or the flat separable ones.
+
+* Relax types in morphological operations.
+
+* For consistency with the way Cartesian boxes are constructed, a scalar `n` in
+  `rngs` argument of `localfilter` of van Herk-Gil-Werman algorithm is
+  intepreted as the length of an approximately centered range. Explictely use
+  `k:k` instead of `k` to have the old behavior.
+
+* Use the same semantic for `store!` than `setindex!` so that `setindex!` can
+  be specified as this argument.
+
+## Other improvements and changes
+
+* Automatically convert a all-true kernel in a simple Cartesian box and a
+  all-false kernel in a simple Cartesian box of zero size.
+
+* Do `@inbounds` on the source and kernel operations, not automatically on the
+  destination. That is, let `store!` decides of this.
+
+* Provide `@generated` or unrolled versions for small kernel sizes.
 
 * Allow for complex element type (e.g. in the bilateral filter).
 
-* Use `@checkbounds` etc. for bound checking when indexing neighborhoods
-  (cf. doc. in "Methods on a neighborhood").
+* Use `@checkbounds` etc. for bound checking when indexing neighborhoods (cf.
+  doc. in "Methods on a neighborhood").
 
-* Bump to version 2.  Provide `Project.toml`, drop compatibility with Julia <
+* Bump to version 2. Provide `Project.toml`, drop compatibility with Julia <
   0.7 and dependency on `Compat`, remove `REQUIRE` file.
 
 * Automatically use van Herk / Gil & Werman algorithm for separable
   (rectangular) neighborhood and suitable operations (min, max, mean, ...).
 
-* Use `@simd`.
-
 * Add more rules to automatically convert type of kernel coefficients.
-
-* Rename `Kernel` as `FilterKernel` and export.
 
 * Check that the incidence on execution time (`localfilter!` may be faster on
   `CenteredBox`) is negligible.
@@ -41,9 +94,6 @@
   with `B1` then with `B2`, etc.
 
 * Detect zero-width region which are a no-op.
-
-* Define neighborhoods as `OffsetArray` (see
-  https://github.com/alsam/OffsetArrays.jl).
 
 * Extend this to other types of *kernels* (convolution, median, *etc.*).
 
