@@ -136,7 +136,7 @@ entry of the destination, and by the methods `update` and `final`.
 Such a filter can be applied by calling `localfilter!` as:
 
 ```julia
-localfilter!(dst, A, B, initial, update, final) -> dst
+localfilter!(dst, A, B, initial, update, final = identity) -> dst
 ```
 
 As shown by the following examples, this simple scheme allows the
@@ -146,29 +146,37 @@ implementation of a variety of linear and non-linear local filters:
   `B` of booleans is done with:
 
   ```julia
-  initial = (zero(a), 0)
-  update(v,a,b) = (ifelse(b, v[1] + a, v[1]), v[2] + 1)
-  final(v) = v[1]/v[2]
+  localfilter!(dst, A, B,
+               (zero(a), 0), # initial
+               (v,a,b) -> (ifelse(b, v[1] + a, v[1]), v[2] + 1), # update
+               (v) -> v[1]/v[2]) # final
   ```
 
 * Assuming `T = eltype(dst)` is a suitable element type for the result, a
   **discrete convolution** of `A` by `B` can be implemented with:
 
   ```julia
-  initial = zero(T)
-  update(v,a,b) = v + a*b
-  final(v) = v
+  localfilter!(dst, A, B,
+               zero(T), # initial
+               (v,a,b) -> v + a*b) # update
   ```
+
+  There are no needs to specify the `final` method here, as the default
+  `final=identity`, does the job.
 
 * Computing a local maximum (that is, a **dilation** in mathematical morphology
   terms) of array `A` with a kernel `B` whose entries are booleans can be done
   with:
 
   ```julia
-  initial = typemin(a)
-  update(v,a,b) = (b && v < a ? a : v)
-  final(v) = v
+  localfilter!(dst, A, B,
+               typemin(a), # initial
+               (v,a,b) -> ((b & (v < a)) ? a : v)) # update
   ```
+
+  As in the above example, there are no needs to specify the `final` method
+  here. Note the use of a bitwise `&` instead of a `&&` in the `update` method
+  to avoid branching.
 
 
 ## Installation
