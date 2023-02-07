@@ -48,7 +48,8 @@ indices(A)` and `i - j ∈ indices(B)` so that `A[j]` and `B[i-j]` are in-bounds
 For example, implementing a local minimum filter (that is, an *erosion*), is as
 simple as:
 
-    localfilter!(dst, A, ord, B, typemax(eltype(a)), (v,a,b) -> min(v,a))
+    localfilter!(dst, A, ord, B, typemax(eltype(a)),
+                 (v,a,b) -> ifelse(b, min(v,a), v))
 
 As another example, implementing a convolution by `B` writes:
 

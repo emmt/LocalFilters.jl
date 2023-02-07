@@ -10,13 +10,15 @@ A local filtering operation can be performed by calling the
 [`localfilter!`](@ref) method as follows:
 
 ```julia
-localfilter!(dst, A, B, initial, update, final) -> dst
+localfilter!(dst, A, B, initial, update, final = identity) -> dst
 ```
 
 where `dst` is the destination, `A` is the source, `B` defines the
-neighborhood, `initial`, `update`, and `final` are three functions whose
-purpose is explained by the following pseudo-code implementing the local
-filtering:
+neighborhood, `initial` gives the initial value of the state variable, `update`
+is a function to update the state variable for each entry of the neighborhood,
+and `final` is a function to yield the local result of the filter given the
+final value of the state variable. The purposes of these parameters are
+explained by the following pseudo-code implementing the local filtering:
 
 ```julia
 @inbounds for i ∈ indices(dst)
@@ -44,14 +46,8 @@ variable `v`, and by the methods:
 - `update(v, a, b)` which yields the updated state variable `v` given the state
   variable `v`, `a = A[j]`, and `b = B[j-i]`;
 
-- `final(v)` which extracts the result of the filter from the state variable
+- `final(v)` which yields the result of the filter given the state variable
   `v`.
-
-!!! warning
-    The loop(s) in `localfilter!` are performed without bounds checking of the
-    destination and it is the caller's responsibility to insure that the
-    destination have the correct size. It is however always possible to write
-    `store!` so that it performs bounds checking.
 
 
 ## Examples
@@ -73,8 +69,7 @@ As another example, implementing a convolution by `B` writes:
 ```julia
 localfilter!(dst, A, B,
              (a)     -> zero(a),
-             (v,a,b) -> v + a*b,
-             (d,i,v) -> @inbounds(d[i] = v))
+             (v,a,b) -> v + a*b)
 ```
 
 Apart from specializations to account for the type of neighborhood defined by

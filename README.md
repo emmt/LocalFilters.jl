@@ -147,8 +147,8 @@ implementation of a variety of linear and non-linear local filters:
 
   ```julia
   localfilter!(dst, A, B,
-               (zero(a), 0), # initial
-               (v,a,b) -> (ifelse(b, v[1] + a, v[1]), v[2] + 1), # update
+               (zero(a), 0), # initial, state = (sum_of_values, count_of_values)
+               (v,a,b) -> ifelse(b, (v[1] + a, v[2] + 1), v), # update
                (v) -> v[1]/v[2]) # final
   ```
 
