@@ -33,12 +33,12 @@ optimized methods:
   discrete convolutions was the only rule.
 
 * The API of `localfilters!` have changed a bit, the syntax is
-  `localfilters!(dst,A,ord=ForwardFilter,B,initial,update,store!)` with `dst`
-  the destination, `A` the source, `ord` the direction of the filter, `B` the
-  kernel or neighborhood of the filter, `initial` the value of the initial
+  `localfilters!(dst,A,ord=ForwardFilter,B,initial,update,final=identity)` with
+  `dst` the destination, `A` the source, `ord` the direction of the filter, `B`
+  the kernel or neighborhood of the filter, `initial` the value of the initial
   state variable, `update` a method to update the state variable, and `final` a
-  method to yield the result to store in the destination `dst` given the final
-  value of the state variable.
+  method to yield the result to store in the destination `dst` given the value
+  of the state variable at the end of visiting the neighborhood.
 
 * Constructor `LocalFilters.Indices` and helper method
   `LocalFilters.localindices` may be used as an alternative to `localfilters!`
@@ -51,7 +51,7 @@ optimized methods:
   `N`-dimensional neighborhood from argument(s) `args...`.
 
 * Non-exported `LocalFilters.ball` method is now type stable. Call
-  `LocalFilters.ball(Dims{N},r)` intead of `LocalFilters.ball(N,r)`.
+  `LocalFilters.ball(Dims{N},r)` instead of `LocalFilters.ball(N,r)`.
 
 * The `strel` method uses uniform arrays from package
   [`StructuredArrays`](https://github.com/emmt/StructuredArrays.jl) to
@@ -88,9 +88,13 @@ At a lower level, the following changes should be done:
 
 * Replace `LocalFilters.Kernel` by `OffsetArrays.OffsetArray`.
 
-* Update the arguments of `localfilters!`.
+* Update the arguments of `localfilters!`: `initial` is no longer a method but
+  the initial state value, `update` has the same semantics, and `final` just
+  yields the result of the local filter given the last state value. By default,
+  `final` is `identity`.
 
-* Replace `LocalFilters.ball(N,r)` by `LocalFilters.ball(Dims{N},r)`.
+* Replace `LocalFilters.ball(N,r)` by `LocalFilters.ball(Dims{N},r)` which is
+  type-stable.
 
 ---
 
