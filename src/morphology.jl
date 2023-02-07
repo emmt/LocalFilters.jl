@@ -287,7 +287,7 @@ function localextrema!(Amin::AbstractArray{<:Any,N},
                        Amax::AbstractArray{<:Any,N},
                        A::AbstractArray{<:Any,N},
                        ord::FilterOrdering,
-                       B::Window{N} = 3) where {T,N}
+                       B::Window{N} = 3) where {N}
     localextrema!(Amin, Amax, A, ord, kernel(Dims{N}, B))
 end
 
@@ -416,13 +416,13 @@ for f in (:closing, :opening)
         function $f!(dst::AbstractArray{<:Any,N},
                      wrk::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
-                     B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {T,N}
+                     B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
             $f!(dst, wrk, A, ForwardFilter, B)
         end
         function $f!(dst::AbstractArray{<:Any,N},
                      wrk::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
-                     ord::FilterOrdering) where {T,N}
+                     ord::FilterOrdering) where {N}
             $f!(dst, wrk, A, ord, 3)
         end
 
