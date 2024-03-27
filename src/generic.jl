@@ -12,17 +12,17 @@
 #
 
 """
-    localfilter!(dst, A, [ord = ForwardFilter,] B, initial, update,
-                 final = identity) -> dst
+    localfilter!(dst, A, [ord = ForwardFilter,] B, initial,
+                 update::Function, final::Function = identity) -> dst
 
 overwrites the destination `dst` with the result of a local filter applied to
 the source `A`, on a relative neighborhood defined by `B`, and implemented by
-`initial`, `update`, and `final`. The purpose of these latter arguments is
-explained by the following pseudo-codes implementing the local filtering. If
-`ord = ForwardFilter`:
+`initial`, `update`, and `final`. The `initial` argument may be a function or
+not. The purpose of these latter arguments is explained by the following
+pseudo-codes implementing the local filtering. If `ord = ForwardFilter`:
 
     @inbounds for i ∈ indices(dst)
-        v = initial
+        v = initial isa Function ? initial(A[i]) : initial
         for j ∈ indices(A) ∩ (indices(B) + i)
             v = update(v, A[j], B[j-i])
         end
@@ -32,7 +32,7 @@ explained by the following pseudo-codes implementing the local filtering. If
 else if `ord = ReverseFilter`:
 
     @inbounds for i ∈ indices(dst)
-        v = initial
+        v = initial isa Function ? initial(A[i]) : initial
         for j ∈ indices(A) ∩ (i - indices(B))
             v = update(v, A[j], B[i-j])
         end
@@ -45,10 +45,15 @@ where `indices(A)` denotes the range of indices of any array `A` while
 ∈ indices(A) ∩ (i - indices(B))` means all indices `j` such that `j ∈
 indices(A)` and `i - j ∈ indices(B)` so that `A[j]` and `B[i-j]` are in-bounds.
 
+If `initial` is a function, the initial value of the state variable `v` in the
+above pseudo-codes is given by `v = initial(A[i])` with `i` the current index
+in `dst`. Hence, in that case, the destination array `dst` and the source array
+`src` must have the same axes.
+
 For example, implementing a local minimum filter (that is, an *erosion*), is as
 simple as:
 
-    localfilter!(dst, A, ord, B, typemax(eltype(a)),
+    localfilter!(dst, A, ord, B, typemax(eltype(A)),
                  (v,a,b) -> ifelse(b, min(v,a), v))
 
 As another example, implementing a convolution by `B` writes:
@@ -59,25 +64,25 @@ As another example, implementing a convolution by `B` writes:
 """ localfilter!
 
 # This version provides a default ordering.
-@inline @propagate_inbounds localfilter!(
-    dst::AbstractArray{<:Any,N},
-    A::AbstractArray{<:Any,N},
-    B::Union{Window{N},AbstractArray{<:Any,N}},
-    initial,
-    update::Function,
-    final::Function = identity) where {N} = localfilter!(
-        dst, A, ForwardFilter, B, initial, update, final)
+@inline function localfilter!(dst::AbstractArray{<:Any,N},
+                              A::AbstractArray{<:Any,N},
+                              B::Union{Window{N},AbstractArray{<:Any,N}},
+                              initial,
+                              update::Function,
+                              final::Function = identity) where {N}
+    return localfilter!(dst, A, ForwardFilter, B, initial, update, final)
+end
 
 # This version builds a kernel.
-@inline @propagate_inbounds localfilter!(
-    dst::AbstractArray{<:Any,N},
-    A::AbstractArray{<:Any,N},
-    ord::FilterOrdering,
-    B::Window{N},
-    initial,
-    update::Function,
-    final::Function = identity) where {N} = localfilter!(
-        dst, A, ord, kernel(Dims{N}, B), initial, update, final)
+@inline function localfilter!(dst::AbstractArray{<:Any,N},
+                              A::AbstractArray{<:Any,N},
+                              ord::FilterOrdering,
+                              B::Window{N},
+                              initial,
+                              update::Function,
+                              final::Function = identity) where {N}
+    return localfilter!(dst, A, ord, kernel(Dims{N}, B), initial, update, final)
+end
 
 @inline function localfilter!(dst::AbstractArray{<:Any,N},
                               A::AbstractArray{<:Any,N},
@@ -86,9 +91,11 @@ As another example, implementing a convolution by `B` writes:
                               initial,
                               update::Function,
                               final::Function = identity) where {N}
+    !(initial isa Function) || axes(dst) == axes(A) || throw(DimensionMismatch(
+        "destination and source arrays must have the same axes when `initial` is a function"))
     indices = Indices(dst, A, B)
     @inbounds for i in indices(dst)
-        v = initial
+        v = initial isa Function ? initial(A[i]) : initial
         @simd for j in localindices(indices(A), ord, indices(B), i)
             v = update(v, A[j], B[ord(i,j)])
         end

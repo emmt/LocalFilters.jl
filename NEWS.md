@@ -1,5 +1,12 @@
 # New features and user visible changes in branch 2.0
 
+## Version 2.1.0
+
+- In `localfilter!`, argument `initial` may be a function to compute the state
+  variable from the value of the source array at the current destination index.
+  This imposes that the source and destination arrays have the same axes.
+  This fixes [issue#3](#3).
+
 ## Version 2.0.0
 
 Version 2 of `LocalFilters` better integrates in the Julia ecosystem as fewer

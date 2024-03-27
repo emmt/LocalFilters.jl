@@ -300,6 +300,34 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
             @test localmean(A, ReverseFilter, 3) == A
         end
     end
+
+    # See https://github.com/emmt/LocalFilters.jl/issues/6
+    @testset "Roughness filter" begin
+        rng = -1:1 # neighborhood range (length must be odd for this example to work)
+        A = rand(Float32, 20, 30)
+        # LocalFilters version.
+        B = @inferred localfilter!(
+            similar(A), A, length(rng),
+            #= initial =# (a) -> (zero(a), a),
+            #= update =# (v, a, _) -> (max(v[1], abs(a - v[2])), v[2]),
+            #= final =# (v) -> v[1])
+        # Slow version.
+        C = similar(A)
+        I = CartesianIndices(A)
+        J = CartesianIndices((rng, rng))
+        for i in I
+            v = zero(eltype(A))
+            for j in J
+                k = i + j
+                if k ∈ I
+                    v = max(v, abs(A[k] - A[i]))
+                end
+            end
+            C[i] = v
+        end
+        @test C ≈ B
+    end
+
 #=
     @testset "Neighborhoods" begin
         for (dims, rngs) in (((3,), (-1:1,)),
