@@ -76,3 +76,22 @@ Apart from specializations to account for the type of neighborhood defined by
 `B`, it is essentially the way the [`convolve`](@ref) and [`convolve!`](@ref)
 methods (described in the Section [*Linear filters*](linear.html)) are
 implemented in `LocalFilters`.
+
+In the above examples, the `initial` value of the state variable is always the
+same and directly provided while the default `final = identity` is assumed.
+Below is a more involved example to compute the *roughness* defined by Wilson
+et al. (in *Marine Geodesy* 30:3-35, 2007) as the maximum absolute difference
+between a central cell and surrounding cells:
+
+```julia
+function roughness(A::AbstractArray{<:Real}, B=3)
+    initial(a) = (; result = zero(a), center = a)
+    update(v, a, _) = (; result = max(v.result, abs(a - v.center)), center=v.center)
+    final(v) = v.result
+    return localfilter!(similar(A), A, B, initial, update, final)
+end
+```
+
+This example has been borrowed from the
+[`Geomorphometry`](https://github.com/Deltares/Geomorphometry.jl) package for
+the analysis of *Digital Elevation Models* (DEM).
