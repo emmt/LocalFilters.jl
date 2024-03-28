@@ -8,7 +8,7 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2017-2022, Éric Thiébaut.
+# Copyright (c) 2017-2024, Éric Thiébaut.
 #
 
 Base.IndexStyle(A::Indices) = IndexStyle(typeof(A))
@@ -21,41 +21,36 @@ Base.IndexStyle(::Type{<:Indices{S}}) where {S} = S()
 @inline (::Indices{IndexCartesian})(A::AbstractArray) = CartesianIndices(A)
 
 @inline (I::Indices)(A::AbstractArray, B::AbstractArray) =
-    (have_same_indices(A, B); I(A))
+    (have_same_axes(A, B); I(A))
 @inline (I::Indices)(A::AbstractArray, B::AbstractArray...) =
-    (have_same_indices(A, B...); I(A))
+    (have_same_axes(A, B...); I(A))
 
 """
-    LocalFilters.have_same_indices(Bool, A...)
+    LocalFilters.have_same_axes(A...)
 
-yields whether all arrays `A...` have the same indices.
-
-    LocalFilters.have_same_indices(A...)
-
-throws an exception if not all arrays `A...` have the same indices.
+throws an exception if not all arrays `A...` have the same axes.
 
 """
-have_same_indices(::Type{Bool}, A::AbstractArray) = true
-have_same_indices(::Type{Bool}, A::AbstractArray...) = false
-have_same_indices(::Type{Bool}, A::AbstractArray{N}, B::AbstractArray{N}) where {N} =
-    axes(A) == axes(B)
-@inline function have_same_indices(::Type{Bool}, A::AbstractArray{N},
-                                   B::AbstractArray{N}...) where {N}
-    return all_yield(axes(A), axes, B...)
+@inline have_same_axes(A::AbstractArray, B::AbstractArray...) =
+    have_same_axes(Bool, A, B...) || throw(DimensionMismatch("arrays must have the same axes"))
+
+"""
+    LocalFilters.have_same_axes(Bool, A...) -> bool
+
+yields whether all arrays `A...` have the same axes.
+
+"""
+have_same_axes(::Type{Bool}, A::AbstractArray) = true
+have_same_axes(::Type{Bool}, A::AbstractArray, B::AbstractArray...) = false
+@inline function have_same_axes(::Type{Bool}, A::AbstractArray{<:Any,N},
+                                B::AbstractArray{<:Any,N}...) where {N}
+    return _have_same_axes(axes(A), B...)
 end
-have_same_indices(A::AbstractArray...) =
-    have_same_indices(Bool, A...) || throw(DimensionMismatch(
-        "arrays must have the same indices"))
 
-"""
-    LocalFilters.all_yield(x, f, args...)
-
-yields whether `f(arg) == x` holds for all `arg` in `args...`.
-
-"""
-@inline all_yield(x, f::Function) = false
-@inline all_yield(x, f::Function, A) = (f(A) == x)
-@inline all_yield(x, f::Function, A, B...) = all_yield(x, f, A) && all_yield(x, f, B...)
+@inline _have_same_axes(I::Axes) = true
+@inline _have_same_axes(I::Axes, A::AbstractArray) = axes(A) == I
+@inline _have_same_axes(I::Axes, A::AbstractArray, B::AbstractArray...) =
+     _have_same_axes(I, A) && _have_same_axes(I, B...)
 
 Indices(::S) where {S<:IndexStyle} = Indices{S}()
 #Indices(::S, A::AbstractArray) where {S<:IndexStyle} = Indices{S}()

@@ -30,6 +30,8 @@ is also the union of types accepted by the
 """
 const Axis = Union{Integer,IntegerRange}
 
+const Axes{N} = NTuple{N,AbstractUnitRange{Int}}
+
 """
     CartesianUnitRange{N}
 
