@@ -8,11 +8,11 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2017-2022, Éric Thiébaut.
+# Copyright (c) 2017-2024, Éric Thiébaut.
 #
 
 """
-    localmean(A, [ord=ForwardFilter,] B=3)
+    localmean(A, [ord=ForwardFilter,] B=3; null=zero(eltype(A)))
 
 yields the local mean of `A` in a neighborhood defined by `B`. The result is an
 array similar to `A`. If `B` is not specified, the neighborhood is a
@@ -22,15 +22,21 @@ of dimensions as `A`. If `B` is a single odd integer (as it is by default), the
 neighborhood is assumed to be a hyper-rectangular sliding window of size `B` in
 every dimension.
 
+Keyword `null` may be used to specify the value of the result where the sum of
+the weights in a local neighborhood is zero.
+
 See also [`localmean!`](@ref) and [`localfilter!`](@ref).
 
 """ localmean
 
 """
-    localmean!(dst, A, [ord=ForwardFilter,] B=3) -> dst
+    localmean!(dst, A, [ord=ForwardFilter,] B=3; null=zero(eltype(dst))) -> dst
 
 overwrites `dst` with the local mean of `A` in a neighborhood defined by `B`
 and returns `dst`.
+
+Keyword `null` may be used to specify the value of the result where the sum of
+the weights in the a neighborhood is zero.
 
 See also [`localmean`](@ref) and [`localfilter!`](@ref).
 
@@ -40,7 +46,9 @@ See also [`localmean`](@ref) and [`localfilter!`](@ref).
 function localmean!(dst::AbstractArray{<:Any,N},
                     A::AbstractArray{<:Any,N},
                     ord::FilterOrdering,
-                    B::Box{N}) where {N}
+                    B::Box{N};
+                    null = zero(eltype(dst))) where {N}
+    null = nearest(eltype(dst), null)
     indices = Indices(dst, A, B)
     @inbounds for i in indices(dst)
         J = localindices(indices(A), ord, indices(B), i)
@@ -50,9 +58,9 @@ function localmean!(dst::AbstractArray{<:Any,N},
             @simd for j in J
                 num += A[j]
             end
-            store!(dst, i, num/den)
+            dst[i] = nearest(eltype(dst), num/den)
         else
-            store!(dst, i, zero(eltype(dst)))
+            dst[i] = null
         end
     end
     return dst
@@ -62,7 +70,9 @@ end
 function localmean!(dst::AbstractArray{<:Any,N},
                     A::AbstractArray{<:Any,N},
                     ord::FilterOrdering,
-                    B::AbstractArray{Bool,N}) where {N}
+                    B::AbstractArray{Bool,N};
+                    null = zero(eltype(dst))) where {N}
+    null = nearest(eltype(dst), null)
     indices = Indices(dst, A, B)
     @inbounds for i in indices(dst)
         num = zero(result_eltype(+, A))
@@ -73,10 +83,10 @@ function localmean!(dst::AbstractArray{<:Any,N},
             num += ifelse(b, A[j], zero(eltype(A)))
             den += b
         end
-        if den != zero(den)
-            store!(dst, i, num/den)
+        if !iszero(den)
+            dst[i] = nearest(eltype(dst), num/den)
         else
-            store!(dst, i, zero(eltype(dst)))
+            dst[i] = null
         end
     end
     return dst
@@ -86,7 +96,9 @@ end
 function localmean!(dst::AbstractArray{<:Any,N},
                     A::AbstractArray{<:Any,N},
                     ord::FilterOrdering,
-                    B::AbstractArray{<:Any,N}) where {N}
+                    B::AbstractArray{<:Any,N};
+                    null = zero(eltype(dst))) where {N}
+    null = nearest(eltype(dst), null)
     indices = Indices(dst, A, B)
     @inbounds for i in indices(dst)
         num = zero(result_eltype(+, A))
@@ -96,10 +108,10 @@ function localmean!(dst::AbstractArray{<:Any,N},
             num += A[j]
             den += B[ord(i,j)]
         end
-        if den != zero(den)
-            store!(dst, i, num/den)
+        if !iszero(den)
+            dst[i] = nearest(eltype(dst), num/den)
         else
-            store!(dst, i, zero(eltype(dst)))
+            dst[i] = null
         end
     end
     return dst
@@ -214,7 +226,7 @@ function multiply_add!(dst::AbstractArray{<:Any,N},
         @simd for j in J
             v += A[j]
         end
-        store!(dst, i, v)
+        dst[i] = nearest(eltype(dst), v)
     end
     return dst
 end
@@ -231,7 +243,7 @@ function multiply_add!(dst::AbstractArray{<:Any,N},
         @simd for j in J
             v += mult(A[j], B[ord(i,j)])
         end
-        store!(dst, i, v)
+        dst[i] = nearest(eltype(dst), v)
     end
     return dst
 end
@@ -256,7 +268,7 @@ function multiply_add!(dst::AbstractArray{<:Any,N},
         @simd for j in J
             v += A[j]*B[ord(i,j)]
         end
-        store!(dst, i, v)
+        dst[i] = nearest(eltype(dst), v)
     end
     return dst
 end

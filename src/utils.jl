@@ -495,21 +495,18 @@ strel(T::Type{<:AbstractFloat}, A::CartesianIndices) =
     OffsetArray(UniformArray(zero(T), size(A)), ranges(A))
 
 """
-    LocalFilters.store!(A, I, x)
+    LocalFilters.nearest(T, x)
 
-stores value `x` in array `A` at index `I`, taking care of rounding `x` if it
-is of floating-point type while the elements of `A` are integers. This method
-propagates the current in-bounds settings.
+converts value `x` to the nearest value of type `T`. By default, the result is
+given by `convert(T,x)` unless `T` is floating-point type and `x` is integer in
+which case the result is given by `round(T,x)`.
+
+This method may be extended for foreign types to implement other conversions.
 
 """
-@inline @propagate_inbounds function store!(A::AbstractArray{T}, I,
-                                            x::AbstractFloat) where {T<:Integer}
-    A[I] = round(T, x)
-end
-
-@inline @propagate_inbounds function store!(A::AbstractArray, I, x)
-    A[I] = x
-end
+nearest(::Type{T}, x::T) where {T} = x
+nearest(::Type{T}, x::Any) where {T} = convert(T, x)
+nearest(::Type{T}, x::Integer) where {T<:AbstractFloat} = round(T, x)
 
 """
     LocalFilters.ball(Dims{N}, r)

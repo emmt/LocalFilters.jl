@@ -7,6 +7,9 @@
   This imposes that the source and destination arrays have the same axes.
   This fixes [issue#3](#3).
 
+- `localmean` and `localmean!` accept a `null` keyword to specify the value of
+  the result when the sum of weights in a neighborhood is zero.
+
 ## Version 2.0.0
 
 Version 2 of `LocalFilters` better integrates in the Julia ecosystem as fewer

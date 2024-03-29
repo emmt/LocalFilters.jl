@@ -8,15 +8,15 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2018-2022, Éric Thiébaut.
+# Copyright (c) 2018-2024, Éric Thiébaut.
 #
 
 module BilateralFilter
 
 using ..LocalFilters
 using ..LocalFilters:
-    Axis, Box, FilterOrdering, Indices, BoundaryConditions, FlatBoundaries,
-    ranges, Window, localindices, kernel, store!
+    Box, FilterOrdering, Indices, BoundaryConditions, FlatBoundaries,
+    ranges, Window, localindices, kernel, nearest
 
 import ..LocalFilters: bilateralfilter!, bilateralfilter
 
@@ -283,9 +283,9 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
             num += w*Aj
         end
         if den > zero(den)
-            store!(dst, i, num/den)
+            dst[i] = nearest(eltype(dst), num/den)
         else
-            store!(dst, i, Ai)
+            dst[i] = nearest(eltype(dst), Ai)
         end
     end
     return dst
@@ -312,9 +312,9 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
             end
         end
         if den > zero(den)
-            store!(dst, i, num/den)
+            dst[i] = nearest(eltype(dst), num/den)
         else
-            store!(dst, i, Ai)
+            dst[i] = nearest(eltype(dst), Ai)
         end
     end
     return dst
@@ -339,9 +339,9 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
             num += w*Aj
         end
         if den > zero(den)
-            store!(dst, i, num/den)
+            dst[i] = nearest(eltype(dst), num/den)
         else
-            store!(dst, i, Ai)
+            dst[i] = nearest(eltype(dst), Ai)
         end
     end
     return dst

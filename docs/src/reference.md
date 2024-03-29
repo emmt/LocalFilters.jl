@@ -10,17 +10,17 @@ typing `?` followed by the name of a method or a type.
 ```@index
 ```
 
-
 ## Linear filters
 
-`LocalFilters` provides convolutive filters which are shift-invariant linear
-filters.
+`LocalFilters` provides a number of shift-invariant linear filters.
 
 ```@docs
-localmean
-localmean!
+correlate
+correlate!
 convolve
 convolve!
+localmean
+localmean!
 ```
 
 ## Mathematical morphology
@@ -40,7 +40,6 @@ top_hat
 LocalFilters.top_hat!
 bottom_hat
 LocalFilters.bottom_hat!
-strel
 ```
 
 ## Other non-linear filters
@@ -57,18 +56,31 @@ localfilter
 localfilter!
 ```
 
-## Types
+## Constants
 
 ```@docs
-Neighborhood
-RectangularBox
-LocalFilters.Kernel
-LocalFilters.ConstantProducer
+ForwardFilter
+ReverseFilter
+```
+
+## Neighborhoods and kernels
+
+```@docs
+kernel
+strel
+LocalFilters.ball
+LocalFilters.centered
 ```
 
 ## Utilities
 
 ```@docs
-LocalFilters.default_start
-LocalFilters.ball
+LocalFilters.Indices
+LocalFilters.Yields
+LocalFilters.localindices
+LocalFilters.nearest
+LocalFilters.replicate
+LocalFilters.kernel_range
+LocalFilters.multiply_add
+LocalFilters.multiply_add!
 ```
