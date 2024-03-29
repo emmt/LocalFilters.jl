@@ -527,37 +527,39 @@ function ball(::Type{Dims{N}}, radius::Real) where {N}
     b = radius + 1/2
     r = ceil(Int, b - one(b))
     dim = 2*r + 1
-    dims = ntuple(d->dim, Val(N))
-    arr = Array{Bool}(undef, dims)
-    bb = b^2
-    qmax = ceil(Int, bb - one(bb))
-    _ball!(arr, 0, qmax, r, 1:dim, tail(dims))
-    return arr
+    dims = replicate(Dims{N}, dim)
+    b² = b*b
+    qmax = ceil(Int, b² - one(b²))
+    return _ball!(Array{Bool}(undef, dims), 0, qmax, r, 1:dim, tail(dims))
 end
 
-@deprecate ball(N::Integer, radius::Real) ball(Dims{to_int(N)}, radius) false
+@deprecate ball(N::Integer, radius::Real) ball(Dims{as(Int, N)}, radius) false
 
 @inline function _ball!(arr::AbstractArray{Bool,N},
                         q::Int, qmax::Int, r::Int,
                         range::AbstractUnitRange{Int},
                         dims::Tuple{Int}, I::Int...) where {N}
+    # Iterate over coordinates along dimension.
     nextdims = tail(dims)
     x = -r
     for i in range
         _ball!(arr, q + x*x, qmax, r, range, nextdims, I..., i)
         x += 1
     end
+    return arr
 end
 
 @inline function _ball!(arr::AbstractArray{Bool,N},
                         q::Int, qmax::Int, r::Int,
                         range::AbstractUnitRange{Int},
                         ::Tuple{}, I::Int...) where {N}
+    # Iterate over coordinates along last dimension. This ends the recursion.
     x = -r
     for i in range
         arr[I...,i] = (q + x*x ≤ qmax)
         x += 1
     end
+    return arr
 end
 
 # Boundary conditions.
