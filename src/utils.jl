@@ -118,7 +118,7 @@ kernel(::Type{Dims{N}}, inds::NTuple{2,CartesianIndex{N}}) where {N} = kernel(in
 kernel(::Type{Dims{N}}, inds::Vararg{CartesianIndex{N},2}) where {N} = kernel(inds)
 kernel(inds::NTuple{2,CartesianIndex{N}}) where {N} = kernel(inds...)
 kernel(a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} =
-    FastUniformArray(true, map(UnitRange{Int}, Tuple(a), Tuple(b)))
+    FastUniformArray(true, map(kernel_range, Tuple(a), Tuple(b)))
 
 # Error catcher.
 kernel(::Type{Dims{N}}) where {N} = throw(ArgumentError(
@@ -139,7 +139,7 @@ lengths, the same conventions as in `fftshift` are used).
 See [`LocalFilters.kernel`](@ref) and [`LocalFilters.centered`](@ref).
 
 """
-kernel_range(start::Integer, stop::Integer) = UnitRange{Int}(start, stop)
+kernel_range(start::Integer, stop::Integer) = as(Int, start):as(Int, stop)
 kernel_range(rng::AbstractUnitRange{Int}) = rng
 kernel_range(rng::AbstractUnitRange{<:Integer}) = convert_eltype(Int, rng)
 function kernel_range(rng::AbstractRange{<:Integer})
