@@ -20,45 +20,8 @@ using ..LocalFilters:
 
 import ..LocalFilters: bilateralfilter!, bilateralfilter
 
-using OffsetArrays
+using OffsetArrays, TypeUtils
 using Base: @propagate_inbounds
-
-"""
-    AbstractTypeStableFunction{T}
-
-is the super-type of callable object with guaranteed returned type `T`.
-
-"""
-abstract type AbstractTypeStableFunction{T} <:Function end
-
-Base.promote_op(::AbstractTypeStableFunction{T}, ::Type...) where {T} = T
-
-"""
-    TypeStableFunction{T}(f) -> obj
-    TypeStableFunction(f, args...) -> obj
-
-yield a callable object that wraps function `f` for guaranteed returned type
-`T`. Alternatively, the type(s) `args...` of the function argument(s) can be
-used to deduce the returned type `T`. Then the following holds:
-
-    obj(x...) === convert(T, f(x...))::T
-
-"""
-struct TypeStableFunction{T,F<:Function} <: AbstractTypeStableFunction{T}
-    func::F
-end
-
-TypeStableFunction{T}(f::F) where {T,F<:Function} = TypeStableFunction{T,F}(f)
-TypeStableFunction{T}(f::TypeStableFunction) where {T} =
-    TypeStableFunction{T}(f.func)
-TypeStableFunction(f::F, args::Type...) where {F<:Function} =
-    TypeStableFunction{Base.promote_op(f, args...),F}(f)
-
-AbstractTypeStableFunction{T}(f::Function) where {T} =
-    TypeStableFunction{T}(f)
-
-@inline (obj::TypeStableFunction{T})(args...) where {T} =
-    convert(T, obj.func(args...))::T
 
 """
     LocalFilters.BilateralFilter.GaussianWindow{T}(σ) -> f
@@ -83,8 +46,7 @@ GaussianWindow(f::GaussianWindow) = f
 GaussianWindow{T}(f::GaussianWindow{T}) where {T} = f
 GaussianWindow{T}(f::GaussianWindow) where {T} = GaussianWindow{T}(f.σ)
 
-AbstractTypeStableFunction{T}(f::GaussianWindow) where {T} =
-    GaussianWindow{T}(f)
+AbstractTypeStableFunction{T}(f::GaussianWindow) where {T} = GaussianWindow{T}(f)
 
 (f::GaussianWindow{T})(I::CartesianIndex{N}) where {T,N} =
     exp(sum((k) -> I[k]^2, 1:N)*f.η) # FIXME: use @generated
@@ -97,12 +59,8 @@ AbstractTypeStableFunction{T}(f::GaussianWindow) where {T} =
 default_width(σ::Real) = 2*round(Int, 3σ) + 1
 
 # Extend convert method.
-for f in (:AbstractTypeStableFunction, :TypeStableFunction, :GaussianWindow)
-    @eval begin
-        Base.convert(::Type{$f{T}}, f::$f{T}) where {T} = f
-        Base.convert(::Type{$f{T}}, f::Function) where {T} = $f{T}(f)
-    end
-end
+Base.convert(::Type{T}, f::T) where {T<:GaussianWindow} = f
+Base.convert(::Type{GaussianWindow{T}}, f) where {T} = GaussianWindow{T}(f)
 
 """
     bilateralfilter([T=float(eltype(A)),] A, F, [ord=ForwardFilter,] G...=3)
