@@ -14,7 +14,7 @@ structuring element(s) defined by the interval(s) `rngs`. Optional argument `T`
 is the element type of the result `dst` (by default `T = eltype(A)`). Optional
 argument `w` is a workspace array which is automatically allocated if not
 provided; otherwise, it must be a vector with the same element type as `A`
-which is resized as needed (by calling the `resize!` method).
+(`w` is resized as needed by calling `resize!`).
 
 Argument `dims` specifies along which dimension(s) of `A` the filter is to be
 applied, it can be a single integer, several integers or a colon `:` to specify
@@ -37,16 +37,16 @@ amounts to computing:
 dst[j] = A[j-kmax] ⋄ A[j-kmax+1] ⋄ A[j-kmax+2] ⋄ ... ⋄ A[j-kmin]
 ```
 
-for all `j ∈ [first(axes(A,1)):last(axes(A,1))]`, with `x ⋄ y = op(x, y)`,
-`kmin = first(rng)` and `kmax = last(rng)`. Note that if `kmin = kmax = k`
-(which occurs if `rng` is a simple integer), the result of the filter is to
-operate a simple shift by `k` along the corresponding dimension and has no
-effects if `k = 0`. This can be exploited to not filter some dimension(s).
+for all `j ∈ [firstindex(A):lastindex(A)]`, with `x ⋄ y = op(x, y)`, `kmin =
+first(rng)` and `kmax = last(rng)`. Note that if `rng = k:k` or `rng = k` with
+`k` an integer, the result of the filter is to operate a simple shift by `k`
+along the corresponding dimension and has no effects if `k = 0`. This can be
+exploited to not filter some dimension(s).
 
 
 ## In-place version
 
-The [`localfilter!`](@ref) method implement the *in-place* version of the van
+The [`localfilter!`](@ref) method implements the *in-place* version of the van
 Herk-Gil-Werman algorithm:
 
 ```julia
@@ -55,21 +55,22 @@ localfilter!([dst = A,] A, dims, op, rngs [, w]) -> dst
 
 overwrites the contents of `dst` with the result of the filter and returns
 `dst`. The destination array `dst` must have the same indices as the source `A`
-(that is, `axes(dst) == axes(A)`). If `dst` is not specified or if `dst` is
-`A`, the operation is performed in-place.
+(that is, `axes(dst) == axes(A)` must hold). If `dst` is not specified or if
+`dst` is `A`, the operation is performed in-place.
 
 
 ## Examples
 
 The in-place *morphological erosion* (local minimum) of the array `A` on a
-centered structuring element of width 7 in every dimension can be applied by:
+centered structuring element of width 7 in every dimension can be done by:
 
 ```julia
 localfilter!(A, :, min, -3:3)
 ```
 
-Index interval `0` may be specified to do nothing along the corresponding
-dimension. For instance, assuming `A` is a three-dimensional array:
+As said before, index interval `0` may be specified to do nothing along the
+corresponding dimension. For instance, assuming `A` is a three-dimensional
+array:
 
 ```julia
 localfilter!(A, :, max, (-3:3, 0, -4:4))
@@ -89,7 +90,7 @@ The *local average* of the two-dimensional array `A` on a centered moving
 window of size 11×11 can be computed as:
 
 ```julia
-localfilter(A, :, +, (-5:5, -5:5))*(1/11)
+localfilter(A, :, +, (-5:5, -5:5))*(1/11^2)
 ```
 
 ## Efficiency and restrictions

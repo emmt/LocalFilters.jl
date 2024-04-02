@@ -10,7 +10,7 @@ typing `?` followed by the name of a method or a type.
 ```@index
 ```
 
-## Linear filters
+## Simple linear filters
 
 `LocalFilters` provides a number of shift-invariant linear filters.
 
@@ -49,7 +49,7 @@ bilateralfilter
 bilateralfilter!
 ```
 
-## Generic driver for custom local filters
+## Methods to build local filters
 
 ```@docs
 localfilter
@@ -59,20 +59,24 @@ localfilter!
 ## Constants
 
 ```@docs
-ForwardFilter
-ReverseFilter
+FORWARD_FILTER
+REVERSE_FILTER
 ```
 
 ## Neighborhoods and kernels
 
 ```@docs
 kernel
+reverse_kernel
 strel
 LocalFilters.ball
 LocalFilters.centered
 ```
 
 ## Utilities
+
+Below are described non-exported types and methods that may be useful in the
+context of building local filters.
 
 ```@docs
 LocalFilters.Indices
@@ -81,6 +85,4 @@ LocalFilters.localindices
 LocalFilters.nearest
 LocalFilters.replicate
 LocalFilters.kernel_range
-LocalFilters.multiply_add
-LocalFilters.multiply_add!
 ```

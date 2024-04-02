@@ -8,12 +8,12 @@
 [![Coverage][codecov-img]][codecov-url]
 
 [Julia](http://julialang.org/) package `LocalFilters` implements
-multi-dimensional local filters such as discrete convolution, local mean,
-mathematical morphology, etc., and provides support to build custom local
-filters.
+multi-dimensional local filters such as discrete convolution or correlation,
+local mean, mathematical morphology, etc., and provides support to build custom
+local filters.
 
-This page summarizes the principles and the features of `LocalFilters`, the
-[Reference Manual](doc-dev-url) provides more exhaustive documentation. This
+The [Reference Manual](doc-dev-url) provides more exhaustive documentation.
+This page summarizes the principles and the features of `LocalFilters`. This
 document is structured as follows:
 
 * [Available filters](#available-filters) lists ready to use filters.
@@ -86,7 +86,7 @@ morphology](https://en.wikipedia.org/wiki/Mathematical_morphology) operations:
 
 In mathematical morphology, the structuring element `B` defines the local
 neighborhood of each index in the source array. It can be a sliding
-hyper-rectangular Cartesian window or an array of booleans to define a more
+hyper-rectangular Cartesian window or an array of Booleans to define a more
 complex neighborhood shape. If `B` is a single odd integer (as it is by
 default), the structuring element is assumed to be a sliding window of size `B`
 along every dimension of `A`.
@@ -113,7 +113,7 @@ associated with the filter, is implemented by the following pseudo-code:
 
 ```julia
 for i ∈ indices(dst)
-    v = initial
+    v = initial isa Function ? initial(A[i]) : initial
     for j ∈ indices(A) ∩ (indices(B) + i)
         v = update(v, A[j], B[j-i])
     end
@@ -125,13 +125,14 @@ where `indices(A)` denotes the set of indices of `A` while `indices(B) + i`
 denotes the set of indices `j` such that `j - i ∈ indices(B)` with `indices(B)`
 the set of indices of `B`. In other words, `j ∈ indices(A) ∩ (indices(B) + i)`
 means all indices `j` such that `j ∈ indices(A)` and `j - i ∈ indices(B)`,
-hence `A[j]` and `B[j-i]` are in-bounds. In `LocalFilters`, indices `i` and `j`
-are multi-dimensional Cartesian indices, thus `indices(A)` is the analogous of
-`CartesianIndices(A)` in Julia.
+hence `A[j]` and `B[j-i]` are in-bounds.In `LocalFilters`, indices `i` and `j`
+are Cartesian indices for multi-dimensional arrays, thus `indices(A)` is the
+analogous of `CartesianIndices(A)` in Julia in that case. For vectors, indices
+`i` and `j` are linear indices.
 
 The behavior of the filter is completely determined by the neighborhood or
-kernel `B`, by the type of the state variable `v`, its `initial` value for each
-entry of the destination, and by the methods `update` and `final`.
+kernel `B`, by the type of the state variable `v` initialized by `initial` for
+each entry of the destination, and by the methods `update` and `final`.
 
 Such a filter can be applied by calling `localfilter!` as:
 
@@ -143,35 +144,35 @@ As shown by the following examples, this simple scheme allows the
 implementation of a variety of linear and non-linear local filters:
 
 * Implementing a **local average** of `A` in a neighborhood defined by an array
-  `B` of booleans is done with:
+  `B` of Booleans is done with:
 
   ```julia
   localfilter!(dst, A, B,
-               (zero(a), 0), # initial, state = (sum_of_values, count_of_values)
-               (v,a,b) -> ifelse(b, (v[1] + a, v[2] + 1), v), # update
-               (v) -> v[1]/v[2]) # final
+               #= initial =# (; num = zero(a), den = 0),
+               #= update  =# (v,a,b) -> ifelse(b, (; num = v.num + a, den = v.den + 1), v),
+               #= final   =# (v) -> v.num / v.den)
   ```
 
 * Assuming `T = eltype(dst)` is a suitable element type for the result, a
-  **discrete convolution** of `A` by `B` can be implemented with:
+  **discrete correlation** of `A` by `B` can be implemented with:
 
   ```julia
   localfilter!(dst, A, B,
-               zero(T), # initial
-               (v,a,b) -> v + a*b) # update
+               #= initial =# zero(T),
+               #= update  =# (v,a,b) -> v + a*b)
   ```
 
   There are no needs to specify the `final` method here, as the default
-  `final=identity`, does the job.
+  `final = identity`, does the job.
 
 * Computing a local maximum (that is, a **dilation** in mathematical morphology
-  terms) of array `A` with a kernel `B` whose entries are booleans can be done
+  terms) of array `A` with a kernel `B` whose entries are Booleans can be done
   with:
 
   ```julia
   localfilter!(dst, A, B,
-               typemin(a), # initial
-               (v,a,b) -> ((b & (v < a)) ? a : v)) # update
+               #= initial =# typemin(a),
+               #= update  =# (v,a,b) -> ((b & (v < a)) ? a : v))
   ```
 
   As in the above example, there are no needs to specify the `final` method
@@ -181,21 +182,14 @@ implementation of a variety of linear and non-linear local filters:
 
 ## Installation
 
-To install the last official version:
+To install the last official version, press the `]` key to enter Julia's `Pkg`
+REPL mode and type:
 
 ```julia
-using Pkg
-pkg"add LocalFilters"
+add LocalFilters
 ```
 
-To use the last development version, install with Pkg, the Julia package
-manager, as an unregistered Julia package (press the ] key to enter the Pkg
-REPL mode):
-
-```julia
-using Pkg
-pkg"add https://github.com/emmt/LocalFilters.jl"
-```
+at the `... pkg>` prompt.
 
 The `LocalFilters` package is pure Julia code and nothing has to be build.
 

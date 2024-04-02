@@ -1,9 +1,10 @@
 # Linear filters
 
 `LocalFilters` provides a few linear filters: [`localmean`](@ref) or
-[`localmean!`](@ref) to compute the mean of values in a neighborhood, and
+[`localmean!`](@ref) to compute the mean of values in a neighborhood,
 [`convolve`](@ref) or [`convolve!`](@ref) to compute the discrete convolution
-of an array by a kernel.
+of an array by a kernel, and [`correlate`](@ref) or [`correlate!`](@ref) to
+compute the discrete correlation of an array by a kernel.
 
 
 ## Local mean
@@ -12,78 +13,72 @@ The [`localmean`](@ref) method yields the local mean of an array `A` in a
 neighborhood `B`:
 
 ```julia
-localmean(A, B=3) -> dst
+dst = localmean(A, B=3)
 ```
 
-The result `dst` is an array similar to `A`. If `B` is not specified, the
-neighborhood is a hyper-rectangular moving window of size 3 in every dimension.
-Otherwise, `B` may be specified as a Cartesian box, or as an array of booleans
-of same number of dimensions as `A`. If `B` is a single odd integer (as it is
-by default), the neighborhood is assumed to be a hyper-rectangular moving
-window of size `B` in every dimension.
+The result `dst` is an array similar to `A`. See Section *[Simple rules for
+specifying neighborhoods and kernels](@ref)* for the interpretation of `B`.
 
-To avoid allocations, use the in-place version [`localmean!`](@ref) and call:
+The in-place version [`localmean!`](@ref) may be used to avoid allocations:
 
 ```julia
-localmean!(dst, A, B=3) -> dst
+localmean!(dst, A, B=3)
 ```
 
-to overwrite `dst` with the local mean of `A` in the neighborhood defined by
-`B`.
+which overwrites `dst` with the local mean of `A` in the neighborhood defined
+by `B` and returns `dst`.
 
 
-## Convolution
+## Discrete convolution
 
-The [`convolve`](@ref) method yields the discrete convolution of an array by a
-kernel. Its syntax is:
+Call the [`convolve`](@ref) method as:
 
 ```julia
-convolve(A, B) -> dst
+dst = convolve(A, B)
 ```
 
-to yield the discrete convolution of array `A` by the kernel defined by `B`.
+to compute the discrete convolution of array `A` by the kernel defined by `B`.
 The result `dst` is an array similar to `A`.
 
-Using `Sup(A)` to denote the set of valid indices for array `A` and assuming
-`B` is an array of values, the discrete convolution of `A` by `B` writes:
+Using `indices(A)` to denote the set of valid indices for array `A` and
+assuming `B` is an array of values, the discrete convolution of `A` by `B`
+writes:
 
 ```julia
-T = promote_type(eltype(A), eltype(B))
-for i ∈ Sup(A)
+for i ∈ indices(A)
     v = zero(T)
-    @inbounds for k ∈ Sup(B) ∩ (i - Sup(A))
+    @inbounds for k ∈ indices(B) ∩ (i - indices(A))
         v += A[i-k]*B[k]
     end
     dst[i] = v
 end
 ```
 
-with `T` the type of the product of elements of `A` and `B`, and where `Sup(B)
-∩ (i - Sup(A))` denotes the subset of indices `k` such that `k ∈ Sup(B)` and
-`i - k ∈ Sup(A)` and thus for which `B[k]` and `A[i-k]` are valid.
+with `T` a suitable element type for the result (see Section *[Element type of
+the result](@ref)* below) and where `indices(B) ∩ (i - indices(A))` denotes the
+subset of indices `k` such that `k ∈ indices(B)` and `i - k ∈ indices(A)` and
+thus for which `B[k]` and `A[i-k]` are valid.
 
 Following the conventions in [`localfilter!`](@ref), the discrete convolution
 can also be expressed as:
 
 ```julia
-T = promote_type(eltype(A), eltype(B))
-for i ∈ Sup(A)
+for i ∈ indices(A)
     v = zero(T)
-    @inbounds for j ∈ Sup(A) ∩ (i - Sup(B))
+    @inbounds for j ∈ indices(A) ∩ (i - indices(B))
         v += A[j]*B[i-j]
     end
     dst[i] = v
 end
 ```
 
-If the kernel `B` is an array of booleans, the discrete convolution is computed
+If the kernel `B` is an array of Booleans, the discrete convolution is computed
 as:
 
 ```julia
-T = eltype(A)
-for i ∈ Sup(A)
+for i ∈ indices(A)
     v = zero(T)
-    for j ∈ Sup(A) ∩ (i - Sup(B))
+    @inbounds for j ∈ indices(A) ∩ (i - indices(B))
         if B[i-j]
             v += A[j]
         end
@@ -95,10 +90,120 @@ end
 which amounts to computing the local sum of the values of `A` in the
 neighborhood defined by the true entries of `B`.
 
-To avoid allocations, use the in-place version [`convolve!`](@ref) and call:
+The in-place version [`convolve!`](@ref) may be used to avoid allocations:
 
 ```julia
-convolve!(dst, A, B) -> dst
+convolve!(dst, A, B)
 ```
 
-to overwrite `dst` with the discrete convolution of `A` by the kernel `B`.
+which overwrites `dst` with the discrete convolution of `A` by the kernel `B`
+and returns `dst`.
+
+
+## Discrete correlation
+
+Call the [`correlate`](@ref) method as:
+
+```julia
+dst = correlate(A, B)
+```
+
+to compute the discrete correlation of array `A` by the kernel defined by `B`.
+The result `dst` is an array similar to `A`.
+
+Using `indices(A)` to denote the set of valid indices for array `A` and
+assuming `B` is an array of values, the discrete correlation of `A` by `B`
+writes:
+
+```julia
+for i ∈ indices(A)
+    v = zero(T)
+    @inbounds for k ∈ indices(B) ∩ (indices(A) - i)
+        v += A[i+k]*B[k]
+    end
+    dst[i] = v
+end
+```
+
+with `T` a suitable element type for the result (see Section *[Element type of
+the result](@ref)* below) and where `indices(B) ∩ (indices(A) - i)` denotes the
+subset of indices `k` such that `k ∈ indices(B)` and `i + k ∈ indices(A)` and
+thus for which `B[k]` and `A[i+k]` are valid.
+
+Following the conventions in [`localfilter!`](@ref), the discrete correlation
+can also be expressed as:
+
+```julia
+for i ∈ indices(A)
+    v = zero(T)
+    @inbounds for j ∈ indices(A) ∩ (indices(B) + i)
+        v += A[j]*B[j-i]
+    end
+    dst[i] = v
+end
+```
+
+If the kernel `B` is an array of Booleans, the discrete correlation is computed
+as:
+
+```julia
+for i ∈ indices(A)
+    v = zero(T)
+    @inbounds for j ∈ indices(A) ∩ (indices(B) + i)
+        v += A[j]
+    end
+    dst[i] = v
+end
+```
+
+which amounts to computing the local sum of the values of `A` in the
+neighborhood defined by the true entries of `B`.
+
+The in-place version [`correlate!`](@ref) may be used to avoid allocations:
+
+```julia
+correlate!(dst, A, B)
+```
+
+which overwrites `dst` with the discrete correlation of `A` by the kernel `B`
+and returns `dst`.
+
+SInce accessing the indices of `A` and `B` in the same order is generally
+faster (e.g. it is easier to optimize via loop vectorization), the discrete
+convolution `convolve(A,B)` of `A` by `B` may be computed by:
+
+```julia
+correlate(A, reverse_kernel(B))
+```
+
+
+## Element type of the result
+
+Choosing a suitable element type for the result may be tricky if the entries of
+the source array `A` and of the kernel `B` have different types or have units.
+
+For example, a suitable element type `T` for the result of the convolution or
+correlation of `A` by `B` is given by:
+
+```julia
+T = let a = oneunit(eltype(A)), b = oneunit(eltype(B)), c = a*b
+    typeof(c + c)
+end
+```
+
+which is the type of the sum of the element-wise product of the entries of `A`
+and `B`.
+
+For the local mean, a similar reasoning yields:
+
+```julia
+T = let a = oneunit(eltype(A)), b = oneunit(eltype(B)), c = a*b
+    typeof((c + c)/(b + b))
+end
+```
+
+which is the type of the sum of the element-wise product of the entries of `A`
+and `B` divided by the sum of the entries in `B` (the so-called weights).
+
+These rules are the ones used by the out-of-place versions of the linear
+filters of `LocalFilter` when the destination is not provided.

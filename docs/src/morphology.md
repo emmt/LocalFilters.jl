@@ -12,11 +12,11 @@ dilate(A, R=3) -> Amax
 
 which respectively return the local minima `Amin` and the local maxima `Amax`
 of argument `A` in a *structuring element* defined by `R`. The notion of
-*structuring element* in mathematical morphology is equlvalent to that of
+*structuring element* in mathematical morphology is equivalent to that of
 *neighborhood* in `LocalFilters`. The returned result is similar to `A` (same
 size and type). If `R` is not specified, a default hyper-rectangular moving
-window of size 3 in every dimension of `A` is used. If the structuring element
-`R` is a simple hyper-rectangular moving window, the much faster van
+window 3 samples wide in every dimension of `A` is used. If the structuring
+element `R` is a simple hyper-rectangular moving window, the much faster van
 Herk-Gil-Werman algorithm is used
 
 The [`localextrema`](@ref) method combines these two operations in one call:
