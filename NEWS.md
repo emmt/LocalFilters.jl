@@ -10,6 +10,9 @@
 - `localmean` and `localmean!` accept a `null` keyword to specify the value of
   the result when the sum of weights in a neighborhood is zero.
 
+- The algorithm to infer the result type is now based on Julia's arithmetic
+  rules and can cope with arguments that have units.
+
 - To represent hyper-rectangular neighborhoods, instances of non-exported
   `LocalFilters.Box` have been replaced by fast uniform arrays with offset axes
   from the [`StructuredArrays`](https://github.com/emmt/StructuredArrays.jl)

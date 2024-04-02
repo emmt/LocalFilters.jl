@@ -27,7 +27,27 @@ the weights in a local neighborhood is zero.
 
 See also [`localmean!`](@ref) and [`localfilter!`](@ref).
 
-""" localmean
+"""
+function localmean(A::AbstractArray{<:Any,N},
+                   B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
+    # Provides default ordering.
+    return localmean(A, ForwardFilter, B)
+end
+
+function localmean(A::AbstractArray{<:Any,N},
+                   ord::FilterOrdering,
+                   B::Window{N} = 3) where {N}
+    # Make `B` into a kernel array.
+    return localmean(A, ord, kernel(Dims{N}, B))
+end
+
+function localmean(A::AbstractArray{<:Any,N},
+                   ord::FilterOrdering,
+                   B::AbstractArray{<:Any,N}) where {N}
+    # Provide the destination array.
+    T = mean_type(eltype(A), eltype(B))
+    return localmean!(similar(A, T), A, ord, B)
+end
 
 """
     localmean!(dst, A, [ord=ForwardFilter,] B=3; null=zero(eltype(dst))) -> dst
@@ -40,7 +60,21 @@ the weights in the a neighborhood is zero.
 
 See also [`localmean`](@ref) and [`localfilter!`](@ref).
 
-""" localmean!
+"""
+function localmean!(dst::AbstractArray{<:Any,N},
+                    A::AbstractArray{<:Any,N},
+                    B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
+    # Provide default ordering.
+    return localmean!(dst, A, ForwardFilter, B)
+end
+
+function localmean!(dst::AbstractArray{<:Any,N},
+                    A::AbstractArray{<:Any,N},
+                    ord::FilterOrdering,
+                    B::Window{N} = 3) where {N}
+    # Make `B` into a kernel array.
+    return localmean!(dst, A, ord, kernel(Dims{N}, B))
+end
 
 # Local mean inside a simple sliding window.
 function localmean!(dst::AbstractArray{<:Any,N},
@@ -50,15 +84,16 @@ function localmean!(dst::AbstractArray{<:Any,N},
                     null = zero(eltype(dst))) where {N}
     null = nearest(eltype(dst), null)
     indices = Indices(dst, A, B)
+    T_num = sum_type(eltype(A))
     @inbounds for i in indices(dst)
         J = localindices(indices(A), ord, indices(B), i)
         den = length(J)
         if den > 0
-            num = zero(result_eltype(+, A))
+            num = zero(T_num)
             @simd for j in J
                 num += A[j]
             end
-            dst[i] = nearest(eltype(dst), num/den)
+            dst[i] = nearest(eltype(dst), _div(num, den))
         else
             dst[i] = null
         end
@@ -66,33 +101,7 @@ function localmean!(dst::AbstractArray{<:Any,N},
     return dst
 end
 
-# Local mean with a shaped neighborhood.
-function localmean!(dst::AbstractArray{<:Any,N},
-                    A::AbstractArray{<:Any,N},
-                    ord::FilterOrdering,
-                    B::AbstractArray{Bool,N};
-                    null = zero(eltype(dst))) where {N}
-    null = nearest(eltype(dst), null)
-    indices = Indices(dst, A, B)
-    @inbounds for i in indices(dst)
-        num = zero(result_eltype(+, A))
-        den = 0
-        J = localindices(indices(A), ord, indices(B), i)
-        @simd for j in J
-            b = B[ord(i,j)]
-            num += ifelse(b, A[j], zero(eltype(A)))
-            den += b
-        end
-        if !iszero(den)
-            dst[i] = nearest(eltype(dst), num/den)
-        else
-            dst[i] = null
-        end
-    end
-    return dst
-end
-
-# Weighted local mean.
+# Local mean with a shaped neighborhood or weighted local mean.
 function localmean!(dst::AbstractArray{<:Any,N},
                     A::AbstractArray{<:Any,N},
                     ord::FilterOrdering,
@@ -100,16 +109,19 @@ function localmean!(dst::AbstractArray{<:Any,N},
                     null = zero(eltype(dst))) where {N}
     null = nearest(eltype(dst), null)
     indices = Indices(dst, A, B)
+    T_num = sum_prod_type(eltype(A), eltype(B))
+    T_den = sum_type(eltype(B))
     @inbounds for i in indices(dst)
-        num = zero(result_eltype(+, A))
-        den = zero(result_eltype(+, B))
+        num = zero(T_num)
+        den = zero(T_den)
         J = localindices(indices(A), ord, indices(B), i)
         @simd for j in J
-            num += A[j]
-            den += B[ord(i,j)]
+            wgt = B[ord(i,j)]
+            num += _mul(A[j], wgt)
+            den += wgt
         end
         if !iszero(den)
-            dst[i] = nearest(eltype(dst), num/den)
+            dst[i] = nearest(eltype(dst), _div(num, den))
         else
             dst[i] = null
         end
@@ -117,8 +129,43 @@ function localmean!(dst::AbstractArray{<:Any,N},
     return dst
 end
 
+# Yield the type of the sum of terms of a given type.
+function sum_type(::Type{A}) where {A}
+    x = oneunit(A)
+    return typeof(_add(x, x))
+end
+
+# Yield the type of the sum of the product of terms of given types.
+function sum_prod_type(::Type{A}, ::Type{B}) where {A,B}
+    x = _mul(oneunit(A), oneunit(B))
+    return typeof(_add(x, x))
+end
+
+# Yield the type of a local, possibly weighted, mean.
+function mean_type(::Type{A} #= data type =#,
+                   ::Type{B} #= weight type =#) where {A,B}
+    a = oneunit(A)
+    b = oneunit(B)
+    c = _mul(a, b)
+    return typeof(_div(_add(c, c), _add(b, b)))
+end
+
+# Compared to the base implementation in `bool.jl`, the following definition of
+# the multiplication by a boolean yields a significantly faster (~50%)
+# `local_sum_prod!` for big neighborhoods because `copysign` is avoided.
+_mul(a::Any,  b::Bool) = ifelse(b, a, zero(a))
+_mul(a::Bool, b::Any ) = _mul(b, a)
+_mul(a::Bool, b::Bool) = a&b
+_mul(a::Any,  b::Any ) = a*b
+
+# Addition of terms as assumed by linear filters.
+_add(a::Any,  b::Any) = a+b
+
+# division of terms as assumed by linear filters.
+_div(a::Any,  b::Any) = a/b
+
 """
-    correlate(A, B=3) -> dst
+    correlate(A, B) -> dst
 
 yields the discrete correlation of the array `A` by the kernel defined by `B`.
 The result `dst` is an array similar to `A`.
@@ -127,7 +174,7 @@ Using `Sup(A)` to denote the set of valid indices for array `A` and assuming
 `B` is an array of numerical values, the discrete convolution of `A` by `B`
 writes:
 
-    T = promote_type(eltype(A), eltype(B))
+    T = let x = oneunit(eltype(A))*oneunit(eltype(B)); typeof(x + x); end
     dst = similar(A, T)
     for i ∈ Sup(A)
         v = zero(T)
@@ -141,8 +188,7 @@ with `T` the type of the product of elements of `A` and `B`, and where `Sup(A)
 ∩ (i - Sup(A))` denotes the subset of indices `k` such that `k ∈ Sup(B)` and
 `i - k ∈ Sup(A)` and thus for which `B[k]` and `A[i-k]` are valid.
 
-See also [`correlate!`](@ref), [`convolve`](@ref), and
-[`LocalFilters.multiply_add`](@ref).
+See also [`correlate!`](@ref) and [`convolve`](@ref).
 
 """ correlate
 
@@ -157,7 +203,7 @@ See also [`correlate`](@ref) and [`localfilter!`](@ref).
 """ correlate!
 
 """
-    convolve(A, B=3)
+    convolve(A, B)
 
 yields the discrete convolution of array `A` by the kernel defined by `B`. The
 result `dst` is an array similar to `A`.
@@ -165,7 +211,7 @@ result `dst` is an array similar to `A`.
 Using `Sup(A)` to denote the set of valid indices for array `A` and assuming
 `B` is an array of values, the discrete convolution of `A` by `B` writes:
 
-    T = promote_type(eltype(A), eltype(B))
+    T = let x = oneunit(eltype(A))*oneunit(eltype(B)); typeof(x + x); end
     for i ∈ Sup(A)
         v = zero(T)
         @inbounds for j ∈ Sup(B) ∩ (i - Sup(A))
@@ -192,37 +238,24 @@ See also [`convolve`](@ref) and [`localfilter!`](@ref).
 
 """ convolve!
 
-"""
-    multiply_add(A, [ord=ForwardFilter,] B=3) -> dst
-
-yields the discrete correlation (if `ord=ForwardFilter`) or the discrete
-convolution (if `ord=ReverseFilter`) of `A` by `B`. The result is an array
-similar to `A`.
-
-See also [`multiply_add!`](@ref), [`correlate`](@ref), [`convolve`](@ref), and
-[`localfilter!`](@ref).
-
-""" multiply_add
-
-"""
-    multiply_add!(dst, A, [ord=ForwardFilter,] B=3) -> dst
-
-overwrites `dst` with the discrete correlation (if `ord=ForwardFilter`) or the
-discrete convolution (if `ord=ReverseFilter`) of `A` by `B`.
-
-See also [`multiply_add`](@ref) and [`localfilter!`](@ref).
-
-""" multiply_add!
+# Provide destination.
+function local_sum_prod(A::AbstractArray{<:Any,N},
+                        ord::FilterOrdering,
+                        B::AbstractArray{<:Any,N}) where {N}
+    T = sum_prod_type(eltype(A), eltype(B))
+    return local_sum_prod!(similar(A, T), A, ord, B)
+end
 
 # Local sum inside a simple sliding window.
-function multiply_add!(dst::AbstractArray{<:Any,N},
-                       A::AbstractArray{<:Any,N},
-                       ord::FilterOrdering,
-                       B::Box{N}) where {N}
+function local_sum_prod!(dst::AbstractArray{<:Any,N},
+                         A::AbstractArray{<:Any,N},
+                         ord::FilterOrdering,
+                         B::Box{N}) where {N}
     indices = Indices(dst, A, B)
+    T = sum_type(eltype(A))
     @inbounds for i in indices(dst)
         J = localindices(indices(A), ord, indices(B), i)
-        v = zero(result_eltype(+, A))
+        v = zero(T)
         @simd for j in J
             v += A[j]
         end
@@ -231,130 +264,36 @@ function multiply_add!(dst::AbstractArray{<:Any,N},
     return dst
 end
 
-# Local sum with a shaped neighborhood.
-function multiply_add!(dst::AbstractArray{<:Any,N},
-                       A::AbstractArray{<:Any,N},
-                       ord::FilterOrdering,
-                       B::AbstractArray{Bool,N}) where {N}
+# Correlation/convolution or local sum with a shaped neighborhood.
+function local_sum_prod!(dst::AbstractArray{<:Any,N},
+                         A::AbstractArray{<:Any,N},
+                         ord::FilterOrdering,
+                         B::AbstractArray{<:Any,N}) where {N}
     indices = Indices(dst, A, B)
+    T = sum_prod_type(eltype(A), eltype(B))
     @inbounds for i in indices(dst)
         J = localindices(indices(A), ord, indices(B), i)
-        v = zero(result_eltype(+, A))
+        v = zero(T)
         @simd for j in J
-            v += mult(A[j], B[ord(i,j)])
+            v += _mul(A[j], B[ord(i,j)])
         end
         dst[i] = nearest(eltype(dst), v)
     end
     return dst
-end
-
-# Compared to the base implementation in `bool.jl`, the following definition of
-# the multiplication by a boolean yields a significantly faster (~50%)
-# `multiply_add!` for big neighborhoods because `copysign` is avoided.
-mult(a::Number, b::Bool) = ifelse(b, a, zero(a))
-mult(a::Bool, b::Number) = mult(b, a)
-mult(a::Bool, b::Bool) = a*b
-mult(a, b) = a*b
-
-# Correlation/convolution.
-function multiply_add!(dst::AbstractArray{<:Any,N},
-                       A::AbstractArray{<:Any,N},
-                       ord::FilterOrdering,
-                       B::AbstractArray{<:Any,N}) where {N}
-    indices = Indices(dst, A, B)
-    @inbounds for i in indices(dst)
-        J = localindices(indices(A), ord, indices(B), i)
-        v = zero(promote_type(eltype(A), eltype(B)))
-        @simd for j in J
-            v += A[j]*B[ord(i,j)]
-        end
-        dst[i] = nearest(eltype(dst), v)
-    end
-    return dst
-end
-
-for f in (:localmean, :multiply_add)
-    f! = Symbol(f,:(!))
-    @eval begin
-        # These versions provides a default ordering.
-        function $f(A::AbstractArray{<:Any,N},
-                    B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
-            return $f(A, ForwardFilter, B)
-        end
-        function $f!(dst::AbstractArray{<:Any,N},
-                     A::AbstractArray{<:Any,N},
-                     B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
-            return $f!(dst, A, ForwardFilter, B)
-        end
-
-        # These versions builds a kernel.
-        function $f(A::AbstractArray{<:Any,N},
-                    ord::FilterOrdering,
-                    B::Window{N} = 3) where {N}
-            return $f(A, ord, kernel(Dims{N}, B))
-        end
-        function $f!(dst::AbstractArray{<:Any,N},
-                     A::AbstractArray{<:Any,N},
-                     ord::FilterOrdering,
-                     B::Window{N} = 3) where {N}
-            return $f!(dst, A, ord, kernel(Dims{N}, B))
-        end
-
-        # This version provides the destination array.
-        function $f(A::AbstractArray{<:Any,N},
-                    ord::FilterOrdering,
-                    B::AbstractArray{<:Any,N}) where {N}
-            return $f!(similar(A, result_eltype($f, A, B)), A, ord, B)
-        end
-    end
 end
 
 for (f, ord) in ((:correlate, :ForwardFilter),
                  (:convolve,  :ReverseFilter))
-    f! = Symbol(f,:(!))
+    f! = Symbol(f,"!")
     @eval begin
-        $f(A::AbstractArray) = multiply_add(A, $ord)
         function $f(A::AbstractArray{<:Any,N},
                     B::Union{Window{N},AbstractArray{<:Any,N}}) where {N}
-            return multiply_add(A, $ord, B)
+            return local_sum_prod(A, $ord, kernel(Dims{N}, B))
         end
-        function $f!(dst::AbstractArray{<:Any,N},
-                     A::AbstractArray{<:Any,N}) where {N}
-            return multiply_add!(dst, A, $ord)
-        end
-
         function $f!(dst::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
                      B::Union{Window{N},AbstractArray{<:Any,N}}) where {N}
-            return multiply_add!(dst, A, $ord, B)
+            return local_sum_prod!(dst, A, $ord, kernel(Dims{N}, B))
         end
     end
-end
-
-# Extend `result_eltype` for `localmean`.
-function result_eltype(::typeof(localmean),
-                       A::AbstractArray{<:Any,N},
-                       B::Union{CartesianIndices{N},
-                                AbstractArray{Bool,N}}) where {N}
-    return float(eltype(A))
-end
-
-function result_eltype(::typeof(localmean),
-                       A::AbstractArray{<:Any,N},
-                       B::AbstractArray{<:Any,N}) where {N}
-    return float(promote_type(eltype(A), eltype(B)))
-end
-
-# Extend `result_eltype` for `multiply_add`.
-function result_eltype(::typeof(multiply_add),
-                       A::AbstractArray{<:Any,N},
-                       B::Union{CartesianIndices{N},
-                                AbstractArray{Bool,N}}) where {N}
-    return result_eltype(+, A)
-end
-
-function result_eltype(::typeof(multiply_add),
-                       A::AbstractArray{<:Any,N},
-                       B::AbstractArray{<:Any,N}) where {N}
-    return promote_type(eltype(A), eltype(B))
 end

@@ -331,18 +331,6 @@ yields the infimum and supremum of a type `T`.
 limits(T::Type) = (typemin(T), typemax(T))
 
 """
-    LocalFilters.result_eltype(f, A[, B]) -> T
-
-yields the element type `T` of the result of applying function `f` to
-source `A`, optionally with kernel/neighborhood `B`.
-
-"""
-result_eltype(::typeof(+), ::AbstractArray{T}) where {T} = T
-result_eltype(::typeof(+), ::AbstractArray{T}) where {T<:Integer} =
-    # Widen type for integers smaller than standard ones.
-    (sizeof(T) < sizeof(Int) ? widen(T) : T)
-
-"""
     LocalFilters.is_morpho_math_box(B)
 
 yields whether structuring element `B` has the same effect as an
