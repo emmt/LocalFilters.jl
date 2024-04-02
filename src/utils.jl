@@ -211,37 +211,37 @@ for cls in (:MutableUniformArray, :UniformArray, :FastUniformArray)
 end
 
 """
-    ForwardFilter
+    FORWARD_FILTER
 
 is an exported constant object used to indicate *forward* ordering of indices
 in local filter operations. It can be called as:
 
-    ForwardFilter(i, j) -> j - i
+    FORWARD_FILTER(i, j) -> j - i
 
-to yield the index in the filter kernel. See also [`ReverseFilter`](@ref) for
+to yield the index in the filter kernel. See also [`REVERSE_FILTER`](@ref) for
 *reverse* ordering and [`LocalFilters.localindices`](@ref) for building a range
 of valid indices `j`.
 
 """
-const ForwardFilter = ForwardFilterOrdering()
+const FORWARD_FILTER = ForwardFilterOrdering()
 
 """
-    ReverseFilter
+    REVERSE_FILTER
 
 is an exported constant object used to indicate *reverse* ordering of indices
 in local filter operations. It can be called as:
 
-    ReverseFilter(i, j) -> i - j
+    REVERSE_FILTER(i, j) -> i - j
 
-to yield the index in the filter kernel. See also [`ForwardFilter`](@ref) for
+to yield the index in the filter kernel. See also [`FORWARD_FILTER`](@ref) for
 *forward* ordering and [`LocalFilters.localindices`](@ref) for building a range
 of valid indices `j`.
 
 """
-const ReverseFilter = ReverseFilterOrdering()
+const REVERSE_FILTER = ReverseFilterOrdering()
 
-Base.reverse(::ForwardFilterOrdering) = ReverseFilter
-Base.reverse(::ReverseFilterOrdering) = ForwardFilter
+Base.reverse(::ForwardFilterOrdering) = REVERSE_FILTER
+Base.reverse(::ReverseFilterOrdering) = FORWARD_FILTER
 
 @inline (::ForwardFilterOrdering)(i::Int, j::Int) = j - i
 @inline (::ForwardFilterOrdering)(i::Integer, j::Integer) = Int(j) - Int(i)
@@ -256,9 +256,9 @@ Base.reverse(::ReverseFilterOrdering) = ForwardFilter
 
 yields the subset `J` of all indices `j` such that:
 
-- `A[j]` and `B[ord(i,j)] = B[j-i]` are in-bounds if `ord = ForwardFilter`;
+- `A[j]` and `B[ord(i,j)] = B[j-i]` are in-bounds if `ord = FORWARD_FILTER`;
 
-- `A[j]` and `B[ord(i,j)] = B[i-j]` are in-bounds if `ord = ReverseFilter`;
+- `A[j]` and `B[ord(i,j)] = B[i-j]` are in-bounds if `ord = REVERSE_FILTER`;
 
 with `A` and `B` arrays whose index ranges are given by `A_inds` and
 `B_inds`. To make the code agnostic to the ordering, use `A[i]` and

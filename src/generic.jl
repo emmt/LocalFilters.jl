@@ -23,14 +23,14 @@ localfilter(A::AbstractArray, args...; kwds...) =
     localfilter!(similar(A), A, args...; kwds...)
 
 """
-    localfilter!(dst, A, [ord = ForwardFilter,] B, initial,
+    localfilter!(dst, A, [ord = FORWARD_FILTER,] B, initial,
                  update::Function, final::Function = identity) -> dst
 
 overwrites the destination `dst` with the result of a local filter applied to
 the source `A`, on a relative neighborhood defined by `B`, and implemented by
 `initial`, `update`, and `final`. The `initial` argument may be a function or
 not. The purpose of these latter arguments is explained by the following
-pseudo-codes implementing the local filtering. If `ord = ForwardFilter`:
+pseudo-codes implementing the local filtering. If `ord = FORWARD_FILTER`:
 
     @inbounds for i ∈ indices(dst)
         v = initial isa Function ? initial(A[i]) : initial
@@ -40,7 +40,7 @@ pseudo-codes implementing the local filtering. If `ord = ForwardFilter`:
         dst[i] = final(v)
     end
 
-else if `ord = ReverseFilter`:
+else if `ord = REVERSE_FILTER`:
 
     @inbounds for i ∈ indices(dst)
         v = initial isa Function ? initial(A[i]) : initial
@@ -81,7 +81,7 @@ function localfilter!(dst::AbstractArray{<:Any,N},
                               initial,
                               update::Function,
                               final::Function = identity) where {N}
-    localfilter!(dst, A, ForwardFilter, B, initial, update, final)
+    localfilter!(dst, A, FORWARD_FILTER, B, initial, update, final)
 end
 
 # This version builds a kernel.
@@ -116,7 +116,7 @@ end
 end
 
 """
-    localfilter!(dst, A, [ord=ForwardFilter,] B, filter!) -> dst
+    localfilter!(dst, A, [ord=FORWARD_FILTER,] B, filter!) -> dst
 
 overwrites `dst` with the result of filtering the source `A` by the kernel
 specified by `B`, with ordering `ord`, and the function `filter!` which is
@@ -133,17 +133,17 @@ the array representing the filter kernel. The function `filter!` shall compute
 the result of the local filtering operation and store it in the destination
 `dst` at position `i`.
 
-- If `ord = ForwardFilter`, then `J` is the subset of all indices `j` such that
-  `A[j]` and `B[j-i]` are in-bounds. This is the natural ordering to implement
-  discrete correlations.
+- If `ord = FORWARD_FILTER`, then `J` is the subset of all indices `j` such
+  that `A[j]` and `B[j-i]` are in-bounds. This is the natural ordering to
+  implement discrete correlations.
 
-- If `ord = ReverseFilter`, then `J` is the subset of all indices `j` such that
-  `A[j]` and `B[i-j]` are in-bounds. This is the natural ordering to implement
-  discrete convolutions.
+- If `ord = REVERSE_FILTER`, then `J` is the subset of all indices `j` such
+  that `A[j]` and `B[i-j]` are in-bounds. This is the natural ordering to
+  implement discrete convolutions.
 
 To be agnostic to the ordering, just use `B[ord(i,j)]` in the code of `filter!`
 to automatically yield either `B[j-i]` or `B[i-j]` depending on whether `ord`
-is `ForwardFilter` or `ReverseFilter`.
+is `FORWARD_FILTER` or `REVERSE_FILTER`.
 
 """
 function localfilter!(dst::AbstractArray{<:Any,N},
@@ -151,7 +151,7 @@ function localfilter!(dst::AbstractArray{<:Any,N},
                       B::Union{Window{N},AbstractArray{<:Any,N}},
                       filter!::Function) where {N}
     # Provide default ordering.
-    localfilter!(dst, A, ForwardFilter, B, filter!)
+    localfilter!(dst, A, FORWARD_FILTER, B, filter!)
 end
 
 function localfilter!(dst::AbstractArray{<:Any,N},
@@ -160,7 +160,7 @@ function localfilter!(dst::AbstractArray{<:Any,N},
                       B::Window{N},
                       filter!::Function) where {N}
     # Build kernel.
-    localfilter!(dst, A, ForwardFilter, kernel(Dims{N}, B), filter!)
+    localfilter!(dst, A, FORWARD_FILTER, kernel(Dims{N}, B), filter!)
 end
 
 function localfilter!(dst::AbstractArray{<:Any,N},

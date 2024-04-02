@@ -12,7 +12,7 @@
 #
 
 """
-    localmean(A, [ord=ForwardFilter,] B=3; null=zero(eltype(A)))
+    localmean(A, [ord=FORWARD_FILTER,] B=3; null=zero(eltype(A)))
 
 yields the local mean of `A` in a neighborhood defined by `B`. The result is an
 array similar to `A`. If `B` is not specified, the neighborhood is a
@@ -31,7 +31,7 @@ See also [`localmean!`](@ref) and [`localfilter!`](@ref).
 function localmean(A::AbstractArray{<:Any,N},
                    B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
     # Provides default ordering.
-    return localmean(A, ForwardFilter, B)
+    return localmean(A, FORWARD_FILTER, B)
 end
 
 function localmean(A::AbstractArray{<:Any,N},
@@ -50,7 +50,7 @@ function localmean(A::AbstractArray{<:Any,N},
 end
 
 """
-    localmean!(dst, A, [ord=ForwardFilter,] B=3; null=zero(eltype(dst))) -> dst
+    localmean!(dst, A, [ord=FORWARD_FILTER,] B=3; null=zero(eltype(dst))) -> dst
 
 overwrites `dst` with the local mean of `A` in a neighborhood defined by `B`
 and returns `dst`.
@@ -65,7 +65,7 @@ function localmean!(dst::AbstractArray{<:Any,N},
                     A::AbstractArray{<:Any,N},
                     B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
     # Provide default ordering.
-    return localmean!(dst, A, ForwardFilter, B)
+    return localmean!(dst, A, FORWARD_FILTER, B)
 end
 
 function localmean!(dst::AbstractArray{<:Any,N},
@@ -282,8 +282,8 @@ function local_sum_prod!(dst::AbstractArray{<:Any,N},
     return dst
 end
 
-for (f, ord) in ((:correlate, :ForwardFilter),
-                 (:convolve,  :ReverseFilter))
+for (f, ord) in ((:correlate, :FORWARD_FILTER),
+                 (:convolve,  :REVERSE_FILTER))
     f! = Symbol(f,"!")
     @eval begin
         function $f(A::AbstractArray{<:Any,N},

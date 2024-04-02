@@ -12,7 +12,7 @@
 #
 
 """
-    erode(A, [ord=ForwardFilter,] B=3) -> Amin
+    erode(A, [ord=FORWARD_FILTER,] B=3) -> Amin
 
 yields the erosion of `A` by the structuring element defined by `B`. The
 erosion is the array of local minima of `A`. The returned result `Amin` is
@@ -34,7 +34,7 @@ erosion and a dilation in a single pass.
 """ erode
 
 """
-    erode!(Amin, A, [ord=ForwardFilter,] B=3) -> Amin
+    erode!(Amin, A, [ord=FORWARD_FILTER,] B=3) -> Amin
 
 overwrites `Amin` with the erosion of the array `A` by the structuring element
 defined by `B` and returns `Amin`.
@@ -45,14 +45,14 @@ Herk-Gil-Werman algorithm is used and the operation can be done in-place. That
 is, `A` and `Amin` can be the same arrays. In that case, the following syntax
 is allowed:
 
-    erode!(A, [ord=ForwardFilter,] B=3) -> A
+    erode!(A, [ord=FORWARD_FILTER,] B=3) -> A
 
 See [`erode`](@ref) for an out-of-place version and for more information.
 
 """ erode!
 
 """
-    dilate(A, [ord=ForwardFilter,] B=3) -> Amax
+    dilate(A, [ord=FORWARD_FILTER,] B=3) -> Amax
 
 yields the dilation of `A` by the structuring element defined by `B`. The
 dilation is the array of local maxima of `A`. The returned result `Amax` is
@@ -74,7 +74,7 @@ erosion and a dilation in a single pass.
 """ dilate
 
 """
-    dilate!(Amax, A, [ord=ForwardFilter,] B=3) -> Amax
+    dilate!(Amax, A, [ord=FORWARD_FILTER,] B=3) -> Amax
 
 overwrites `Amax` with a dilation of the array `A` by the structuring element
 defined by `B` and returns `Amax`.
@@ -85,7 +85,7 @@ Herk-Gil-Werman algorithm is used and the operation can be done in-place. That
 is, `A` and `Amin` can be the same arrays. In that case, the following syntax
 is allowed:
 
-    dilate!(A, [ord=ForwardFilter,] B=3) -> A
+    dilate!(A, [ord=FORWARD_FILTER,] B=3) -> A
 
 See [`dilate`](@ref) for an out-of-place version and for more information.
 
@@ -103,7 +103,7 @@ for (f, op) in ((:erode, :min), (:dilate, :max))
                      A::AbstractArray{<:Any,N},
                      B::Union{Window{N},
                               AbstractArray{<:Any,N}} = 3) where {N}
-            return $f!(dst, A, ForwardFilter, B)
+            return $f!(dst, A, FORWARD_FILTER, B)
         end
 
         # Build structuring element.
@@ -253,7 +253,7 @@ function slow_dilate!(dst::AbstractArray{<:Any,N},
 end
 
 """
-    localextrema(A, [ord=ForwardFilter,] B=3) -> Amin, Amax
+    localextrema(A, [ord=FORWARD_FILTER,] B=3) -> Amin, Amax
 
 yields the results of performing an erosion and a dilation of `A` by the
 structuring element defined by `B` in a single pass. Calling this method is
@@ -267,7 +267,7 @@ localextrema(A::AbstractArray, args...) =
     localextrema!(similar(A), similar(A), A, args...)
 
 """
-    localextrema!(Amin, Amax, A, [ord=ForwardFilter,] B=3) -> Amin, Amax
+    localextrema!(Amin, Amax, A, [ord=FORWARD_FILTER,] B=3) -> Amin, Amax
 
 overwrites `Amin` and `Amax` with, respectively, an erosion and a dilation of
 the array `A` by the structuring element defined by `B` in a single pass.
@@ -280,7 +280,7 @@ function localextrema!(Amin::AbstractArray{<:Any,N},
                        A::AbstractArray{<:Any,N},
                        B::Union{Window{N},
                                 AbstractArray{<:Any,N}} = 3) where {N}
-    localextrema!(Amin, Amax, A, ForwardFilter, B)
+    localextrema!(Amin, Amax, A, FORWARD_FILTER, B)
 end
 
 function localextrema!(Amin::AbstractArray{<:Any,N},
@@ -354,7 +354,7 @@ end
 # Higher level operators.
 
 """
-    closing(A, [ord=ForwardFilter,] B=3) -> dst
+    closing(A, [ord=FORWARD_FILTER,] B=3) -> dst
 
 yields a closing of array `A` by the structuring element defined by `B`. A
 closing is a dilation followed by an erosion. The result `dst` is an array
@@ -417,7 +417,7 @@ for f in (:closing, :opening)
                      wrk::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
                      B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
-            $f!(dst, wrk, A, ForwardFilter, B)
+            $f!(dst, wrk, A, FORWARD_FILTER, B)
         end
         function $f!(dst::AbstractArray{<:Any,N},
                      wrk::AbstractArray{<:Any,N},
@@ -477,7 +477,7 @@ See [`bottom_hat`](@ref) for a related operation,
 
 
 """
-    LocalFilters.top_hat!(dst, wrk, A, [ord=ForwardFilter,] B=3) -> dst
+    LocalFilters.top_hat!(dst, wrk, A, [ord=FORWARD_FILTER,] B=3) -> dst
 
 overwrites `dst` with the result of a top-hat filter applied to `A` with
 structuring element `B`, and using `wrk` as a workspace whose contents is not
@@ -524,9 +524,9 @@ for (f, pf) in ((:top_hat,    :closing),
     pf! = Symbol(pf,:!) # pre-filter
     @eval begin
         # Provide default ordering and default structuring element.
-        $f(A::AbstractArray, B=3) = $f(A, ForwardFilter, B)
+        $f(A::AbstractArray, B=3) = $f(A, FORWARD_FILTER, B)
         $f(A::AbstractArray, ord::FilterOrdering) = $f(A, ord, 3)
-        $f(A::AbstractArray, B, C) = $f(A, ForwardFilter, B, C)
+        $f(A::AbstractArray, B, C) = $f(A, FORWARD_FILTER, B, C)
         $f(A::AbstractArray, ord::FilterOrdering, B, C) = $f(A, ord, B, ord, C)
 
         # Provide destination and workspace. Out-of-place top/bottom hat
@@ -546,7 +546,7 @@ for (f, pf) in ((:top_hat,    :closing),
                      wrk::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
                      B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
-            return $f!(dst, wrk, A, ForwardFilter, B)
+            return $f!(dst, wrk, A, FORWARD_FILTER, B)
         end
 
         # Build structuring element.

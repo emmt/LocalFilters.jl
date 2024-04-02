@@ -97,8 +97,8 @@ const Box{N,I} = FastUniformArray{Bool,N,true,I}
     LocalFilters.FilterOrdering
 
 is the super-type of the possible ordering of indices in local filtering
-operations. [`ForwardFilter`](@ref) and [`ReverseFilter`](@ref) are
-the two concrete singletons that inherit from this type.
+operations. [`FORWARD_FILTER`](@ref) and [`REVERSE_FILTER`](@ref) are the two
+concrete singletons that inherit from this type.
 
 """
 abstract type FilterOrdering end
@@ -107,7 +107,7 @@ abstract type FilterOrdering end
     LocalFilters.ForwardFilterOrdering
 
 is the singleton type of *forward* ordering of indices in local filter
-operations. The singleton instance [`ForwardFilter`](@ref) of this type is
+operations. The singleton instance [`FORWARD_FILTER`](@ref) of this type is
 exported by `LocalFilters`.
 
 """
@@ -117,7 +117,7 @@ struct ForwardFilterOrdering <: FilterOrdering end
     LocalFilters.ForwardFilterOrdering
 
 is the singleton type of *reverse* ordering of indices in local filter
-operations. The singleton instance [`ReverseFilter`](@ref) of this type is
+operations. The singleton instance [`REVERSE_FILTER`](@ref) of this type is
 exported by `LocalFilters`.
 
 """

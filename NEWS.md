@@ -22,6 +22,10 @@
 - Exported method `reverse_kernel` yields a reversed kernel such that
   correlation by `reverse_kernel(B)` is identical to convolution by `B`.
 
+- Constants for filter ordering follow more general naming rules:
+  `FORWARD_FILTER` and `REVERSE_FILTER` instead of `ForwardFilter` and
+  `ReverseFilter`.
+
 ## Version 2.0.0
 
 Version 2 of `LocalFilters` better integrates in the Julia ecosystem as fewer

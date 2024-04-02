@@ -63,7 +63,7 @@ Base.convert(::Type{T}, f::T) where {T<:GaussianWindow} = f
 Base.convert(::Type{GaussianWindow{T}}, f) where {T} = GaussianWindow{T}(f)
 
 """
-    bilateralfilter([T=float(eltype(A)),] A, F, [ord=ForwardFilter,] G...=3)
+    bilateralfilter([T=float(eltype(A)),] A, F, [ord=FORWARD_FILTER,] G...=3)
 
 yields the result of applying the bilateral filter on array `A`.
 
@@ -110,7 +110,7 @@ bilateralfilter(T::Type, A::AbstractArray, args...) =
     bilateralfilter!(similar(A, T), A, args...)
 
 """
-    bilateralfilter!(dst, A, F, [ord=ForwardFilter,] G...) -> dst
+    bilateralfilter!(dst, A, F, [ord=FORWARD_FILTER,] G...) -> dst
 
 overwrites `dst` with the result of applying the bilateral filter on array `A`
 and returns `dst`.
@@ -124,7 +124,7 @@ description of the bilateral filter.
 # Provide ordering to use with the distance filter.
 function bilateralfilter!(dst::AbstractArray{<:Any,N},
                           A::AbstractArray{<:Any,N}, F, G...) where {N}
-    return bilateralfilter!(dst, A, F, ForwardFilter, G...)
+    return bilateralfilter!(dst, A, F, FORWARD_FILTER, G...)
 end
 
 # Provide the value and distance filters.

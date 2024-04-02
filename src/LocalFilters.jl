@@ -15,8 +15,8 @@ module LocalFilters
 
 export
     # Index ordering in filters.
-    ForwardFilter,
-    ReverseFilter,
+    FORWARD_FILTER,
+    REVERSE_FILTER,
 
     # Shift-invariant linear filters.
     correlate, correlate!,
@@ -49,6 +49,9 @@ using Base: @propagate_inbounds, tail, OneTo
 
 function bilateralfilter end
 function bilateralfilter! end
+
+@deprecate ForwardFilter FORWARD_FILTER true
+@deprecate ReverseFilter REVERSE_FILTER true
 
 include("types.jl")
 include("utils.jl")

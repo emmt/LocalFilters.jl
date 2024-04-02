@@ -41,8 +41,8 @@ const Dimensions = Union{Colon, Integer, Tuple{Vararg{Integer}},
 const Ranges = Union{LocalAxis, Tuple{Vararg{LocalAxis}}, AbstractVector{<:LocalAxis}}
 
 """
-    filter_range([ord=ForwardFilter,] len)
-    filter_range([ord=ForwardFilter,] rng)
+    filter_range([ord=FORWARD_FILTER,] len)
+    filter_range([ord=FORWARD_FILTER,] rng)
 
 yields an `Int`-valued unit step range for specifying the filter range for
 ordering `ord`. The result is of length `len` or is based on index range `rng`.
@@ -134,7 +134,7 @@ end
 end
 
 """
-    localfilter([T=eltype(A),] A, dims, op, [ord=ForwardFilter,]
+    localfilter([T=eltype(A),] A, dims, op, [ord=FORWARD_FILTER,]
                 rngs[, wrk]) -> dst
 
 yields the result of applying van Herk-Gil-Werman algorithm to filter array `A`
@@ -212,7 +212,7 @@ function localfilter(T::Type, A::AbstractArray,
 end
 
 """
-    localfilter!([dst = A,] A, dims, op, [ord=ForwardFilter,] rngs[, wrk])
+    localfilter!([dst = A,] A, dims, op, [ord=FORWARD_FILTER,] rngs[, wrk])
 
 overwrites the contents of `dst` with the result of applying van
 Herk-Gil-Werman algorithm to filter array `A` along dimension(s) `dims` with
@@ -243,7 +243,7 @@ function localfilter!(dst::AbstractArray{T,N},
                       op::Function,
                       rngs::Ranges,
                       args...) where {T,N}
-    return localfilter!(dst, A, dims, op, ForwardFilter, rngs, args...)
+    return localfilter!(dst, A, dims, op, FORWARD_FILTER, rngs, args...)
 end
 
 # Provide workspace.
@@ -274,7 +274,7 @@ function localfilter!(dst::AbstractArray{T,N},
                       rng::LocalAxis,
                       wrk::Vector{T}) where {T,N}
     # small optimization: convert range once
-    return localfilter!(dst, A, dims, op, ForwardFilter,
+    return localfilter!(dst, A, dims, op, FORWARD_FILTER,
                         filter_range(ord, rng), wrk)
 end
 
@@ -554,14 +554,14 @@ for (f, op) in ((:erode, :min), (:dilate, :max))
                     dims::Dimensions,
                     rngs::Ranges,
                     args...) where {T,N}
-            return $f(A, dims, ForwardFilter, rngs, args...)
+            return $f(A, dims, FORWARD_FILTER, rngs, args...)
         end
 
         function $f!(A::AbstractArray{T,N},
                      dims::Dimensions,
                      rngs::Ranges,
                      args...) where {T,N}
-            return $f!(A, dims, ForwardFilter, rngs, args...)
+            return $f!(A, dims, FORWARD_FILTER, rngs, args...)
         end
 
         function $f!(dst::AbstractArray{T,N},
@@ -569,7 +569,7 @@ for (f, op) in ((:erode, :min), (:dilate, :max))
                      dims::Dimensions,
                      rngs::Ranges,
                      args...) where {T,N}
-            return $f!(dst, A, dims, ForwardFilter, rngs, args...)
+            return $f!(dst, A, dims, FORWARD_FILTER, rngs, args...)
         end
 
         function $f(A::AbstractArray{T,N},
