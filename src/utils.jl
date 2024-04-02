@@ -196,7 +196,7 @@ See [`LocalFilters.kernel_range`](@ref).
 """
 centered(A::AbstractArray) = OffsetArray(A, map(kernel_range, size(A)))
 centered(A::OffsetArray) = centered(parent(A))
-centered(R::CartesianIndices{N}) where {N} = CartesianIndices(map(centered, ranges(R)))
+centered(R::CartesianIndices) = CartesianIndices(map(centered, ranges(R)))
 centered(R::AbstractUnitRange{<:Integer}) = kernel_range(length(R))
 centered(R::IntegerRange) = begin
     abs(step(R)) == 1 || throw(ArgumentError("invalid non-unit step range"))
@@ -256,11 +256,11 @@ Base.reverse(::ReverseFilterOrdering) = ForwardFilter
 
 yields the subset `J` of all indices `j` such that:
 
-- `A[j]` and `B[j-i]` are in-bounds if `ord = ForwardFilter`;
+- `A[j]` and `B[ord(i,j)] = B[j-i]` are in-bounds if `ord = ForwardFilter`;
 
-- `A[j]` and `B[i-j]` are in-bounds if `ord = ReverseFilter`;
+- `A[j]` and `B[ord(i,j)] = B[i-j]` are in-bounds if `ord = ReverseFilter`;
 
-with `A` and `B` any arrays whose index ranges are given by `A_inds` and
+with `A` and `B` arrays whose index ranges are given by `A_inds` and
 `B_inds`. To make the code agnostic to the ordering, use `A[i]` and
 `B[ord(i,j)]` to retrieve the values in `A` and `B`.
 
@@ -343,17 +343,17 @@ result_eltype(::typeof(+), ::AbstractArray{T}) where {T<:Integer} =
     (sizeof(T) < sizeof(Int) ? widen(T) : T)
 
 """
-    LocalFilters.is_morpho_math_box(R)
+    LocalFilters.is_morpho_math_box(B)
 
-yields whether structuring element `R` has the same effect as an
+yields whether structuring element `B` has the same effect as an
 hyper-rectangular box for mathematical morphology operations. This may be used
 to use fast separable versions of mathematical morphology operations like the
 van Herk-Gil-Werman algorithm.
 
 """
 is_morpho_math_box(::Box) = true
-is_morpho_math_box(R::AbstractArray{Bool}) = all(R)
-is_morpho_math_box(R::AbstractArray{<:AbstractFloat}) = all(iszero, R)
+is_morpho_math_box(B::AbstractArray{Bool}) = all(B)
+is_morpho_math_box(B::AbstractArray{<:AbstractFloat}) = all(iszero, B)
 is_morpho_math_box(::CartesianIndices) =
     error("Cartesian range must be converted to a kernel")
 
@@ -371,12 +371,13 @@ by `A` and `-T(Inf)` elsewhere.
 
 """
 strel(::Type{Bool}, A::AbstractArray{Bool}) = A
-strel(::Type{T}, A::AbstractArray{Bool}) where {T<:AbstractFloat} =
-    map(x -> ifelse(x, zero(T), -T(Inf)), A)
-strel(::Type{Bool}, A::CartesianIndices) =
-    OffsetArray(UniformArray(true, size(A)), ranges(A))
-strel(T::Type{<:AbstractFloat}, A::CartesianIndices) =
-    OffsetArray(UniformArray(zero(T), size(A)), ranges(A))
+strel(::Type{Bool}, A::CartesianIndices) = FastUniformArray(true, ranges(A))
+strel(T::Type{<:AbstractFloat}, A::CartesianIndices) = FastUniformArray(zero(T), ranges(A))
+
+function strel(::Type{T}, A::AbstractArray{Bool}) where {T<:AbstractFloat}
+    flat(::Type{T}, x::Bool) where {T<:AbstractFloat} = ifelse(x, zero(T), -T(Inf))
+    map(flat, A)
+end
 
 """
     LocalFilters.nearest(T, x)

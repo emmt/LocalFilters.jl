@@ -8,7 +8,7 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2017-2022, Éric Thiébaut.
+# Copyright (c) 2017-2024, Éric Thiébaut.
 #
 
 """
@@ -149,7 +149,7 @@ for (f, op) in ((:erode, :min), (:dilate, :max))
                      B::AbstractArray{<:Any,N}) where {N}
             if is_morpho_math_box(B)
                 # Use fast separable filter.
-                $f!(dst, A, ord, Box(axes(B)))
+                $f!(dst, A, ord, FastUniformArray(true, axes(B)))
             else
                 $slow_f!(dst, A, ord, B,)
             end

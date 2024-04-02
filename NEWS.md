@@ -10,6 +10,15 @@
 - `localmean` and `localmean!` accept a `null` keyword to specify the value of
   the result when the sum of weights in a neighborhood is zero.
 
+- To represent hyper-rectangular neighborhoods, instances of non-exported
+  `LocalFilters.Box` have been replaced by fast uniform arrays with offset axes
+  from the [`StructuredArrays`](https://github.com/emmt/StructuredArrays.jl)
+  package. `LocalFilters.Box{N}` is now an alias to
+  `FastUniformArray{Boll,N,true}`.
+
+- Exported method `reverse_kernel` yields a reversed kernel such that
+  correlation by `reverse_kernel(B)` is identical to convolution by `B`.
+
 ## Version 2.0.0
 
 Version 2 of `LocalFilters` better integrates in the Julia ecosystem as fewer

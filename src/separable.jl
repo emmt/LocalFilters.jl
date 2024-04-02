@@ -9,7 +9,7 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2018-2022, Éric Thiébaut.
+# Copyright (c) 2018-2024, Éric Thiébaut.
 #
 
 module Separable
@@ -22,7 +22,7 @@ using ..LocalFilters:
     ReverseFilterOrdering,
     BoundaryConditions,
     FlatBoundaries,
-    Axis,
+    LocalAxis,
     kernel_range
 
 import ..LocalFilters:
@@ -38,7 +38,7 @@ const Dimensions = Union{Colon, Integer, Tuple{Vararg{Integer}},
                          AbstractVector{<:Integer}}
 
 # Union of for possible types to specify the neighborhoods ranges.
-const Ranges = Union{Axis, Tuple{Vararg{Axis}}, AbstractVector{<:Axis}}
+const Ranges = Union{LocalAxis, Tuple{Vararg{LocalAxis}}, AbstractVector{<:LocalAxis}}
 
 """
     filter_range([ord=ForwardFilter,] len)
@@ -271,7 +271,7 @@ function localfilter!(dst::AbstractArray{T,N},
                       dims::Dimensions,
                       op::Function,
                       ord::FilterOrdering,
-                      rng::Axis,
+                      rng::LocalAxis,
                       wrk::Vector{T}) where {T,N}
     # small optimization: convert range once
     return localfilter!(dst, A, dims, op, ForwardFilter,
@@ -319,8 +319,8 @@ function localfilter!(dst::AbstractArray{T,N},
                       ::Colon,
                       op::Function,
                       ord::FilterOrdering,
-                      rngs::Union{AbstractVector{<:Axis},
-                                  Tuple{Vararg{Axis}}},
+                      rngs::Union{AbstractVector{<:LocalAxis},
+                                  Tuple{Vararg{LocalAxis}}},
                       wrk::Vector{T}) where {T,N}
     length(rngs) == N || throw(DimensionMismatch(
         "there must be as many intervals as dimensions"))
@@ -342,8 +342,8 @@ function localfilter!(dst::AbstractArray{T,N},
                                   Tuple{Vararg{Integer}}},
                       op::Function,
                       ord::FilterOrdering,
-                      rngs::Union{AbstractVector{<:Axis},
-                                  Tuple{Vararg{Axis}}},
+                      rngs::Union{AbstractVector{<:LocalAxis},
+                                  Tuple{Vararg{LocalAxis}}},
                       wrk::Vector{T}) where {T,N}
     len = length(dims)
     length(rngs) == len || throw(DimensionMismatch(
@@ -367,7 +367,7 @@ function localfilter!(dst::AbstractArray{T,N},
                       dim::Integer, # dimension of interest
                       op::Function,
                       ord::FilterOrdering,
-                      rng::Axis,
+                      rng::LocalAxis,
                       wrk::Vector{T}) where {T,N}
     1 ≤ dim ≤ N || throw(ArgumentError("out of bounds dimension"))
     isempty(rng) &&  throw(ArgumentError("invalid filter size"))
@@ -652,8 +652,8 @@ function workspace_length(A::AbstractArray,
 end
 
 function workspace_length(A::AbstractArray, ::Colon,
-                          rngs::Union{AbstractVector{<:Axis},
-                                      Tuple{Vararg{Axis}}})
+                          rngs::Union{AbstractVector{<:LocalAxis},
+                                      Tuple{Vararg{LocalAxis}}})
     result = 0
     if length(rngs) == ndims(A)
         for (dim, rng) in enumerate(rngs)
@@ -666,8 +666,8 @@ end
 function workspace_length(A::AbstractArray,
                           dims::Union{AbstractVector{<:Integer},
                                       Tuple{Vararg{Integer}}},
-                          rngs::Union{AbstractVector{<:Axis},
-                                      Tuple{Vararg{Axis}}})
+                          rngs::Union{AbstractVector{<:LocalAxis},
+                                      Tuple{Vararg{LocalAxis}}})
     result = 0
     if length(rngs) == length(dims)
         for (dim, rng) in zip(dims, rngs)
