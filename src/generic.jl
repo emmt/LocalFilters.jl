@@ -12,6 +12,17 @@
 #
 
 """
+    localfilter(A, args...; kwds...) -> dst
+
+out of place version of [`localfilter!`](@ref) which is equivqlent to:
+
+    localfilter!(similar(A), A, args...; kwds...)
+
+"""
+localfilter(A::AbstractArray, args...; kwds...) =
+    localfilter!(similar(A), A, args...; kwds...)
+
+"""
     localfilter!(dst, A, [ord = ForwardFilter,] B, initial,
                  update::Function, final::Function = identity) -> dst
 
