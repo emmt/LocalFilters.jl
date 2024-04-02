@@ -443,8 +443,12 @@ FlatBoundaries(A::AbstractArray) = FlatBoundaries(CartesianIndices(A))
 
 indices(B::FlatBoundaries) = getfield(B, :indices)
 
-(B::FlatBoundaries{<:AbstractUnitRange{Int}})(i::Int) = clamp(i, indices(B))
+(B::FlatBoundaries{<:AbstractUnitRange{Int}})(i::Int) = clamp_to_range(i, indices(B))
 (B::FlatBoundaries{<:AbstractUnitRange{Int}})(i::Integer) =
-    clamp(Int(i), indices(B))
+    clamp_to_range(Int(i), indices(B))
 (B::FlatBoundaries{<:CartesianUnitRange{N}})(i::CartesianIndex{N}) where {N} =
-    CartesianIndex(map(clamp, Tuple(i), ranges(indices(B))))
+    CartesianIndex(map(clamp_to_range, Tuple(i), ranges(indices(B))))
+
+# Clamp to range. Range must not be empty.
+clamp_to_range(idx::T, rng::AbstractUnitRange{T}) where {T<:Integer} =
+    clamp(idx, first(rng), last(rng))
