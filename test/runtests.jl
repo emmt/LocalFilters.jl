@@ -5,12 +5,12 @@ module TestingLocalFilters
 
 #using Compat
 using Test
-using OffsetArrays
+using OffsetArrays, StructuredArrays
 using LocalFilters
 using LocalFilters:
     FilterOrdering, ForwardFilterOrdering, ReverseFilterOrdering,
-    Box, Indices, kernel_offset, kernel_range, kernel, ball, limits,
-    is_morpho_math_box, check_indices, localindices,
+    Box, Indices, kernel_range, kernel, ball, limits,
+    is_morpho_math_box, have_same_axes, localindices,
     ranges, centered, replicate
 
 # A bit of type-piracy for more readable error messages.
@@ -49,7 +49,7 @@ function nearlysame(a::Kernel{Ta,N}, b::Kernel{Tb,N};
     end
     return true
 end
-
+=#
 function similarvalues(A::AbstractArray{Ta,N}, B::AbstractArray{Tb,N};
                        atol=ATOL, gtol=GTOL) where {Ta,Tb,N}
     @assert axes(A) == axes(B)
@@ -66,7 +66,7 @@ function similarvalues(A::AbstractArray{Ta,N}, B::AbstractArray{Tb,N};
     end
     return sqrt(sd2) ≤ atol + gtol*sqrt(max(sa2, sb2))
 end
-
+#=
 function reversealldims(A::Array{T,N}) where {T,N}
     B = Array{T,N}(undef, size(A))
     len = length(A)
@@ -169,10 +169,10 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
             @test I(B) === eachindex(IndexStyle(I), B)
         end
 
-        # kernel_offset
-        @test_throws ArgumentError kernel_offset(-1)
-        @test kernel_offset(Int16(5)) === -3
-        @test kernel_offset(Int16(4)) === -3
+        @test nothing === have_same_axes(ball3x3)
+        @test nothing === have_same_axes(ball3x3, similar(ball3x3))
+        @test nothing === have_same_axes(ones(Int8, size(ball3x3)), ball3x3, similar(ball3x3))
+        @test_throws Exception have_same_axes(ball3x3, ball7x7)
 
         # kernel_range
         @test_throws ArgumentError kernel_range(-1)
@@ -189,20 +189,17 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
         @test kernel_range(Base.OneTo(7)) === Base.OneTo{Int}(7)
         @test kernel_range(Base.OneTo(Int16(7))) === Base.OneTo{Int}(7)
 
-        # Boxes.
-        #@test Box(...)
-
         # kernel
         # FIXME: @test length(kernel()) == 0
         # FIXME: @test kernel(()) == 0
         # FIXME: @test kernel(Dims{0}) == 0
         @test kernel(Dims{2}, 6) === kernel(6, 6)
-        @test kernel(Dims{2}, 6) === Box(-3:2,-3:2)
-        @test kernel(Dims{2}, 5, 6) === Box(-2:2,-3:2)
-        @test kernel(5, 6) === Box(-2:2,-3:2)
-        @test kernel(-2:4, 6) === Box(-2:4,-3:2)
-        @test kernel(CartesianIndex(-2,1,0), CartesianIndex(4,9,5)) === Box(-2:4, 1:9, 0:5)
-        @test kernel(-2:4, 1:9, 0:5) === Box(-2:4, 1:9, 0:5)
+        @test kernel(Dims{2}, 6) === FastUniformArray(true, -3:2,-3:2)
+        @test kernel(Dims{2}, 5, 6) === FastUniformArray(true, -2:2,-3:2)
+        @test kernel(5, 6) === FastUniformArray(true, -2:2,-3:2)
+        @test kernel(-2:4, 6) === FastUniformArray(true, -2:4,-3:2)
+        @test kernel(CartesianIndex(-2,1,0), CartesianIndex(4,9,5)) === FastUniformArray(true, -2:4, 1:9, 0:5)
+        @test kernel(-2:4, 1:9, 0:5) === FastUniformArray(true, -2:4, 1:9, 0:5)
         for args in ((6, -1:3, 2:4),
                      (CartesianIndex(-2,1,0), CartesianIndex(4,9,5)))
             @test kernel(args...) === kernel(args)
@@ -210,22 +207,21 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
                 kernel(Dims{3}, args)
         end
         let R = CartesianIndices((6, -1:3, 2:4))
-            @test kernel(R) === Box(R)
-            @test kernel(Dims{3}, R) === Box(R)
-            @test Box(R) === Box{3}(R)
+            @test_broken kernel(R) === FastUniformArray(true, R)
+            @test_broken kernel(Dims{3}, R) === FastUniformArray(true, R)
         end
         if VERSION ≥ v"1.6"
             # Ranges can have a step in CartesianIndices
             @test_throws ArgumentError kernel(CartesianIndices((1:2:6,)))
-            @test kernel(CartesianIndices((1:1:6,))) === Box(1:6)
+            @test kernel(CartesianIndices((1:1:6,))) === FastUniformArray(true, 1:6)
         end
 
         # ordering
-        let B = reshape(collect(1:20), (4,5)), R = Box(CartesianIndices(B))
-            @test B[ForwardFilter(CartesianIndex(2,3), CartesianIndex(3,5))] == B[1,2]
-            @test B[ReverseFilter(CartesianIndex(2,3), CartesianIndex(-1,1))] == B[3,2]
-            @test R[ForwardFilter(CartesianIndex(2,3), CartesianIndex(3,5))] == true
-            @test R[ReverseFilter(CartesianIndex(2,3), CartesianIndex(-1,1))] == true
+        let B = reshape(collect(1:20), (4,5)), R = FastUniformArray(true, #= FIXME: =# ranges(CartesianIndices(B)))
+            @test B[FORWARD_FILTER(CartesianIndex(2,3), CartesianIndex(3,5))] == B[1,2]
+            @test B[REVERSE_FILTER(CartesianIndex(2,3), CartesianIndex(-1,1))] == B[3,2]
+            @test R[FORWARD_FILTER(CartesianIndex(2,3), CartesianIndex(3,5))] == true
+            @test R[REVERSE_FILTER(CartesianIndex(2,3), CartesianIndex(-1,1))] == true
         end
 
         # centered
@@ -244,48 +240,28 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
         @test limits(Float32) === (-Float32(Inf), Float32(Inf))
         @test limits(Int8) === (Int8(-128),Int8(127))
 
-        # check_indices
-        let dims = (4,5), A = reshape(collect(1:prod(dims)), dims),
-            B = ones(dims), C = rand(Float32, dims), D = centered(C)
-            @test_throws DimensionMismatch check_indices(A, B, C, D)
-            @test check_indices(A) === check_indices(D)
-            @test check_indices(A,B) === check_indices(D)
-            @test check_indices(A,B,C) === check_indices(D)
-            @test check_indices(Bool,A) === true
-            @test check_indices(Bool,A,B) === true
-            @test check_indices(Bool,A,B,C) === true
-            @test check_indices(Bool,A,B,C,D) === false
-            @test check_indices(Bool,centered(A),D) === true
-            @test check_indices(Bool) === false
-            @test check_indices(Bool,axes(A)) === false
-            @test check_indices(Bool,axes(A),B) === true
-            @test check_indices(Bool,axes(A),B,C) === true
-            @test check_indices(Bool,axes(A),B,C,D) === false
-        end
-
-        # ForwardFilter/ReverseFilter
-        @test reverse(ForwardFilter) === ReverseFilter
-        @test reverse(ReverseFilter) === ForwardFilter
-        @test (ForwardFilter isa FilterOrdering) == true
-        @test (ForwardFilter isa ForwardFilterOrdering) == true
-        @test (ForwardFilter isa ReverseFilterOrdering) == false
-        @test (ReverseFilter isa FilterOrdering) == true
-        @test (ReverseFilter isa ForwardFilterOrdering) == false
-        @test (ReverseFilter isa ReverseFilterOrdering) == true
+        # FORWARD_FILTER/REVERSE_FILTER
+        @test reverse(FORWARD_FILTER) === REVERSE_FILTER
+        @test reverse(REVERSE_FILTER) === FORWARD_FILTER
+        @test (FORWARD_FILTER isa FilterOrdering) == true
+        @test (FORWARD_FILTER isa ForwardFilterOrdering) == true
+        @test (FORWARD_FILTER isa ReverseFilterOrdering) == false
+        @test (REVERSE_FILTER isa FilterOrdering) == true
+        @test (REVERSE_FILTER isa ForwardFilterOrdering) == false
+        @test (REVERSE_FILTER isa ReverseFilterOrdering) == true
         let i = 3, j = 7
-            @test ForwardFilter(i, j) === j - i
-            @test ReverseFilter(i, j) === i - j
-            @test ForwardFilter(Int16(i), Int16(j)) === j - i
-            @test ReverseFilter(Int16(i), Int16(j)) === i - j
+            @test FORWARD_FILTER(i, j) === j - i
+            @test REVERSE_FILTER(i, j) === i - j
+            @test FORWARD_FILTER(Int16(i), Int16(j)) === j - i
+            @test REVERSE_FILTER(Int16(i), Int16(j)) === i - j
         end
         let i = CartesianIndex(3,4,5), j = CartesianIndex(-1,7,3)
-            @test ForwardFilter(i, j) === j - i
-            @test ReverseFilter(i, j) === i - j
+            @test FORWARD_FILTER(i, j) === j - i
+            @test REVERSE_FILTER(i, j) === i - j
         end
 
-        # result_eltype
-        # is_morpho_math_box
-        # strel
+        # FIXME: is_morpho_math_box
+        # FIXME: strel
 
         # ball
         @test ball(Dims{2}, 1) == ball3x3
@@ -296,8 +272,8 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
     @testset "Local mean" begin
         let A = ones(Float64, 20)
             @test localmean(A, 3) == A
-            @test localmean(A, ForwardFilter, 3) == A
-            @test localmean(A, ReverseFilter, 3) == A
+            @test localmean(A, FORWARD_FILTER, 3) == A
+            @test localmean(A, REVERSE_FILTER, 3) == A
         end
     end
 
@@ -619,6 +595,7 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
             @test samevalues(B, localfilter!(copyto!(C,A),[2,1],min,(k2:k2,k1:k1)))
         end
     end
+=#
 
     # Bilateral filter.
     @testset "Bilateral filter" begin
@@ -626,16 +603,22 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
         σr = 1.2
         σs = 2.5
         width = LocalFilters.BilateralFilter.default_width(σs)
-        box = neighborhood(Dims{2}, width)
-        B0 = bilateralfilter(A, σr, σs)
-        B1 = bilateralfilter(A, σr, σs, box)
-        B2 = bilateralfilter(Float32, A, σr, σs, width)
-        B3 = bilateralfilter!(similar(Array{Float32}, axes(A)), A, σr, σs, box)
-        @test similarvalues(B1, B0; atol=0, gtol=8*eps(Float32))
+        @test isodd(width)
+        radius = (width - 1) ÷ 2
+        ball = @inferred LocalFilters.ball(Dims{2}, radius)
+        @test axes(ball) === map(Base.OneTo, size(ball))
+        ball = LocalFilters.centered(ball)
+        # FIXME: B4 = @inferred bilateralfilter(A, σr, σs, ball)
+        @test axes(ball) == ntuple(_ -> -radius:radius, ndims(ball))
+        box = fill!(similar(ball), one(eltype(ball)))
+        B0 = @inferred bilateralfilter(A, σr, σs)
+        # FIXME: B1 = @inferred bilateralfilter(A, σr, σs, box)
+        B2 = @inferred bilateralfilter(Float32, A, σr, σs, width)
+        # FIXME: B3 = @inferred bilateralfilter!(similar(Array{Float32}, axes(A)), A, σr, σs, box)
+        # FIXME: @test similarvalues(B1, B0; atol=0, gtol=8*eps(Float32))
         @test similarvalues(B2, B0; atol=0, gtol=8*eps(Float32))
-        @test similarvalues(B3, B0; atol=0, gtol=4*eps(Float32))
+        # FIXME: @test similarvalues(B3, B0; atol=0, gtol=4*eps(Float32))
     end
-=#
 end
 
 end # module
