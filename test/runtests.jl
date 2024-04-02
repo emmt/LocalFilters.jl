@@ -190,9 +190,10 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
         @test kernel_range(Base.OneTo(Int16(7))) === Base.OneTo{Int}(7)
 
         # kernel
-        # FIXME: @test length(kernel()) == 0
-        # FIXME: @test kernel(()) == 0
-        # FIXME: @test kernel(Dims{0}) == 0
+        @test kernel() === FastUniformArray(true)
+        @test kernel(()) === FastUniformArray(true)
+        @test kernel(Dims{0}, ()) === FastUniformArray(true)
+        @test kernel(Dims{0}) === FastUniformArray(true)
         @test kernel(Dims{2}, 6) === kernel(6, 6)
         @test kernel(Dims{2}, 6) === FastUniformArray(true, -3:2,-3:2)
         @test kernel(Dims{2}, 5, 6) === FastUniformArray(true, -2:2,-3:2)
@@ -232,6 +233,9 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
         end
 
         # replicate
+        @test replicate(NTuple{0}, 'a') === ()
+        @test replicate(NTuple{1}, 'a') === ('a',)
+        @test replicate(NTuple{2}, 'a') === ('a', 'a')
         @test replicate(NTuple{3}, 'a') === ('a', 'a', 'a')
         @test replicate(NTuple{3,Char}, 'a') === ('a', 'a', 'a')
         @test replicate(NTuple{2,Int}, 'a') === (97, 97)

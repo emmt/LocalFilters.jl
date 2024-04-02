@@ -120,6 +120,8 @@ kernel(inds::NTuple{2,CartesianIndex{N}}) where {N} = kernel(inds...)
 kernel(a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} =
     FastUniformArray(true, map(kernel_range, Tuple(a), Tuple(b)))
 
+kernel(::Type{Dims{0}}) = kernel()
+
 # Error catcher.
 kernel(::Type{Dims{N}}) where {N} = throw(ArgumentError(
     "cannot create a $N-dimensional kernel with no additional argument(s)"))
@@ -319,6 +321,7 @@ yields the `N`-tuple `(x, x,...)` where `x` is `val` converted to type `T`.
 See [`LocalFilters.Yields`](@ref).
 
 """
+replicate(::Type{NTuple{0}}, val) = ()
 replicate(::Type{NTuple{N}}, val) where {N} = ntuple(Yields(val), Val(N))
 replicate(::Type{NTuple{N,T}}, val) where {N,T} = ntuple(Yields{T}(val), Val(N))
 
