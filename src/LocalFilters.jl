@@ -8,49 +8,45 @@
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2017-2022, Éric Thiébaut.
+# Copyright (c) 2017-2024, Éric Thiébaut.
 #
 
 module LocalFilters
 
 export
+    # Index ordering in filters.
     ForwardFilter,
     ReverseFilter,
-    bilateralfilter!,
-    bilateralfilter,
-    bottom_hat,
-    closing!,
-    closing,
-    convolve!,
-    convolve,
-    correlate!,
-    correlate,
-    dilate!,
-    dilate,
-    erode!,
-    erode,
-    kernel,
-    localextrema!,
-    localextrema,
-    localfilter!,
-    localfilter,
-    localmean!,
-    localmean,
-    opening!,
-    opening,
-    strel,
-    top_hat
 
-using OffsetArrays, StructuredArrays, EasyRanges
+    # Shift-invariant linear filters.
+    correlate, correlate!,
+    convolve, convolve!,
+    localmean, localmean!,
+
+    # Mathematical morphology.
+    erode, erode!,
+    dilate, dilate!,
+    localextrema, localextrema!,
+    closing, closing!,
+    opening, opening!,
+    bottom_hat,
+    top_hat,
+
+    # Other non-linear filters.
+    bilateralfilter, bilateralfilter!,
+
+    # Kernels and neighborhoods.
+    kernel,
+    reverse_kernel,
+
+    # Generic filters.
+    localfilter, localfilter!,
+    strel
+
+using OffsetArrays, StructuredArrays, EasyRanges, TypeUtils
 using EasyRanges: ranges, to_int
 using Base: @propagate_inbounds, tail, OneTo
 
-function localfilter end
-function localfilter! end
-function erode end
-function erode! end
-function dilate end
-function dilate! end
 function bilateralfilter end
 function bilateralfilter! end
 
@@ -58,8 +54,8 @@ include("types.jl")
 include("utils.jl")
 include("generic.jl")
 include("linear.jl")
-include("separable.jl")
 include("morphology.jl")
 include("bilateral.jl")
+include("separable.jl")
 
 end

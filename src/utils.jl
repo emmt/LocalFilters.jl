@@ -11,19 +11,33 @@
 # Copyright (c) 2017-2024, Éric Thiébaut.
 #
 
+# Constructors for `Indices`. Use linear indexing for vectors, Cartesian
+# indices otherwise.
+Indices(A::AbstractVector) = Indices{IndexLinear}()
+Indices(A::AbstractVector, B::AbstractVector...) = Indices{IndexLinear}()
+Indices(A::AbstractArray) = Indices{IndexCartesian}()
+Indices(A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N}...) where {N} =
+    Indices{IndexCartesian}()
+
 Base.IndexStyle(A::Indices) = IndexStyle(typeof(A))
 Base.IndexStyle(::Type{<:Indices{S}}) where {S} = S()
 
 # `Indices` objects can be called like `eachindex` to yield the indices of an
 # array (see `abstractarray.jl`).
-@inline (::Indices{IndexLinear})(A::AbstractArray) = OneTo{Int}(length(A))
-@inline (::Indices{IndexLinear})(A::AbstractVector) = to_int(Base.axes1(A))
+@inline (::Indices{IndexLinear})(A::AbstractArray) = to_axis(length(A))
+@inline (::Indices{IndexLinear})(A::AbstractVector) = to_axis(Base.axes1(A))
 @inline (::Indices{IndexCartesian})(A::AbstractArray) = CartesianIndices(A)
+@inline function (I::Indices)(A::AbstractArray, B::AbstractArray...)
+    have_same_axes(A, B...)
+    return I(A)
+end
 
-@inline (I::Indices)(A::AbstractArray, B::AbstractArray) =
-    (have_same_axes(A, B); I(A))
-@inline (I::Indices)(A::AbstractArray, B::AbstractArray...) =
-    (have_same_axes(A, B...); I(A))
+to_axis(len::Integer) = Base.OneTo{Int}(len)
+to_axis(rng::AbstractUnitRange{Int}) = rng
+to_axis(rng::AbstractUnitRange{<:Integer}) = convert_eltype(Int, rng)
+to_axis(rng::AbstractRange{<:Integer}) =
+    isone(step(rng)) ? convert_eltype(Int, rng) : throw(ArgumentError(
+        "invalid non-unit step ($(step(rng))) array axis"))
 
 """
     LocalFilters.have_same_axes(A...)
@@ -32,7 +46,8 @@ throws an exception if not all arrays `A...` have the same axes.
 
 """
 @inline have_same_axes(A::AbstractArray, B::AbstractArray...) =
-    have_same_axes(Bool, A, B...) || throw(DimensionMismatch("arrays must have the same axes"))
+    have_same_axes(Bool, A, B...) ? nothing : throw(DimensionMismatch(
+        "arrays must have the same axes"))
 
 """
     LocalFilters.have_same_axes(Bool, A...) -> bool
@@ -52,90 +67,6 @@ end
 @inline _have_same_axes(I::Axes, A::AbstractArray, B::AbstractArray...) =
      _have_same_axes(I, A) && _have_same_axes(I, B...)
 
-Indices(::S) where {S<:IndexStyle} = Indices{S}()
-#Indices(::S, A::AbstractArray) where {S<:IndexStyle} = Indices{S}()
-#Indices(::S, A::AbstractArray, B::AbstractArray...) where {S<:IndexStyle} =
-#    Indices{S}()
-
-Indices(A::AbstractVector) = Indices(IndexStyle(A))
-Indices(A::AbstractVector, B::AbstractVector...) = Indices(IndexStyle(A, B...))
-Indices(A::AbstractArray) = Indices{IndexCartesian}()
-Indices(A::AbstractArray, B::AbstractArray...) = Indices{IndexCartesian}()
-
-"""
-    LocalFilters.unit_range(r)
-
-converts `r` into an `Int`-valued unit step index range. `r` may be a linear or
-a Cartesian index range.
-
-    LocalFilters.unit_range(start, stop)
-
-yields the `Int`-valued unit step range `Int(start):Int(stop)`.
-
-"""
-unit_range(r::OneTo{Int}) = r
-unit_range(r::OneTo{<:Integer}) = OneTo{Int}(length(r))
-
-unit_range(r::AbstractUnitRange{Int}) = r
-unit_range(r::AbstractUnitRange{<:Integer}) = Int(first(r)):Int(last(r))
-
-unit_range(start::Integer, stop::Integer) = Int(start):Int(stop)
-
-function unit_range(r::IntegerRange)
-    s = step(r)
-    abs(s) == one(s) || throw(ArgumentError("non-unit step range"))
-    if s ≥ zero(s)
-        return Int(first(r)):Int(last(r))
-    else
-        return -Int(last(r)):-Int(first(r))
-    end
-end
-
-function unit_range(r::CartesianIndices)
-    r isa CartesianUnitRange && return r
-    return CartesianIndices(map(unit_range, ranges(r)))
-end
-
-"""
-   LocalFilters.kernel_offset(len)
-
-yields the index offset along a centered dimension of length `len`. That is,
-`-div(Int(len)+2,2)`. For even dimension lengths, this amounts to using the
-same conventions as in `fftshift`.
-
-See [`LocalFilters.kernel_range`](@ref) and [`LocalFilters.centered`](@ref).
-
-"""
-function kernel_offset(len::Integer)
-    len ≥ 0 || throw(ArgumentError("invalid dimension length"))
-    return -((Int(len) + 2) >> 1)
-end
-
-"""
-    LocalFilters.kernel_range(rng)
-    LocalFilters.kernel_range(len)
-    LocalFilters.kernel_range(start, stop)
-
-yield an unit-step `Int`-valued index range based on range `rng`, dimension
-length `len`, or first and last indices `start` and `stop`. In the case of a
-given dimension length, a centered range of this length is returned (for even
-lengths, the same conventions as in `fftshift` are used). Otherwise, `x` must
-be an integer valued range.
-
-See [`LocalFilters.kernel`](@ref), [`LocalFilters.kernel_offset`](@ref), and
-[`LocalFilters.centered`](@ref).
-
-"""
-kernel_range(rng::IntegerRange) = unit_range(rng)
-
-function kernel_range(len::Integer)
-    n = Int(len)
-    off = kernel_offset(n)
-    return kernel_range(off + 1, off + n)
-end
-
-kernel_range(start::Integer, stop::Integer) = unit_range(start, stop)
-
 """
     kernel([Dims{N},] args...)
 
@@ -149,13 +80,13 @@ used as a kernel in local filtering operations.
   [`LocalFilters.kernel_range`](@ref)).
 
 * If `Dims{N}` is provided and `args...` is a single integer or range, it is
-  interpreted as being the same for all dimensions. Thus `kernel(Dims{3},5)`
-  yields a 3-dimensional uniformly true array with index range `-2:2` in every
-  dimension.
+  interpreted as being the same for all dimensions of an `N`-dimensional
+  kernel. For example, `kernel(Dims{3},5)` yields a 3-dimensional uniformly
+  true array with index range `-2:2` in every dimension.
 
-* If `args...` is a pair of Cartesian indices or a 2-tuple of Cartesian
-  indices, say `I_first` and `I_last`, a uniformly true abstract array is
-  returned whose first and last indices are `I_first` and `I_last`.
+* If `args...` is 2 Cartesian indices or a 2-tuple of Cartesian indices, say
+  `I_first` and `I_last`, a uniformly true abstract array is returned whose
+  first and last indices are `I_first` and `I_last`.
 
 * If `args...` is a Cartesian range, say `R::CartesianIndices{N}`, a uniformly
   true abstract array is returned whose axes are given by `R`.
@@ -165,81 +96,119 @@ used as a kernel in local filtering operations.
 
 Optional leading argument `Dims{N}` can be specified to assert the number of
 dimensions of the result or to provide the number of dimensions when it cannot
-be guessed from the arguments. For example, when `args...` is a single integer
+be inferred from the arguments. For example, when `args...` is a single integer
 length or range which should be interpreted as being the same for all
 dimensions.
 
-See also [`LocalFilters.kernel_range`](@ref) and
-[`LocalFilters.cartesian_limits`](@ref).
-
 """
-kernel(x::Axis...) = Box(x)
-kernel(::Type{Dims{N}}, x::Axis...) where {N} = Box{N}(x...)
+kernel(::Type{Dims{N}}, A::AbstractArray{<:Any,N}) where {N} = kernel(A)
+kernel(A::AbstractArray) = A
 
-kernel(x::Tuple{Vararg{Axis}}) = Box(x)
-kernel(::Type{Dims{N}}, x::NTuple{N,Axis}) where {N} = Box(x)
+kernel(::Type{Dims{N}}, x::LocalAxis) where {N} = kernel(replicate(NTuple{N}, kernel_range(x)))
 
-kernel(x::CartesianIndices) = Box(x)
-kernel(::Type{Dims{N}}, x::CartesianIndices{N}) where {N} = Box(x)
+kernel(::Type{Dims{N}}, args::Vararg{LocalAxis,N}) where {N} = kernel(args)
+kernel(::Type{Dims{N}}, args::NTuple{N,LocalAxis}) where {N} = kernel(args)
+kernel(args::LocalAxis...) = kernel(args)
+kernel(args::Tuple{Vararg{LocalAxis}}) = FastUniformArray(true, map(kernel_range, args))
 
-kernel(x::AbstractArray) = x
-kernel(::Type{Dims{N}}, x::AbstractArray{<:Any,N}) where {N} = x
+kernel(::Type{Dims{N}}, inds::CartesianIndices{N}) where {N} = kernel(inds)
+kernel(inds::CartesianIndices) = kernel(ranges(inds))
 
-kernel(x::NTuple{2,CartesianIndex{N}}) where {N} = Box(x...)
-kernel(::Type{Dims{N}}, x::NTuple{2,CartesianIndex{N}}) where {N} = Box(x...)
-
-kernel(a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} = Box(a, b)
-kernel(::Type{Dims{N}}, a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} =
-    Box(a, b)
+kernel(::Type{Dims{N}}, inds::NTuple{2,CartesianIndex{N}}) where {N} = kernel(inds)
+kernel(::Type{Dims{N}}, inds::Vararg{CartesianIndex{N},2}) where {N} = kernel(inds)
+kernel(inds::NTuple{2,CartesianIndex{N}}) where {N} = kernel(inds...)
+kernel(a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} =
+    FastUniformArray(true, map(UnitRange{Int}, Tuple(a), Tuple(b)))
 
 # Error catcher.
-kernel(::Type{Dims{N}}, x...) where {N} =
-    throw(ArgumentError(
-        "cannot create a $N-dimensional kernel for argument(s) of type $(typeof(x))"))
+kernel(::Type{Dims{N}}) where {N} = throw(ArgumentError(
+    "cannot create a $N-dimensional kernel with no additional argument(s)"))
+kernel(::Type{Dims{N}}, args...) where {N} = throw(ArgumentError(
+    "cannot create a $N-dimensional kernel for argument(s) of type $(typeof(args))"))
 
-# Implement abstract array interface for Box objects which are uniformly true
-# arrays.
-Base.length(A::Box) = prod(size(A))
-Base.axes(A::Box) = ranges(CartesianIndices(A))
-Base.size(A::Box) = map(length, axes(A))
-Base.CartesianIndices(A::Box) = getfield(A, :inds)
-Base.IndexStyle(::Type{<:Box}) = IndexLinear()
-@inline function Base.getindex(A::Box, I...)
-    @boundscheck checkbounds(A, I...)
-    return true
-end
-Base.setindex!(A::Box, x, I...) =
-    error("arrays of type `LocalFilters.Box` are read-only")
+"""
+    LocalFilters.kernel_range(start, stop)
+    LocalFilters.kernel_range(rng)
+    LocalFilters.kernel_range(dim)
 
-# Fast reversing of boxes.
-Base.reverse(A::Box) = Box(map(reverse_range, axes(A)))
-reverse_range(x::AbstractUnitRange{<:Integer}) = begin
-    first_x, last_x = EasyRanges.first_last(x)
-    return (-last_x):(-first_x)
+yield an `Int`-valued unit range based on first and last indices `start` and
+`stop`, unit range `rng`, or dimension length `dim`. In the case of a given
+dimension length, a centered range of this length is returned (for even
+lengths, the same conventions as in `fftshift` are used).
+
+See [`LocalFilters.kernel`](@ref) and [`LocalFilters.centered`](@ref).
+
+"""
+kernel_range(start::Integer, stop::Integer) = UnitRange{Int}(start, stop)
+kernel_range(rng::AbstractUnitRange{Int}) = rng
+kernel_range(rng::AbstractUnitRange{<:Integer}) = convert_eltype(Int, rng)
+function kernel_range(rng::AbstractRange{<:Integer})
+    isone(step(rng)) || throw(ArgumentError("not a unit step range, got step of $(step(rng))"))
+    return kernel_range(first(rng), last(rng))
 end
-reverse_range(x::IntegerRange) = begin
-    # Always yields a range with a nonnegative step.
-    first_x, step_x, last_x = EasyRanges.first_step_last(x)
-    if step_x ≥ 0
-        return (-last_x):(step_x):(-first_x)
-    else
-        return (-first_x):(-step_x):(-last_x)
+function kernel_range(dim::Integer)
+    dim ≥ zero(dim) || throw(ArgumentError("dimension must be ≥ 0, got $dim"))
+    dim = as(Int, dim)
+    start = -(dim ÷ 2)
+    stop = dim - 1 + start
+    return kernel_range(start, stop)
+end
+
+"""
+    reverse_kernel(A) -> B
+
+yields an array `B` such that `B[i] = A[-i]` holds for all indices `i` such that
+`-i` is a valid index in `A`.
+
+"""
+reverse_kernel(A::AbstractArray) = OffsetArray(reverse(A), reverse_axes(A))
+reverse_kernel(A::OffsetArray) = OffsetArray(reverse(parent(A)), reverse_axes(A))
+for cls in (:MutableUniformArray, :UniformArray, :FastUniformArray)
+    @eval begin
+        # Rebuild a uniform array of same type and value but reversed axes.
+        reverse_kernel(A::$cls{T}) where {T} =
+            $cls{T}(StructuredArrays.value(A), reverse_axes(A))
     end
 end
 
-# `Box` constructors, also see the `kernel` method.
-Box{N}(x::Axis) where {N} = Box(replicate(NTuple{N}, kernel_range(x)))
-Box{N}(x::Axis...) where {N} = Box{N}(x)
-Box{N}(x::NTuple{N,Axis}) where {N} = Box(x)
-Box(x::Axis...) = Box(x)
-Box(x::NTuple{N,Axis}) where {N} = Box(CartesianIndices(map(kernel_range, x)))
-Box{N}(a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} = Box(a, b)
-Box(a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} =
-    Box(CartesianIndices(map(kernel_range, Tuple(a), Tuple(b))))
-Box{N}(R::CartesianIndices{N}) where {N} = Box(R)
-Box{N}(A::AbstractArray{N}) where {N} = Box(A)
-Box(A::AbstractArray) = Box(CartesianIndices(A))
-Box(A::Box) = A
+reverse_axes(A::AbstractArray) = map(reverse_axis, axes(A))
+function reverse_axis(I::AbstractUnitRange{<:Integer})
+    I_first, I_last = EasyRanges.first_last(I)
+    return (-I_last):(-I_first)
+end
+
+"""
+   LocalFilters.centered(A) -> B
+
+yields an abstract array `B` sharing the entries of array `A` but with offsets
+on indices so that the axes of `B` are *centered* (for even dimension lengths,
+the same conventions as in `fftshift` are used).
+
+This method is purposely not exported because it could introduce some
+confusions. For example `OffsetArrays.centered` is similar but has a slightly
+different semantic.
+
+Argument `A` can also be an index range (linear or Cartesian), in which case a
+centered index range of same size is returned.
+
+See [`LocalFilters.kernel_range`](@ref).
+
+"""
+centered(A::AbstractArray) = OffsetArray(A, map(kernel_range, size(A)))
+centered(A::OffsetArray) = centered(parent(A))
+centered(R::CartesianIndices{N}) where {N} = CartesianIndices(map(centered, ranges(R)))
+centered(R::AbstractUnitRange{<:Integer}) = kernel_range(length(R))
+centered(R::IntegerRange) = begin
+    abs(step(R)) == 1 || throw(ArgumentError("invalid non-unit step range"))
+    return kernel_range(length(R))
+end
+for cls in (:MutableUniformArray, :UniformArray, :FastUniformArray)
+    @eval begin
+        # Rebuild a uniform array of same type and value but reversed axes.
+        centered(A::$cls{T}) where {T} =
+            $cls{T}(StructuredArrays.value(A), map(kernel_range, size(A)))
+    end
+end
 
 """
     ForwardFilter
@@ -302,11 +271,12 @@ Index ranges `A_inds` and `B_inds` and index `i` must be of the same kind:
 - Cartesian index ranges for `A_inds` and `B_inds` and Cartesian index for `i`
   of same number of dimensions.
 
-Constructor [`LocalFilters.Indices`](@ref) may by used to retrieve the index
-ranges of `A` and `B` in a consistent way.
+Constructor [`LocalFilters.Indices`](@ref) may by used to build a callable
+object that retrieves the index ranges of `A` and `B` in a consistent way:
 
-Method [`LocalFilters.getbal(ord,B,i,j)`](@ref) may be called to get the value
-in `B` according to the ordering `ord`.
+    indices = LocalFilters.Indices(A, B)
+    A_inds = indices(A)
+    B_inds = indices(B)
 
 """
 @inline function localindices(A::IntegerRange,
@@ -335,49 +305,22 @@ end
                               B::CartesianIndices{N},
                               I::CartesianIndex{N}) where {N}
     return @range A ∩ (I - B)
-end
-
-"""
-   LocalFilters.centered(A) -> B
-
-yields an abstract array `B` sharing the entries of array `A` but with offsets
-on indices so that the axes of `B` are *centered* (for even dimension lengths,
-the same conventions as in `fftshift` are used).
-
-This method is purposely not exported because it could introduce some
-confusions. For example `OffsetArrays.centered` is similar but has a slightly
-different semantic.
-
-Argument `A` can also be an index range (linear or Cartesian), in which case a
-centered index range of same size is returned.
-
-See [`LocalFilters.kernel_range`](@ref), [`LocalFilters.kernel_offset`](@ref).
-
-"""
-centered(A::AbstractArray) = OffsetArray(A, map(kernel_offset, size(A)))
-centered(A::OffsetArray) = centered(parent(A))
-centered(R::CartesianIndices{N}) where {N} =
-    CartesianIndices(map(centered, ranges(R)))
-centered(R::AbstractUnitRange{<:Integer}) = kernel_range(length(R))
-centered(R::IntegerRange) = begin
-    abs(step(R)) == 1 || throw(ArgumentError("invalid non-unit step range"))
-    return kernel_range(length(R))
 end
 
 """
     LocalFilters.replicate(NTuple{N}, val)
 
-yields the `N`-tuple `(val,val,...)`.
+yields the `N`-tuple `(val, val, ...)`.
 
     LocalFilters.replicate(NTuple{N,T}, val)
 
-yields the `N`-tuple `(x,x,...)` where `x` is `val` converted to type `T`.
+yields the `N`-tuple `(x, x,...)` where `x` is `val` converted to type `T`.
+
+See [`LocalFilters.Yields`](@ref).
 
 """
-replicate(::Type{NTuple{N}}, val) where {N} = ntuple((x) -> val, Val(N))
-replicate(::Type{NTuple{N,T}}, val::T) where {N,T} = ntuple((x) -> val, Val(N))
-replicate(::Type{NTuple{N,T}}, val) where {N,T} =
-    replicate(NTuple{N,T}, convert(T, val)::T)
+replicate(::Type{NTuple{N}}, val) where {N} = ntuple(Yields(val), Val(N))
+replicate(::Type{NTuple{N,T}}, val) where {N,T} = ntuple(Yields{T}(val), Val(N))
 
 """
     limits(T::DataType) -> typemin(T), typemax(T)
@@ -388,66 +331,7 @@ yields the infimum and supremum of a type `T`.
 limits(T::Type) = (typemin(T), typemax(T))
 
 """
-    check_indices(A...)
-
-throws an exception if arrays `A...` have different indices.
-
----
-
-    check_indices(Bool, [I,] A...)
-
-yields whether arrays `A...` all have the same indices, or all have indices
-`I` if specified.
-
-"""
-check_indices(A::AbstractArray) = nothing
-
-function check_indices(A::AbstractArray, B::AbstractArray...)
-    throw(DimensionMismatch(
-        "arrays have different number of dimensions"))
-end
-
-# This version is forced to be in-lined to unroll the recursion.
-@inline function check_indices(A::AbstractArray{<:Any,N},
-                               B::AbstractArray{<:Any,N}...) where {N}
-    check_indices(Bool, axes(A), B...) || throw(DimensionMismatch(
-        "arrays have different indices"))
-    return nothing
-end
-
-check_indices(::Type{Bool}) = false
-check_indices(::Type{Bool}, A::AbstractArray) = true
-check_indices(::Type{Bool}, A::AbstractArray...) = false
-
-# This version is forced to be in-lined to unroll the recursion.
-@inline function check_indices(::Type{Bool},
-                               A::AbstractArray{<:Any,N},
-                               B::AbstractArray{<:Any,N}...) where {N}
-    return check_indices(Bool, axes(A), B...)
-end
-
-function check_indices(::Type{Bool},
-                       I::Tuple{Vararg{AbstractUnitRange{<:Integer}}},
-                       A::AbstractArray...)
-    return false
-end
-
-# This version is forced to be in-lined to unroll the recursion.
-@inline function check_indices(::Type{Bool},
-                               I::NTuple{N,AbstractUnitRange{<:Integer}},
-                               A::AbstractArray{<:Any,N},
-                               B::AbstractArray{<:Any,N}...) where {N}
-    return axes(A) == I && check_indices(Bool, I, B...)
-end
-
-function check_indices(::Type{Bool},
-                       I::NTuple{N,AbstractUnitRange{<:Integer}},
-                       A::AbstractArray{<:Any,N}) where {N}
-    return axes(A) == I
-end
-
-"""
-    result_eltype(f, A[, B]) -> T
+    LocalFilters.result_eltype(f, A[, B]) -> T
 
 yields the element type `T` of the result of applying function `f` to
 source `A`, optionally with kernel/neighborhood `B`.
