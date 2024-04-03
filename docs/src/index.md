@@ -11,5 +11,5 @@ The source code of `LocalFilters` is available on
 
 ```@contents
 Pages = ["generic.md", "neighborhoods.md", "linear.md", "nonlinear.md",
-         "morphology.md", "separable.md", "reference.md"]
+         "morphology.md", "separable.md", "math.md", "reference.md"]
 ```

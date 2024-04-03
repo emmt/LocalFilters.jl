@@ -3,6 +3,7 @@ SOURCES = \
     src/generic.md \
     src/index.md \
     src/linear.md \
+    src/math.md \
     src/morphology.md \
     src/neighborhoods.md \
     src/nonlinear.md \

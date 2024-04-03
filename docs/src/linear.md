@@ -42,7 +42,7 @@ The result `dst` is an array similar to `A`.
 
 Using `indices(A)` to denote the set of valid indices for array `A` and
 assuming `B` is an array of values, the discrete convolution of `A` by `B`
-writes:
+writes (see Section *[Discrete convolution and correlation](@ref)*):
 
 ```julia
 for i ∈ indices(A)
@@ -113,13 +113,13 @@ The result `dst` is an array similar to `A`.
 
 Using `indices(A)` to denote the set of valid indices for array `A` and
 assuming `B` is an array of values, the discrete correlation of `A` by `B`
-writes:
+writes (see Section *[Discrete convolution and correlation](@ref)*):
 
 ```julia
 for i ∈ indices(A)
     v = zero(T)
     @inbounds for k ∈ indices(B) ∩ (indices(A) - i)
-        v += A[i+k]*B[k]
+        v += A[i+k]*conj(B[k])
     end
     dst[i] = v
 end
@@ -137,7 +137,7 @@ can also be expressed as:
 for i ∈ indices(A)
     v = zero(T)
     @inbounds for j ∈ indices(A) ∩ (indices(B) + i)
-        v += A[j]*B[j-i]
+        v += A[j]*conj(B[j-i])
     end
     dst[i] = v
 end
@@ -175,6 +175,8 @@ convolution `convolve(A,B)` of `A` by `B` may be computed by:
 ```julia
 correlate(A, reverse_kernel(B))
 ```
+
+provided the entries of `B` are reals, not complexes.
 
 
 ## Element type of the result
