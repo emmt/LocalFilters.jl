@@ -42,7 +42,7 @@ export
     top_hat
 
 using OffsetArrays, StructuredArrays, EasyRanges
-using EasyRanges: ranges, to_int
+using EasyRanges: ranges
 using Base: @propagate_inbounds, tail, OneTo
 
 function localfilter end

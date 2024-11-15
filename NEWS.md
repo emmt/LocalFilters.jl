@@ -1,5 +1,7 @@
 # New features and user visible changes in branch 2.0
 
+* Fix import of unused function that has been removed (see PR #9).
+
 ## Version 2.0.0
 
 Version 2 of `LocalFilters` better integrates in the Julia ecosystem as fewer

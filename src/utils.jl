@@ -17,7 +17,7 @@ Base.IndexStyle(::Type{<:Indices{S}}) where {S} = S()
 # `Indices` objects can be called like `eachindex` to yield the indices of an
 # array (see `abstractarray.jl`).
 @inline (::Indices{IndexLinear})(A::AbstractArray) = OneTo{Int}(length(A))
-@inline (::Indices{IndexLinear})(A::AbstractVector) = to_int(Base.axes1(A))
+@inline (::Indices{IndexLinear})(A::AbstractVector) = AbstractUnitRange{Int}(Base.axes1(A))
 @inline (::Indices{IndexCartesian})(A::AbstractArray) = CartesianIndices(A)
 
 @inline (I::Indices)(A::AbstractArray, B::AbstractArray) =
@@ -540,7 +540,7 @@ function ball(::Type{Dims{N}}, radius::Real) where {N}
     return arr
 end
 
-@deprecate ball(N::Integer, radius::Real) ball(Dims{to_int(N)}, radius) false
+@deprecate ball(N::Int, radius::Real) ball(Dims{N}, radius) false
 
 @inline function _ball!(arr::AbstractArray{Bool,N},
                         q::Int, qmax::Int, r::Int,
