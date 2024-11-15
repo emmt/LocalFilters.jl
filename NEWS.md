@@ -1,5 +1,7 @@
 # New features and user visible changes in branch 2.0
 
+## Version 2.0.1
+
 * Fix import of unused function that has been removed (see PR #9).
 
 ## Version 2.0.0

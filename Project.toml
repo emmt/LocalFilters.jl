@@ -1,7 +1,7 @@
 name = "LocalFilters"
 uuid = "085fde7c-5f94-55e4-8448-8bbb5db6dde9"
 authors = ["Éric Thiébaut <https://github.com/emmt>"]
-version = "2.0.0"
+version = "2.0.1"
 
 [deps]
 EasyRanges = "bd0ea217-0861-4661-bed1-3e8ea598dd25"
