@@ -44,7 +44,7 @@ export
     strel
 
 using OffsetArrays, StructuredArrays, EasyRanges, TypeUtils
-using EasyRanges: ranges, to_int
+using EasyRanges: ranges
 using Base: @propagate_inbounds, tail, OneTo
 
 function bilateralfilter end
