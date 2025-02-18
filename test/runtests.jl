@@ -10,13 +10,9 @@ using StructuredArrays
 using LocalFilters
 using LocalFilters:
     FilterOrdering, ForwardFilterOrdering, ReverseFilterOrdering,
-    Box, Indices, centered_offset, centered_range, ball, limits,
+    Box, Indices, ball, limits, ranges,
     is_morpho_math_box, check_indices, localindices,
-    ranges, centered
-
-# A bit of type-piracy for more readable error messages.
-Base.show(io::IO, x::CartesianIndices) =
-    print(io, "CartesianIndices($(x.indices))")
+    centered, centered_offset, centered_range
 
 box(args...) = FastUniformArray(true, args...)
 box(R::CartesianIndices) = FastUniformArray(true, R.indices)
@@ -232,7 +228,7 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
         let B = reshape(collect(1:20), (4,5)), R = CartesianIndices(B)
             @test axes(centered(B)) == (-2:1, -2:2)
             @test axes(centered(centered(B))) === axes(centered(B))
-            @test ranges(centered(R)) === (-2:1, -2:2)
+            @test centered(centered(B)) === centered(B)
         end
 
         # limits
