@@ -89,11 +89,11 @@ unit_range(r::AbstractUnitRange{<:Integer}) = unit_range(first(r), last(r))
 unit_range(start::Integer, stop::Integer) = unit_range(as(Int, start), as(Int, stop))
 unit_range(start::Int, stop::Int) = start:stop
 
-function unit_range(r::AbstractRange{<:Integer})
-    s = step(r)
-    abs(s) == one(s) || throw(ArgumentError("non-unit step range"))
-    start, stop = as(Int, first(r)), as(Int, last(r)) # convert to Int prior to negate
-    if s < zero(s)
+function unit_range(rng::AbstractRange{<:Integer})
+    step = Base.step(rng)
+    isone(abs(step)) || throw(ArgumentError("invalid non-unit step range"))
+    start, stop = as(Int, first(rng)), as(Int, last(rng)) # convert to Int prior to negate
+    if step < zero(step)
         start, stop = -stop, -start
     end
     return unit_range(start, stop)
@@ -262,9 +262,9 @@ Method [`LocalFilters.getbal(ord,B,i,j)`](@ref) may be called to get the value i
 according to the ordering `ord`.
 
 """
-@inline function localindices(A::IntegerRange,
+@inline function localindices(A::AbstractRange{<:Integer},
                               ::ForwardFilterOrdering,
-                              B::IntegerRange,
+                              B::AbstractRange{<:Integer},
                               I::Integer)
     return @range A ∩ (I + B)
 end
@@ -276,9 +276,9 @@ end
     return @range A ∩ (I + B)
 end
 
-@inline function localindices(A::IntegerRange,
+@inline function localindices(A::AbstractRange{<:Integer},
                               ::ReverseFilterOrdering,
-                              B::IntegerRange,
+                              B::AbstractRange{<:Integer},
                               I::Integer)
     return @range A ∩ (I - B)
 end
@@ -303,18 +303,16 @@ For example `OffsetArrays.centered` is similar but has a slightly different sema
 Argument `A` can also be an index range (linear or Cartesian), in which case a centered
 index range of same size is returned.
 
-See [`LocalFilters.kernel_range`](@ref), [`LocalFilters.kernel_offset`](@ref).
+See also [`LocalFilters.kernel_range`](@ref), [`LocalFilters.kernel_offset`](@ref).
 
 """ centered
 @public centered
 centered(A::AbstractArray) = OffsetArray(A, map(kernel_offset, size(A)))
 centered(A::OffsetArray) = centered(parent(A))
-centered(R::CartesianIndices{N}) where {N} =
-    CartesianIndices(map(centered, ranges(R)))
-centered(R::AbstractUnitRange{<:Integer}) = kernel_range(length(R))
-centered(R::IntegerRange) = begin
-    abs(step(R)) == 1 || throw(ArgumentError("invalid non-unit step range"))
-    return kernel_range(length(R))
+centered(R::CartesianIndices{N}) where {N} = CartesianIndices(map(centered, R.indices))
+function centered(rng::AbstractRange{<:Integer})
+    isone(abs(step(rng))) || throw(ArgumentError("invalid non-unit step range"))
+    return kernel_range(length(rng))
 end
 
 """

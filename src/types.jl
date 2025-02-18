@@ -12,14 +12,6 @@
 #
 
 """
-    LocalFilters.IntegerRange
-
-is the abstract type of integer-valued ranges.
-
-"""
-const IntegerRange = OrdinalRange{<:Integer,<:Integer}
-
-"""
     LocalFilters.Axis
 
 is the union of types suitable to specify a neighborhood axis. It may be an integer
@@ -27,17 +19,7 @@ is the union of types suitable to specify a neighborhood axis. It may be an inte
 of types accepted by the [`LocalFilters.neighborhood_range`](@ref) method.
 
 """
-const Axis = Union{Integer,IntegerRange}
-
-"""
-    CartesianUnitRange{N}
-
-is an alias for a `N`-dimensional Cartesian index range with unit step. Since Julia 1.6,
-non-unit step Cartesian ranges may be defined.
-
-"""
-const CartesianUnitRange{N} = CartesianIndices{
-    N,<:NTuple{N,AbstractUnitRange{Int}}}
+const Axis = Union{Integer,AbstractRange{<:Integer}}
 
 """
     LocalFilters.Indices(A...) -> indices
@@ -55,6 +37,8 @@ consists in several arrays, they must have the same indices.
 """
 struct Indices{S<:IndexStyle} <: Function end
 
+const CartesianUnitRange{N} = CartesianIndices{N,<:NTuple{N,AbstractUnitRange{Int}}}
+
 """
     LocalFilters.Window{N}
 
@@ -63,8 +47,7 @@ is the union of types of arguments which are not a kernel but which may define a
 by the [`LocalFilters.kernel`](@ref) method.
 
 """
-const Window{N} = Union{Axis,NTuple{N,Axis},NTuple{2,CartesianIndex{N}},
-                        CartesianUnitRange{N}}
+const Window{N} = Union{Axis,NTuple{N,Axis},NTuple{2,CartesianIndex{N}},CartesianIndices{N}}
 
 """
     const LocalFilters.Box{N} = FastUniformArray{Bool,N,true}
