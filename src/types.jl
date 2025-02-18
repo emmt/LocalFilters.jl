@@ -3,12 +3,12 @@
 #
 # Type definitions for local filters.
 #
-#------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------
 #
-# This file is part of the `LocalFilters.jl` package licensed under the MIT
-# "Expat" License.
+# This file is part of the `LocalFilters.jl` package licensed under the MIT "Expat"
+# License.
 #
-# Copyright (C) 2017-2022, Éric Thiébaut.
+# Copyright (C) 2017-2025, Éric Thiébaut.
 #
 
 """
@@ -22,10 +22,9 @@ const IntegerRange = OrdinalRange{<:Integer,<:Integer}
 """
     LocalFilters.Axis
 
-is the union of types suitable to specify a neighborhood axis. It may be an
-integer (assumed to be the length of the axis) or an integer-valued range. This
-is also the union of types accepted by the
-[`LocalFilters.neighborhood_range`](@ref) method.
+is the union of types suitable to specify a neighborhood axis. It may be an integer
+(assumed to be the length of the axis) or an integer-valued range. This is also the union
+of types accepted by the [`LocalFilters.neighborhood_range`](@ref) method.
 
 """
 const Axis = Union{Integer,IntegerRange}
@@ -33,8 +32,8 @@ const Axis = Union{Integer,IntegerRange}
 """
     CartesianUnitRange{N}
 
-is an alias for a `N`-dimensional Cartesian index range with unit step. Since
-Julia 1.6, non-unit step Cartesian ranges may be defined.
+is an alias for a `N`-dimensional Cartesian index range with unit step. Since Julia 1.6,
+non-unit step Cartesian ranges may be defined.
 
 """
 const CartesianUnitRange{N} = CartesianIndices{
@@ -43,16 +42,15 @@ const CartesianUnitRange{N} = CartesianIndices{
 """
     LocalFilters.Indices(A...) -> indices
 
-yields a callable object that can be used to produce ranges of indices for each
-of the arrays `A...`. These ranges will all be of the same type: linear index
-ranges, if all arrays `A...` are vectors implementing fast linear indexing,
-Cartesian index ranges otherwise.
+yields a callable object that can be used to produce ranges of indices for each of the
+arrays `A...`. These ranges will all be of the same type: linear index ranges, if all
+arrays `A...` are vectors implementing fast linear indexing, Cartesian index ranges
+otherwise.
 
-The returned object is similar to the `eachindex` method but specialized for a
-style of indexing, it can be used as `indices(B...)` with `B...` any number of
-the arrays in `A...` to yield a suitable index range to access all the entries
-of array(s) `B...`. If `B...` consists in several arrays, they must have the
-same indices.
+The returned object is similar to the `eachindex` method but specialized for a style of
+indexing, it can be used as `indices(B...)` with `B...` any number of the arrays in `A...`
+to yield a suitable index range to access all the entries of array(s) `B...`. If `B...`
+consists in several arrays, they must have the same indices.
 
 """
 struct Indices{S<:IndexStyle} <: Function end
@@ -60,10 +58,10 @@ struct Indices{S<:IndexStyle} <: Function end
 """
     LocalFilters.Window{N}
 
-is the union of types of arguments which are not a kernel but which may define
-a simple `N`-dimensional hyper-rectangular sliding window and that can be
-converted into a kernel by the [`LocalFilters.kernel`](@ref) method or by the
-[`LocalFilters.Box`](@ref) constructor.
+is the union of types of arguments which are not a kernel but which may define a simple
+`N`-dimensional hyper-rectangular sliding window and that can be converted into a kernel
+by the [`LocalFilters.kernel`](@ref) method or by the [`LocalFilters.Box`](@ref)
+constructor.
 
 """
 const Window{N} = Union{Axis,NTuple{N,Axis},NTuple{2,CartesianIndex{N}},
@@ -72,11 +70,10 @@ const Window{N} = Union{Axis,NTuple{N,Axis},NTuple{2,CartesianIndex{N}},
 """
     LocalFilters.Box{N}(args...)
 
-yields an abstract array whose elements are all `true` and whose axes are
-defined by `args...`. This kind of object is used to represent
-hyper-rectangular sliding windows in `LocalFilters`. Type parameter `N` is the
-number of dimensions, it may be omitted if it can be deduced from the
-arguments.
+yields an abstract array whose elements are all `true` and whose axes are defined by
+`args...`. This kind of object is used to represent hyper-rectangular sliding windows in
+`LocalFilters`. Type parameter `N` is the number of dimensions, it may be omitted if it
+can be deduced from the arguments.
 
 """
 struct Box{N,R<:CartesianUnitRange{N}} <: AbstractArray{Bool,N}
@@ -91,8 +88,7 @@ end
 """
     LocalFilters.FilterOrdering
 
-is the super-type of the possible ordering of indices in local filtering
-operations.
+is the super-type of the possible ordering of indices in local filtering operations.
 
 """
 abstract type FilterOrdering end
@@ -101,9 +97,8 @@ abstract type FilterOrdering end
 """
     LocalFilters.ForwardFilterOrdering
 
-is the singleton type of *forward* ordering of indices in local filter
-operations. The singleton instance [`ForwardFilter`](@ref) of this type is
-exported by `LocalFilters`.
+is the singleton type of *forward* ordering of indices in local filter operations. The
+singleton instance [`ForwardFilter`](@ref) of this type is exported by `LocalFilters`.
 
 """
 struct ForwardFilterOrdering <: FilterOrdering end
@@ -112,9 +107,8 @@ struct ForwardFilterOrdering <: FilterOrdering end
 """
     LocalFilters.ForwardFilterOrdering
 
-is the singleton type of *reverse* ordering of indices in local filter
-operations. The singleton instance [`ReverseFilter`](@ref) of this type is
-exported by `LocalFilters`.
+is the singleton type of *reverse* ordering of indices in local filter operations. The
+singleton instance [`ReverseFilter`](@ref) of this type is exported by `LocalFilters`.
 
 """
 struct ReverseFilterOrdering <: FilterOrdering end
@@ -162,8 +156,8 @@ abstract type BoundaryConditions end
 """
     LocalFilters.FlatBoundaries(inds)
 
-yields an object representing *flat* boundary conditions for arrays with index
-range `inds`.
+yields an object representing *flat* boundary conditions for arrays with index range
+`inds`.
 
 """
 struct FlatBoundaries{R<:Union{AbstractUnitRange{Int},

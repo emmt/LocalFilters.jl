@@ -1,15 +1,15 @@
 #
 # separable.jl --
 #
-# Implementation of efficient separable filters by means of the van
-# Herk-Gil-Werman algorithm.
+# Implementation of efficient separable filters by means of the van Herk-Gil-Werman
+# algorithm.
 #
-#------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------
 #
-# This file is part of the `LocalFilters.jl` package licensed under the MIT
-# "Expat" License.
+# This file is part of the `LocalFilters.jl` package licensed under the MIT "Expat"
+# License.
 #
-# Copyright (C) 2018-2022, Éric Thiébaut.
+# Copyright (C) 2018-2025, Éric Thiébaut.
 #
 
 module Separable
@@ -44,8 +44,8 @@ const Ranges = Union{Axis, Tuple{Vararg{Axis}}, AbstractVector{<:Axis}}
     filter_range([ord=ForwardFilter,] len)
     filter_range([ord=ForwardFilter,] rng)
 
-yields an `Int`-valued unit step range for specifying the filter range for
-ordering `ord`. The result is of length `len` or is based on index range `rng`.
+yields an `Int`-valued unit step range for specifying the filter range for ordering `ord`.
+The result is of length `len` or is based on index range `rng`.
 
 """
 filter_range(len::Integer) = kernel_range(len)
@@ -71,10 +71,9 @@ end
     WorkVector(buf, len, skip=0) -> A
     WorkVector(buf, rng, skip=0) -> A
 
-yield an abstract vector `A` of length `len` or of indices given by the range
-`rng` which share its elements with the buffer `buf`. The first entry of `A` is
-the `skip+1`-th entry of `buf`. If `buf` is not large enough, it is
-automatically resized.
+yield an abstract vector `A` of length `len` or of indices given by the range `rng` which
+share its elements with the buffer `buf`. The first entry of `A` is the `skip+1`-th entry
+of `buf`. If `buf` is not large enough, it is automatically resized.
 
 """
 struct WorkVector{T} <: DenseVector{T}
@@ -84,8 +83,7 @@ struct WorkVector{T} <: DenseVector{T}
     function WorkVector(buf::Vector{T},
                         rng::UnitRange{Int},
                         skip::Int = 0) where {T}
-        skip ≥ 0 || throw(ArgumentError(
-            "number of elements to skip must be nonnegative"))
+        skip ≥ 0 || throw(ArgumentError("number of elements to skip must be nonnegative"))
         minlen = skip + length(rng)
         length(buf) ≥ minlen || resize!(buf, minlen)
         offset = skip + firstindex(buf) - first(rng)
@@ -137,23 +135,21 @@ end
     localfilter([T=eltype(A),] A, dims, op, [ord=ForwardFilter,]
                 rngs[, wrk]) -> dst
 
-yields the result of applying van Herk-Gil-Werman algorithm to filter array `A`
-along dimension(s) `dims` with (associative) binary operation `op` and
-contiguous structuring element(s) defined by the interval(s) `rngs`. Optional
-argument `wrk` is a workspace array with elements of type `T` which is
-automatically allocated if not provided; otherwise, it must be a vector with
-the same element type as `A` and it is resized as needed (by calling the
-`resize!` method). The optional argument `T` allows to specify another type of
-element than `eltype(A)` for the result.
+yields the result of applying van Herk-Gil-Werman algorithm to filter array `A` along
+dimension(s) `dims` with (associative) binary operation `op` and contiguous structuring
+element(s) defined by the interval(s) `rngs`. Optional argument `wrk` is a workspace array
+with elements of type `T` which is automatically allocated if not provided; otherwise, it
+must be a vector with the same element type as `A` and it is resized as needed (by calling
+the `resize!` method). The optional argument `T` allows to specify another type of element
+than `eltype(A)` for the result.
 
-Argument `dims` specifies along which dimension(s) of `A` the filter is to be
-applied, it can be a single integer, a tuple of integers, or a colon `:` to
-apply the operation to all dimensions. Dimensions are processed in the order
-given by `dims` (the same dimension may appear several times) and there must be
-a matching interval in `rngs` to specify the structuring element (except that
-if `rngs` is a single interval, it is used for every dimension in `dims`). An
-interval is either an integer or an integer valued unit range in the form
-`kmin:kmax`. An interval specified as a single integer yields an approximately
+Argument `dims` specifies along which dimension(s) of `A` the filter is to be applied, it
+can be a single integer, a tuple of integers, or a colon `:` to apply the operation to all
+dimensions. Dimensions are processed in the order given by `dims` (the same dimension may
+appear several times) and there must be a matching interval in `rngs` to specify the
+structuring element (except that if `rngs` is a single interval, it is used for every
+dimension in `dims`). An interval is either an integer or an integer valued unit range in
+the form `kmin:kmax`. An interval specified as a single integer yields an approximately
 centered range og this length.
 
 Assuming a mono-dimensional array `A`, the single filtering pass:
@@ -164,35 +160,35 @@ amounts to computing (assuming forward ordering):
 
     dst[j] =  A[i+kmin] ⋄ A[i+kmin+1] ⋄ ... ⋄ A[i+kmax-1] ⋄ A[i+kmax]
 
-for all `j ∈ axes(dst,1)`, with `x ⋄ y = op(x, y)`, `kmin = first(rng)` and
-`kmax = last(rng)`. Note that if `kmin = kmax = k`, the result of the filter is
-to operate a simple shift by `k` along the corresponding dimension and has no
-effects if `k = 0`. This can be exploited to not filter some dimension(s).
+for all `j ∈ axes(dst,1)`, with `x ⋄ y = op(x, y)`, `kmin = first(rng)` and `kmax =
+last(rng)`. Note that if `kmin = kmax = k`, the result of the filter is to operate a
+simple shift by `k` along the corresponding dimension and has no effects if `k = 0`. This
+can be exploited to not filter some dimension(s).
 
 Flat boundary conditions are assumed for `A[i+k]` in the above formula.
 
 ## Examples
 
-The *morphological erosion* (local minimum) of the array `A` on a centered
-structuring element of width 7 in every dimension can be obtained by:
+The *morphological erosion* (local minimum) of the array `A` on a centered structuring
+element of width 7 in every dimension can be obtained by:
 
     localfilter(A, :, min, -3:3)
 
-Index interval `0:0` may be specified to do nothing along the corresponding
-dimension. For instance, assuming `A` is a three-dimensional array:
+Index interval `0:0` may be specified to do nothing along the corresponding dimension. For
+instance, assuming `A` is a three-dimensional array:
 
     localfilter(A, :, max, (-3:3, 0:0, -4:4))
 
-yields the *morphological dilation* (*i.e.* local maximum) of `A` in a centered
-local neighborhood of size `7×1×9` (nothing is done along the second
-dimension). The same result may be obtained with:
+yields the *morphological dilation* (*i.e.* local maximum) of `A` in a centered local
+neighborhood of size `7×1×9` (nothing is done along the second dimension). The same result
+may be obtained with:
 
     localfilter(A, (1,3), max, (-3:3, -4:4))
 
 where the second dimension is omitted from the list of dimensions.
 
-The *local average* of the two-dimensional array `A` on a centered moving
-window of size 11×11 can be computed as:
+The *local average* of the two-dimensional array `A` on a centered moving window of size
+11×11 can be computed as:
 
     localfilter(A, :, +, (-5:5, -5:5))*(1/11)
 
@@ -214,19 +210,17 @@ end
 """
     localfilter!([dst = A,] A, dims, op, [ord=ForwardFilter,] rngs[, wrk])
 
-overwrites the contents of `dst` with the result of applying van
-Herk-Gil-Werman algorithm to filter array `A` along dimension(s) `dims` with
-(associative) binary operation `op` and contiguous structuring element(s)
-defined by the interval(s) `rngs` and using optional argument `wrk` as a
-workspace array. The destination `dst` must have the same indices as the source
-`A` (that is, `axes(dst) == axes(A)`). Operation may be done in-place and `dst`
-and `A` can be the same; this is the default behavior if `dst` is not
-specified.
+overwrites the contents of `dst` with the result of applying van Herk-Gil-Werman algorithm
+to filter array `A` along dimension(s) `dims` with (associative) binary operation `op` and
+contiguous structuring element(s) defined by the interval(s) `rngs` and using optional
+argument `wrk` as a workspace array. The destination `dst` must have the same indices as
+the source `A` (that is, `axes(dst) == axes(A)`). Operation may be done in-place and `dst`
+and `A` can be the same; this is the default behavior if `dst` is not specified.
 
 See [`localfilter`](@ref) for a full description of the method.
 
-The in-place *morphological erosion* (local minimum) of the array `A` on a
-centered structuring element of width 7 in every dimension can be obtained by:
+The in-place *morphological erosion* (local minimum) of the array `A` on a centered
+structuring element of width 7 in every dimension can be obtained by:
 
     localfilter!(A, :, min, -3:3)
 
@@ -259,10 +253,9 @@ end
 
 # Wrapper methods when destination, ordering, and workspace are specified.
 #
-# The filter is applied along all chosen dimensions. To reduce page memory
-# faults, the operation is performed out-of-place (unless dst and A are the
-# same) for the first chosen dimension and the operation is performed in-place
-# for the other chosen dimensions.
+# The filter is applied along all chosen dimensions. To reduce page memory faults, the
+# operation is performed out-of-place (unless dst and A are the same) for the first chosen
+# dimension and the operation is performed in-place for the other chosen dimensions.
 
 # Versions for a single given filter range.
 
@@ -360,8 +353,8 @@ function localfilter!(dst::AbstractArray{T,N},
     return dst
 end
 
-# Apply filter along a single given dimension. This is the most basic version
-# which is called by other versions.
+# Apply filter along a single given dimension. This is the most basic version which is
+# called by other versions.
 function localfilter!(dst::AbstractArray{T,N},
                       A::AbstractArray{<:Any,N},
                       dim::Integer, # dimension of interest
@@ -375,8 +368,8 @@ function localfilter!(dst::AbstractArray{T,N},
     return dst
 end
 
-# This version is to break the type instability related to the variable
-# dimension of interest.
+# This version is to break the type instability related to the variable dimension of
+# interest.
 function unsafe_localfilter!(dst::AbstractArray{T,N},
                              A::AbstractArray{<:Any,N},
                              ::Val{D}, # dimension of interest
@@ -418,9 +411,9 @@ function unsafe_shiftarray!(dst::AbstractArray{<:Any,N},
                             B::BoundaryConditions,
                             k::Int) where {N}
     @inbounds for i2 ∈ I2, i1 ∈ I1
-        # To allow for in-place operation without using any temporaries, we
-        # walk along the dimension in the forward direction if the shift is
-        # nonnegative and in the reverse direction otherwise.
+        # To allow for in-place operation without using any temporaries, we walk along the
+        # dimension in the forward direction if the shift is nonnegative and in the
+        # reverse direction otherwise.
         if k ≥ 0
             @simd for i ∈ I
                 dst[i1,i,i2] = src[i1,B(i+k),i2]
@@ -443,8 +436,8 @@ function unsafe_localfilter!(dst::AbstractArray{T,N},
                              op::Function,
                              K::AbstractUnitRange{Int},
                              R::Vector{T}) where {T,N}
-    # The code assumes that the workspace R has 1-based indices, all other
-    # arrays may have any indices.
+    # The code assumes that the workspace R has 1-based indices, all other arrays may have
+    # any indices.
     @assert firstindex(R) == 1
 
     # Get ranges for indices.
@@ -452,22 +445,22 @@ function unsafe_localfilter!(dst::AbstractArray{T,N},
     kmin, kmax = first(K), last(K) # neighborhood index range
     n = length(K) # length of neighborhood
 
-    # Make a work vector for storing values from the source accounting for
-    # boundary conditions and leaving n values for the array R.
+    # Make a work vector for storing values from the source accounting for boundary
+    # conditions and leaving n values for the array R.
     L = (imin + kmin):(imax + kmax)
     A = WorkVector(R, L, n)
 
     # The van Herk-Gil-Werman algorithm
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #
-    # A monodimensional local filter involving binary operation ⋄ on index
-    # range K = kmin:kmax yields the following array C when filtering the array
-    # A (with forward ordering):
+    # A monodimensional local filter involving binary operation ⋄ on index range K =
+    # kmin:kmax yields the following array C when filtering the array A (with forward
+    # ordering):
     #
     #     C[i] = A[i+kmin] ⋄ A[i+kmin+1] ⋄ ... ⋄ A[i+kmax-1] ⋄ A[i+kmax]
     #
-    # Assuming ⋄ is an associative binary operation, van Herk-Gil-Werman (HGW)
-    # algorithm consists in building 2 auxilliary arrays, R and S, as follows:
+    # Assuming ⋄ is an associative binary operation, van Herk-Gil-Werman (HGW) algorithm
+    # consists in building 2 auxilliary arrays, R and S, as follows:
     #
     #     R[1] = A[i+kmax-1]
     #     R[j] = A[i+kmax-j] ⋄ R[j-1]   ∀ j ∈ 2:n-1
@@ -477,8 +470,7 @@ function unsafe_localfilter!(dst::AbstractArray{T,N},
     #     S[1]   = A[i+kmax]
     #     S[j+1] = S[j] ⋄ A[i+kmax+j]      ∀ j ∈ 1:n-1
     #
-    # with n = length(K) the length of the structuring element. Graphically
-    # (for n = 7):
+    # with n = length(K) the length of the structuring element. Graphically (for n = 7):
     #
     #             i+kmin      i+kmax
     #              ↓           ↓
@@ -490,46 +482,42 @@ function unsafe_localfilter!(dst::AbstractArray{T,N},
     #     R[1]   ←           □ □⋄□⋄□⋄□⋄□⋄□   → S[n-1]
     #                          □⋄□⋄□⋄□⋄□⋄□⋄□ → S[n]
     #
-    # where each □ represents a cell in A. Thanks to the recursion, this only
-    # takes 2n - 3 operations ⋄. Then, assuming the result is stored in array
-    # C, we have:
+    # where each □ represents a cell in A. Thanks to the recursion, this only takes 2n - 3
+    # operations ⋄. Then, assuming the result is stored in array C, we have:
     #
     #     C[i+j-1] = R[n-j]⋄S[j]   ∀ j ∈ 1:n-1
     #     C[i+n-1] = S[n]
     #
-    # which requires n - 1 more operations ⋄. So the total number of operations
-    # ⋄ is 3n - 4 for computing n values in C, hence 3 - 4/n operations per
-    # cell on average.
+    # which requires n - 1 more operations ⋄. So the total number of operations ⋄ is 3n -
+    # 4 for computing n values in C, hence 3 - 4/n operations per cell on average.
     #
-    # The following implementation exploits a single workspace array to
-    # temporarily store A[i] to allow for in-place appllication of the filter
-    # and with suplementary values to account for boundary conditions. The
-    # workspace array is also used to store R[j] while the values of S[j] are
-    # computed on the fly.
+    # The following implementation exploits a single workspace array to temporarily store
+    # A[i] to allow for in-place application of the filter and with supplementary values
+    # to account for boundary conditions. The workspace array is also used to store R[j]
+    # while the values of S[j] are computed on the fly.
     #
 
     @inbounds for i2 ∈ I2, i1 ∈ I1
-        # Fill the workspace with the source for all possible indices and
-        # taking care of boundary conditions.
+        # Fill the workspace with the source for all possible indices and taking care of
+        # boundary conditions.
         @simd for l ∈ L
             A[l] = src[i1,B(l),i2]
         end
 
-        # Process the input by blocks of as much as n elements (less at the end
-        # of the range).
+        # Process the input by blocks of as much as n elements (less at the end of the
+        # range).
         for i = imin:n:imax
-            # Initialize auxilliary array R.
+            # Initialize auxiliary array R.
             R[1] = A[i+kmax-1]
             @simd for j ∈ 2:n-1
                 R[j] = op(A[i+kmax-j], R[j-1])
             end
-            # Apply the recursion to compute at least 1 and at most n resulting
-            # values.
+            # Apply the recursion to compute at least 1 and at most n resulting values.
             jmax = imax-i+1 # max. value for j in dst[i1,i+j-1,i2]
             # First output (j = 1).
             s = A[i+kmax]                # S[1]
             dst[i1,i,i2] = op(R[n-1], s) # C[i] = R[n-1] ⋄ S[1]
-            # Intermediate ouptputs (j ∈ 2:n-1).
+            # Intermediate outputs (j ∈ 2:n-1).
             @simd for j ∈ 2:min(n-1, jmax)
                 s = op(s, A[i+kmax+j-1])         # S[j] = S[j-1] ⋄ A[i+kmax+j-1]
                 dst[i1,i+j-1,i2] = op(R[n-j], s) # C[i+j-1] = R[n-j]⋄S[j]
@@ -603,17 +591,16 @@ end
 """
     workspace_length(n, p)
 
-yields the minimal length of the workspace array for applying the van
-Herk-Gil-Werman algorithm along a dimension of length `n` with a structuring
-element of width `p`. If `n < 1` or `p ≤ 1`, zero is returned because a
-workspace array is not needed.
+yields the minimal length of the workspace array for applying the van Herk-Gil-Werman
+algorithm along a dimension of length `n` with a structuring element of width `p`. If `n <
+1` or `p ≤ 1`, zero is returned because a workspace array is not needed.
 
     workspace_length(A, dims, rngs)
 
-yields the minimal length of the workspace array for applying the van
-Herk-Gil-Werman algorithm along the dimension(s) `dims` of array `A` with a
-structuring element defined by the interval(s) `rngs`. If arguments are not
-compatible, zero is returned because there is no needs for a workspace array.
+yields the minimal length of the workspace array for applying the van Herk-Gil-Werman
+algorithm along the dimension(s) `dims` of array `A` with a structuring element defined by
+the interval(s) `rngs`. If arguments are not compatible, zero is returned because there is
+no needs for a workspace array.
 
 """
 workspace_length(n::Int, p::Int) = ifelse((n < 1)|(p ≤ 1), 0, n + 2*(p - 1))

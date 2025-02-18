@@ -1,8 +1,8 @@
 # Reference
 
 The following summarizes the documentation of types and methods provided by the
-`LocalFilters` package. This information is also available from the REPL by
-typing `?` followed by the name of a method or a type.
+`LocalFilters` package. This information is also available from the REPL by typing `?`
+followed by the name of a method or a type.
 
 
 ## Index
@@ -13,8 +13,7 @@ typing `?` followed by the name of a method or a type.
 
 ## Linear filters
 
-`LocalFilters` provides convolutive filters which are shift-invariant linear
-filters.
+`LocalFilters` provides convolutive filters which are shift-invariant linear filters.
 
 ```@docs
 localmean

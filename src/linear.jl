@@ -3,24 +3,23 @@
 #
 # Implementation of linear local filters.
 #
-#------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------
 #
 # This file is part of the `LocalFilters.jl` package licensed under the MIT
 # "Expat" License.
 #
-# Copyright (C) 2017-2022, Éric Thiébaut.
+# Copyright (C) 2017-2025, Éric Thiébaut.
 #
 
 """
     localmean(A, [ord=ForwardFilter,] B=3)
 
-yields the local mean of `A` in a neighborhood defined by `B`. The result is an
-array similar to `A`. If `B` is not specified, the neighborhood is a
-hyper-rectangular sliding window of size 3 in every dimension. Otherwise, `B`
-may be specified as a Cartesian box, or as an array of booleans of same number
-of dimensions as `A`. If `B` is a single odd integer (as it is by default), the
-neighborhood is assumed to be a hyper-rectangular sliding window of size `B` in
-every dimension.
+yields the local mean of `A` in a neighborhood defined by `B`. The result is an array
+similar to `A`. If `B` is not specified, the neighborhood is a hyper-rectangular sliding
+window of size 3 in every dimension. Otherwise, `B` may be specified as a Cartesian box,
+or as an array of booleans of same number of dimensions as `A`. If `B` is a single odd
+integer (as it is by default), the neighborhood is assumed to be a hyper-rectangular
+sliding window of size `B` in every dimension.
 
 See also [`localmean!`](@ref) and [`localfilter!`](@ref).
 
@@ -29,8 +28,8 @@ See also [`localmean!`](@ref) and [`localfilter!`](@ref).
 """
     localmean!(dst, A, [ord=ForwardFilter,] B=3) -> dst
 
-overwrites `dst` with the local mean of `A` in a neighborhood defined by `B`
-and returns `dst`.
+overwrites `dst` with the local mean of `A` in a neighborhood defined by `B` and returns
+`dst`.
 
 See also [`localmean`](@ref) and [`localfilter!`](@ref).
 
@@ -108,12 +107,11 @@ end
 """
     correlate(A, B=3) -> dst
 
-yields the discrete correlation of the array `A` by the kernel defined by `B`.
-The result `dst` is an array similar to `A`.
+yields the discrete correlation of the array `A` by the kernel defined by `B`. The result
+`dst` is an array similar to `A`.
 
-Using `Sup(A)` to denote the set of valid indices for array `A` and assuming
-`B` is an array of numerical values, the discrete convolution of `A` by `B`
-writes:
+Using `Sup(A)` to denote the set of valid indices for array `A` and assuming `B` is an
+array of numerical values, the discrete convolution of `A` by `B` writes:
 
     T = promote_type(eltype(A), eltype(B))
     dst = similar(A, T)
@@ -125,9 +123,9 @@ writes:
         dst[i] = v
     end
 
-with `T` the type of the product of elements of `A` and `B`, and where `Sup(A)
-∩ (i - Sup(A))` denotes the subset of indices `k` such that `k ∈ Sup(B)` and
-`i - k ∈ Sup(A)` and thus for which `B[k]` and `A[i-k]` are valid.
+with `T` the type of the product of elements of `A` and `B`, and where `Sup(A) ∩ (i -
+Sup(A))` denotes the subset of indices `k` such that `k ∈ Sup(B)` and `i - k ∈ Sup(A)` and
+thus for which `B[k]` and `A[i-k]` are valid.
 
 See also [`correlate!`](@ref), [`convolve`](@ref), and
 [`LocalFilters.multiply_add`](@ref).
@@ -137,8 +135,7 @@ See also [`correlate!`](@ref), [`convolve`](@ref), and
 """
     correlate!(dst, A, B) -> dst
 
-overwrites `dst` with the discrete convolution of `A` by the kernel `B` and
-returns `dst`.
+overwrites `dst` with the discrete convolution of `A` by the kernel `B` and returns `dst`.
 
 See also [`correlate`](@ref) and [`localfilter!`](@ref).
 
@@ -147,11 +144,11 @@ See also [`correlate`](@ref) and [`localfilter!`](@ref).
 """
     convolve(A, B=3)
 
-yields the discrete convolution of array `A` by the kernel defined by `B`. The
-result `dst` is an array similar to `A`.
+yields the discrete convolution of array `A` by the kernel defined by `B`. The result
+`dst` is an array similar to `A`.
 
-Using `Sup(A)` to denote the set of valid indices for array `A` and assuming
-`B` is an array of values, the discrete convolution of `A` by `B` writes:
+Using `Sup(A)` to denote the set of valid indices for array `A` and assuming `B` is an
+array of values, the discrete convolution of `A` by `B` writes:
 
     T = promote_type(eltype(A), eltype(B))
     for i ∈ Sup(A)
@@ -162,9 +159,9 @@ Using `Sup(A)` to denote the set of valid indices for array `A` and assuming
         dst[i] = v
     end
 
-with `T` the type of the product of elements of `A` and `B`, and where `Sup(B)
-∩ (i - Sup(A))` denotes the subset of indices `k` such that `k ∈ Sup(B)` and
-`i - k ∈ Sup(A)` and thus for which `B[k]` and `A[i-k]` are valid.
+with `T` the type of the product of elements of `A` and `B`, and where `Sup(B) ∩ (i -
+Sup(A))` denotes the subset of indices `k` such that `k ∈ Sup(B)` and `i - k ∈ Sup(A)` and
+thus for which `B[k]` and `A[i-k]` are valid.
 
 See also [`convolve!`](@ref) and [`localfilter!`](@ref).
 
@@ -173,8 +170,7 @@ See also [`convolve!`](@ref) and [`localfilter!`](@ref).
 """
     convolve!(dst, A, B) -> dst
 
-overwrites `dst` with the discrete convolution of `A` by the kernel `B` and
-returns `dst`.
+overwrites `dst` with the discrete convolution of `A` by the kernel `B` and returns `dst`.
 
 See also [`convolve`](@ref) and [`localfilter!`](@ref).
 
@@ -183,9 +179,8 @@ See also [`convolve`](@ref) and [`localfilter!`](@ref).
 """
     multiply_add(A, [ord=ForwardFilter,] B=3) -> dst
 
-yields the discrete correlation (if `ord=ForwardFilter`) or the discrete
-convolution (if `ord=ReverseFilter`) of `A` by `B`. The result is an array
-similar to `A`.
+yields the discrete correlation (if `ord=ForwardFilter`) or the discrete convolution (if
+`ord=ReverseFilter`) of `A` by `B`. The result is an array similar to `A`.
 
 See also [`multiply_add!`](@ref), [`correlate`](@ref), [`convolve`](@ref), and
 [`localfilter!`](@ref).
@@ -195,8 +190,8 @@ See also [`multiply_add!`](@ref), [`correlate`](@ref), [`convolve`](@ref), and
 """
     multiply_add!(dst, A, [ord=ForwardFilter,] B=3) -> dst
 
-overwrites `dst` with the discrete correlation (if `ord=ForwardFilter`) or the
-discrete convolution (if `ord=ReverseFilter`) of `A` by `B`.
+overwrites `dst` with the discrete correlation (if `ord=ForwardFilter`) or the discrete
+convolution (if `ord=ReverseFilter`) of `A` by `B`.
 
 See also [`multiply_add`](@ref) and [`localfilter!`](@ref).
 
@@ -236,9 +231,9 @@ function multiply_add!(dst::AbstractArray{<:Any,N},
     return dst
 end
 
-# Compared to the base implementation in `bool.jl`, the following definition of
-# the multiplication by a boolean yields a significantly faster (~50%)
-# `multiply_add!` for big neighborhoods because `copysign` is avoided.
+# Compared to the base implementation in `bool.jl`, the following definition of the
+# multiplication by a boolean yields a significantly faster (~50%) `multiply_add!` for big
+# neighborhoods because `copysign` is avoided.
 mult(a::Number, b::Bool) = ifelse(b, a, zero(a))
 mult(a::Bool, b::Number) = mult(b, a)
 mult(a::Bool, b::Bool) = a*b
