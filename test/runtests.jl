@@ -6,16 +6,20 @@ module TestingLocalFilters
 #using Compat
 using Test
 using OffsetArrays
+using StructuredArrays
 using LocalFilters
 using LocalFilters:
     FilterOrdering, ForwardFilterOrdering, ReverseFilterOrdering,
-    Box, Indices, kernel_offset, kernel_range, kernel, ball, limits,
+    Box, Indices, kernel_offset, kernel_range, ball, limits,
     is_morpho_math_box, check_indices, localindices,
-    ranges, centered, replicate
+    ranges, centered
 
 # A bit of type-piracy for more readable error messages.
 Base.show(io::IO, x::CartesianIndices) =
     print(io, "CartesianIndices($(x.indices))")
+
+box(args...) = FastUniformArray(true, args...)
+box(R::CartesianIndices) = FastUniformArray(true, R.indices)
 
 #=
 # Selector for reference methods.
@@ -189,20 +193,17 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
         @test kernel_range(Base.OneTo(7)) === Base.OneTo{Int}(7)
         @test kernel_range(Base.OneTo(Int16(7))) === Base.OneTo{Int}(7)
 
-        # Boxes.
-        #@test Box(...)
-
         # kernel
         # FIXME: @test length(kernel()) == 0
         # FIXME: @test kernel(()) == 0
         # FIXME: @test kernel(Dims{0}) == 0
         @test kernel(Dims{2}, 6) === kernel(6, 6)
-        @test kernel(Dims{2}, 6) === Box(-3:2,-3:2)
-        @test kernel(Dims{2}, 5, 6) === Box(-2:2,-3:2)
-        @test kernel(5, 6) === Box(-2:2,-3:2)
-        @test kernel(-2:4, 6) === Box(-2:4,-3:2)
-        @test kernel(CartesianIndex(-2,1,0), CartesianIndex(4,9,5)) === Box(-2:4, 1:9, 0:5)
-        @test kernel(-2:4, 1:9, 0:5) === Box(-2:4, 1:9, 0:5)
+        @test kernel(Dims{2}, 6) === box(-3:2,-3:2)
+        @test kernel(Dims{2}, 5, 6) === box(-2:2,-3:2)
+        @test kernel(5, 6) === box(-2:2,-3:2)
+        @test kernel(-2:4, 6) === box(-2:4,-3:2)
+        @test kernel(CartesianIndex(-2,1,0), CartesianIndex(4,9,5)) === box(-2:4, 1:9, 0:5)
+        @test kernel(-2:4, 1:9, 0:5) === box(-2:4, 1:9, 0:5)
         for args in ((6, -1:3, 2:4),
                      (CartesianIndex(-2,1,0), CartesianIndex(4,9,5)))
             @test kernel(args...) === kernel(args)
@@ -210,18 +211,17 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
                 kernel(Dims{3}, args)
         end
         let R = CartesianIndices((6, -1:3, 2:4))
-            @test kernel(R) === Box(R)
-            @test kernel(Dims{3}, R) === Box(R)
-            @test Box(R) === Box{3}(R)
+            @test kernel(R) === box(R)
+            @test kernel(Dims{3}, R) === box(R)
         end
         if VERSION ≥ v"1.6"
             # Ranges can have a step in CartesianIndices
             @test_throws ArgumentError kernel(CartesianIndices((1:2:6,)))
-            @test kernel(CartesianIndices((1:1:6,))) === Box(1:6)
+            @test kernel(CartesianIndices((1:1:6,))) === box(1:6)
         end
 
         # ordering
-        let B = reshape(collect(1:20), (4,5)), R = Box(CartesianIndices(B))
+        let B = reshape(collect(1:20), (4,5)), R = box(CartesianIndices(B))
             @test B[ForwardFilter(CartesianIndex(2,3), CartesianIndex(3,5))] == B[1,2]
             @test B[ReverseFilter(CartesianIndex(2,3), CartesianIndex(-1,1))] == B[3,2]
             @test R[ForwardFilter(CartesianIndex(2,3), CartesianIndex(3,5))] == true
@@ -234,11 +234,6 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
             @test axes(centered(centered(B))) === axes(centered(B))
             @test ranges(centered(R)) === (-2:1, -2:2)
         end
-
-        # replicate
-        @test replicate(NTuple{3}, 'a') === ('a', 'a', 'a')
-        @test replicate(NTuple{3,Char}, 'a') === ('a', 'a', 'a')
-        @test replicate(NTuple{2,Int}, 'a') === (97, 97)
 
         # limits
         @test limits(Float32) === (-Float32(Inf), Float32(Inf))

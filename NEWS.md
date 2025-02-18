@@ -1,5 +1,8 @@
 # New features and user visible changes in branch 2.0
 
+* Non-exported `Box{N}` is now an alias to `FastUniformArray{Bool,N,true}` from the
+  `StructuredArrays` package.
+
 * Macro `@public` to declare *public* methods even though they are not exported. This
   concept was introduced in Julia 1.11, for older Julia versions, nothing change.
 

@@ -60,30 +60,20 @@ struct Indices{S<:IndexStyle} <: Function end
 
 is the union of types of arguments which are not a kernel but which may define a simple
 `N`-dimensional hyper-rectangular sliding window and that can be converted into a kernel
-by the [`LocalFilters.kernel`](@ref) method or by the [`LocalFilters.Box`](@ref)
-constructor.
+by the [`LocalFilters.kernel`](@ref) method.
 
 """
 const Window{N} = Union{Axis,NTuple{N,Axis},NTuple{2,CartesianIndex{N}},
                         CartesianUnitRange{N}}
 
 """
-    LocalFilters.Box{N}(args...)
+    const LocalFilters.Box{N} = FastUniformArray{Bool,N,true}
 
-yields an abstract array whose elements are all `true` and whose axes are defined by
-`args...`. This kind of object is used to represent hyper-rectangular sliding windows in
-`LocalFilters`. Type parameter `N` is the number of dimensions, it may be omitted if it
-can be deduced from the arguments.
+is an alias to an abstract `N`-dimensional array whose elements are all `true`. Instances
+of this kind are used to represent hyper-rectangular sliding windows in `LocalFilters`.
 
 """
-struct Box{N,R<:CartesianUnitRange{N}} <: AbstractArray{Bool,N}
-    inds::R
-    function Box(inds::R) where {N,R<:CartesianIndices{N}}
-        R <: CartesianUnitRange{N} && return new{N,R}(inds)
-        unit_inds = CartesianIndices(map(unit_range, ranges(inds)))
-        return new{N,typeof(unit_inds)}(unit_inds)
-    end
-end
+const Box{N} = FastUniformArray{Bool,N,true}
 
 """
     LocalFilters.FilterOrdering
