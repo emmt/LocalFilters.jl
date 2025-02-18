@@ -10,7 +10,7 @@ using StructuredArrays
 using LocalFilters
 using LocalFilters:
     FilterOrdering, ForwardFilterOrdering, ReverseFilterOrdering,
-    Box, Indices, kernel_offset, kernel_range, ball, limits,
+    Box, Indices, centered_offset, kernel_range, ball, limits,
     is_morpho_math_box, check_indices, localindices,
     ranges, centered
 
@@ -173,10 +173,10 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
             @test I(B) === eachindex(IndexStyle(I), B)
         end
 
-        # kernel_offset
-        @test_throws ArgumentError kernel_offset(-1)
-        @test kernel_offset(Int16(5)) === -3
-        @test kernel_offset(Int16(4)) === -3
+        # centered_offset
+        @test_throws ArgumentError centered_offset(-1)
+        @test centered_offset(Int16(5)) === -3
+        @test centered_offset(Int16(4)) === -3
 
         # kernel_range
         @test_throws ArgumentError kernel_range(-1)

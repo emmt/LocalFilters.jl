@@ -104,7 +104,7 @@ unit_range(R::CartesianIndices{N,<:NTuple{N,AbstractUnitRange{Int}}}) where {N} 
 unit_range(R::CartesianIndices) = CartesianIndices(map(unit_range, R.indices))
 
 """
-   LocalFilters.kernel_offset(len)
+   LocalFilters.centered_offset(len)
 
 yields the index offset along a centered dimension of length `len`. That is,
 `-div(Int(len)+2,2)`. For even dimension lengths, this amounts to using the same
@@ -112,10 +112,10 @@ conventions as in `fftshift`.
 
 See [`LocalFilters.kernel_range`](@ref) and [`LocalFilters.centered`](@ref).
 
-""" kernel_offset
-@public kernel_offset
+""" centered_offset
+@public centered_offset
 
-function kernel_offset(len::Integer)
+function centered_offset(len::Integer)
     len ≥ 0 || throw(ArgumentError("invalid dimension length"))
     return -((Int(len) + 2) >> 1)
 end
@@ -130,7 +130,7 @@ or first and last indices `start` and `stop`. In the case of a given dimension l
 centered range of this length is returned (for even lengths, the same conventions as in
 `fftshift` are used).
 
-See [`LocalFilters.kernel`](@ref), [`LocalFilters.kernel_offset`](@ref), and
+See [`LocalFilters.kernel`](@ref), [`LocalFilters.centered_offset`](@ref), and
 [`LocalFilters.centered`](@ref).
 
 """ kernel_range
@@ -140,7 +140,7 @@ kernel_range(rng::AbstractRange{<:Integer}) = unit_range(rng)
 
 function kernel_range(len::Integer)
     len = as(Int, len)
-    off = kernel_offset(len)
+    off = centered_offset(len)
     return unit_range(off + 1, off + len)
 end
 
@@ -318,11 +318,11 @@ For example `OffsetArrays.centered` is similar but has a slightly different sema
 Argument `A` can also be an index range (linear or Cartesian), in which case a centered
 index range of same size is returned.
 
-See also [`LocalFilters.kernel_range`](@ref), [`LocalFilters.kernel_offset`](@ref).
+See also [`LocalFilters.kernel_range`](@ref), [`LocalFilters.centered_offset`](@ref).
 
 """ centered
 @public centered
-centered(A::AbstractArray) = OffsetArray(A, map(kernel_offset, size(A)))
+centered(A::AbstractArray) = OffsetArray(A, map(centered_offset, size(A)))
 centered(A::OffsetArray) = centered(parent(A))
 centered(R::CartesianIndices{N}) where {N} = CartesianIndices(map(centered, R.indices))
 function centered(rng::AbstractRange{<:Integer})

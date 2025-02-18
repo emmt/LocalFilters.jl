@@ -16,7 +16,7 @@
 
 is the union of types suitable to specify a neighborhood axis. It may be an integer
 (assumed to be the length of the axis) or an integer-valued range. This is also the union
-of types accepted by the [`LocalFilters.neighborhood_range`](@ref) method.
+of types accepted by the [`LocalFilters.kernel_range`](@ref) method.
 
 """
 const Axis = Union{Integer,AbstractRange{<:Integer}}
@@ -37,6 +37,7 @@ consists in several arrays, they must have the same indices.
 """
 struct Indices{S<:IndexStyle} <: Function end
 
+# FIXME Remove this constant.
 const CartesianUnitRange{N} = CartesianIndices{N,<:NTuple{N,AbstractUnitRange{Int}}}
 
 """
