@@ -324,6 +324,10 @@ See also [`LocalFilters.centered_range`](@ref), [`LocalFilters.centered_offset`]
 @public centered
 centered(A::AbstractArray) = OffsetArray(A, map(centered_offset, size(A)))
 centered(A::OffsetArray) = centered(parent(A))
+for type in (:UniformArray, :FastUniformArray, :MutableUniformArray)
+    @eval centered(A::$type) =
+        $type(StructuredArrays.value(A), map(centered_range, axes(A)))
+end
 
 """
     limits(T::DataType) -> typemin(T), typemax(T)
