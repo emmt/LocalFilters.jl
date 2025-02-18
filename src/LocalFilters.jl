@@ -13,6 +13,8 @@
 
 module LocalFilters
 
+include("compat.jl")
+
 export
     ForwardFilter,
     ReverseFilter,

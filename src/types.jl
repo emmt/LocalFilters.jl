@@ -96,6 +96,7 @@ operations.
 
 """
 abstract type FilterOrdering end
+@public FilterOrdering
 
 """
     LocalFilters.ForwardFilterOrdering
@@ -106,6 +107,7 @@ exported by `LocalFilters`.
 
 """
 struct ForwardFilterOrdering <: FilterOrdering end
+@public ForwardFilterOrdering
 
 """
     LocalFilters.ForwardFilterOrdering
@@ -116,6 +118,7 @@ exported by `LocalFilters`.
 
 """
 struct ReverseFilterOrdering <: FilterOrdering end
+@public ReverseFilterOrdering
 
 """
     LocalFilters.BoundaryConditions
@@ -124,6 +127,7 @@ is the super-type of types representing boundary conditions.
 
 """
 abstract type BoundaryConditions end
+@public BoundaryConditions
 
 """
     LocalFilters.FlatBoundaries(inds)
@@ -142,3 +146,4 @@ struct FlatBoundaries{R<:Union{AbstractUnitRange{Int},
         return new{R}(indices)
     end
 end
+@public FlatBoundaries

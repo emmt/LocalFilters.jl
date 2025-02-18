@@ -1,5 +1,8 @@
 # New features and user visible changes in branch 2.0
 
+* Macro `@public` to declare *public* methods even though they are not exported. This
+  concept was introduced in Julia 1.11, for older Julia versions, nothing change.
+
 ## Version 2.0.1
 
 * Fix import of unused function that has been removed (see PR #9).

@@ -358,7 +358,8 @@ centered index range of same size is returned.
 
 See [`LocalFilters.kernel_range`](@ref), [`LocalFilters.kernel_offset`](@ref).
 
-"""
+""" centered
+@public centered
 centered(A::AbstractArray) = OffsetArray(A, map(kernel_offset, size(A)))
 centered(A::OffsetArray) = centered(parent(A))
 centered(R::CartesianIndices{N}) where {N} =
@@ -378,7 +379,8 @@ yields the `N`-tuple `(val,val,...)`.
 
 yields the `N`-tuple `(x,x,...)` where `x` is `val` converted to type `T`.
 
-"""
+""" replicate
+@public replicate
 replicate(::Type{NTuple{N}}, val) where {N} = ntuple((x) -> val, Val(N))
 replicate(::Type{NTuple{N,T}}, val::T) where {N,T} = ntuple((x) -> val, Val(N))
 replicate(::Type{NTuple{N,T}}, val) where {N,T} =
@@ -471,7 +473,8 @@ hyper-rectangular box for mathematical morphology operations. This may be used
 to use fast separable versions of mathematical morphology operations like the
 van Herk-Gil-Werman algorithm.
 
-"""
+""" is_morpho_math_box
+@public is_morpho_math_box
 is_morpho_math_box(::Box) = true
 is_morpho_math_box(R::AbstractArray{Bool}) = all(R)
 is_morpho_math_box(R::AbstractArray{<:AbstractFloat}) = all(iszero, R)
@@ -527,7 +530,8 @@ To have a mask with centered index ranges, call:
 
     LocalFilters.centered(LocalFilters.ball(Dims{N}, r))
 
-"""
+""" ball
+@public ball
 function ball(::Type{Dims{N}}, radius::Real) where {N}
     b = radius + 1/2
     r = ceil(Int, b - one(b))
