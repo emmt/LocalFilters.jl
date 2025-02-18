@@ -246,36 +246,6 @@ Box{N}(A::AbstractArray{N}) where {N} = Box(A)
 Box(A::AbstractArray) = Box(CartesianIndices(A))
 Box(A::Box) = A
 
-"""
-    ForwardFilter
-
-is an exported constant object used to indicate *forward* ordering of indices
-in local filter operations. It can be called as:
-
-    ForwardFilter(i, j) -> j - i
-
-to yield the index in the filter kernel. See also [`ReverseFilter`](@ref) for
-*reverse* ordering and [`LocalFilters.localindices`](@ref) for building a range
-of valid indices `j`.
-
-"""
-const ForwardFilter = ForwardFilterOrdering()
-
-"""
-    ReverseFilter
-
-is an exported constant object used to indicate *reverse* ordering of indices
-in local filter operations. It can be called as:
-
-    ReverseFilter(i, j) -> i - j
-
-to yield the index in the filter kernel. See also [`ForwardFilter`](@ref) for
-*forward* ordering and [`LocalFilters.localindices`](@ref) for building a range
-of valid indices `j`.
-
-"""
-const ReverseFilter = ReverseFilterOrdering()
-
 Base.reverse(::ForwardFilterOrdering) = ReverseFilter
 Base.reverse(::ReverseFilterOrdering) = ForwardFilter
 
