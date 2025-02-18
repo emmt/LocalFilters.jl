@@ -40,9 +40,11 @@ export
     localmean,
     opening!,
     opening,
+    reverse_kernel,
     strel,
     top_hat
 
+using TypeUtils
 using OffsetArrays, StructuredArrays, EasyRanges
 using EasyRanges: ranges
 using Base: @propagate_inbounds, tail, OneTo

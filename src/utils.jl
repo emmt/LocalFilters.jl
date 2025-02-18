@@ -208,21 +208,36 @@ kernel(start::CartesianIndex{N}, stop::CartesianIndex{N}) where {N} =
 @noinline kernel(::Type{Dims{N}}, args...) where {N} =
     throw(ArgumentError(
         "cannot create a $N-dimensional kernel for argument(s) of type $(typeof(args))"))
-end
-reverse_range(x::AbstractUnitRange{<:Integer}) = begin
-    first_x, last_x = EasyRanges.first_last(x)
-    return (-last_x):(-first_x)
-end
-reverse_range(x::IntegerRange) = begin
-    # Always yields a range with a nonnegative step.
-    first_x, step_x, last_x = EasyRanges.first_step_last(x)
-    if step_x ≥ 0
-        return (-last_x):(step_x):(-first_x)
-    else
-        return (-first_x):(-step_x):(-last_x)
-    end
+
+"""
+    reverse_kernel(A::AbstractArray) -> B
+
+yields a kernel `B` which is equivalent to `A` but with reversed ordering. In other words,
+a correlation by `B` yields the same result as a convolution by `A` and conversely.
+
+See also [`LocalFilters.kernel`](@ref) and [`LocalFilters.strel`](@ref).
+
+"""
+reverse_kernel(A::AbstractArray) = OffsetArray(reverse(A), map(reverse_kernel_axis, axes(A)))
+reverse_kernel(A::OffsetArray) = OffsetArray(reverse(parent(A)), map(reverse_kernel_axis, axes(A)))
+for type in (:UniformArray, :FastUniformArray, :MutableUniformArray)
+    @eval reverse_kernel(A::$type) =
+        $type(StructuredArrays.value(A), map(reverse_kernel_axis, axes(A)))
 end
 
+function reverse_kernel_axis(r::AbstractUnitRange{<:Integer})
+    start, stop = as(Int, first(r)), as(Int, last(r))
+    return (-stop):(-start)
+end
+function reverse_kernel_axis(r::AbstractRange{<:Integer})
+    # Always yields a range with a nonnegative step.
+    start, step, stop = as(Int, first(r)), as(Int, Base.step(r)), as(Int, last(r))
+    if step ≥ zero(step)
+        return (-stop):step:(-start)
+    else
+        return (-start):(-step):(-stop)
+    end
+end
 
 Base.reverse(::ForwardFilterOrdering) = ReverseFilter
 Base.reverse(::ReverseFilterOrdering) = ForwardFilter

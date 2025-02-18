@@ -1,5 +1,8 @@
 # New features and user visible changes in branch 2.0
 
+* New exported function `reverse_kernel(A)` to yield a kernel `B` such that a correlation
+  by `B` yields the same result as a convolution by `A` and conversely.
+
 * Non-exported `Box{N}` is now an alias to `FastUniformArray{Bool,N,true}` from the
   `StructuredArrays` package.
 
