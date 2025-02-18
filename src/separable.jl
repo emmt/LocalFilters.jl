@@ -23,7 +23,9 @@ using ..LocalFilters:
     BoundaryConditions,
     FlatBoundaries,
     Axis,
-    kernel_range
+    centered_range,
+    unit_range,
+    reverse_kernel_axis
 
 import ..LocalFilters:
     dilate!,
@@ -48,24 +50,10 @@ yields an `Int`-valued unit step range for specifying the filter range for order
 The result is of length `len` or is based on index range `rng`.
 
 """
-filter_range(len::Integer) = kernel_range(len)
-filter_range(rng::AbstractUnitRange{Int}) = rng
-filter_range(rng::AbstractUnitRange{<:Integer}) = Int(first(rng)):Int(last(rng))
-filter_range(rng::OrdinalRange{<:Integer,<:Integer}) = begin
-    s = step(rng)
-    if s == one(s)
-        return Int(first(rng)):Int(last(rng))
-    elseif s == -one(s)
-        return -Int(last(r)):-Int(first(r))
-    else
-        throw(ArgumentError("unsupported non-unit step index range"))
-    end
-end
-filter_range(::ForwardFilterOrdering, args...) = filter_range(args...)
-filter_range(::ReverseFilterOrdering, args...) = begin
-    rng = filter_range(args...)
-    return -last(rng):-first(rng)
-end
+filter_range(len::Integer) = centered_range(len)
+filter_range(rng::AbstractRange{<:Integer}) = unit_range(rng)
+filter_range(::ForwardFilterOrdering, arg::Axis) = filter_range(arg)
+filter_range(::ReverseFilterOrdering, arg::Axis) = reverse_kernel_axis(filter_range(arg))
 
 """
     WorkVector(buf, len, skip=0) -> A
