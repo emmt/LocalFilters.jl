@@ -324,11 +324,6 @@ See also [`LocalFilters.centered_range`](@ref), [`LocalFilters.centered_offset`]
 @public centered
 centered(A::AbstractArray) = OffsetArray(A, map(centered_offset, size(A)))
 centered(A::OffsetArray) = centered(parent(A))
-centered(R::CartesianIndices{N}) where {N} = CartesianIndices(map(centered, R.indices))
-function centered(rng::AbstractRange{<:Integer})
-    isone(abs(step(rng))) || throw(ArgumentError("invalid non-unit step range"))
-    return centered_range(length(rng))
-end
 
 """
     limits(T::DataType) -> typemin(T), typemax(T)
