@@ -23,7 +23,7 @@ using ..LocalFilters:
     BoundaryConditions,
     FlatBoundaries,
     Axis,
-    centered_range,
+    kernel_range,
     unit_range,
     reverse_kernel_axis
 
@@ -50,7 +50,7 @@ yields an `Int`-valued unit step range for specifying the filter range for order
 The result is of length `len` or is based on index range `rng`.
 
 """
-filter_range(len::Integer) = centered_range(len)
+filter_range(len::Integer) = kernel_range(len)
 filter_range(rng::AbstractRange{<:Integer}) = unit_range(rng)
 filter_range(::ForwardFilterOrdering, arg::Axis) = filter_range(arg)
 filter_range(::ReverseFilterOrdering, arg::Axis) = reverse_kernel_axis(filter_range(arg))

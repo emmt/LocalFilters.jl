@@ -99,9 +99,14 @@ function unit_range(rng::AbstractRange{<:Integer})
     return unit_range(start, stop)
 end
 
-# Since Julia 1.6, non-unit step Cartesian ranges may be defined.
-unit_range(R::CartesianIndices{N,<:NTuple{N,AbstractUnitRange{Int}}}) where {N} = R
-unit_range(R::CartesianIndices) = CartesianIndices(map(unit_range, R.indices))
+function unit_range(R::CartesianIndices{N}) where {N}
+    # Since Julia 1.6, non-unit step Cartesian ranges may be defined.
+    if R isa CartesianIndices{N,<:NTuple{N,AbstractUnitRange{Int}}}
+        return R
+    else
+        return CartesianIndices(map(unit_range, R.indices))
+    end
+end
 
 """
    LocalFilters.centered_offset(len)
@@ -110,7 +115,7 @@ yields the index offset along a centered dimension of length `len`. That is,
 `-div(Int(len)+2,2)`. For even dimension lengths, this amounts to using the same
 conventions as in `fftshift`.
 
-See [`LocalFilters.centered_range`](@ref) and [`LocalFilters.centered`](@ref).
+See [`LocalFilters.kernel_range`](@ref) and [`LocalFilters.centered`](@ref).
 
 """ centered_offset
 @public centered_offset
@@ -121,9 +126,9 @@ function centered_offset(len::Integer)
 end
 
 """
-    LocalFilters.centered_range(rng::AbstractRange{<:Integer})
-    LocalFilters.centered_range(len::Integer)
-    LocalFilters.centered_range(start::Integer, stop::Integer)
+    LocalFilters.kernel_range(rng::AbstractRange{<:Integer})
+    LocalFilters.kernel_range(len::Integer)
+    LocalFilters.kernel_range(start::Integer, stop::Integer)
 
 yield an unit-step `Int`-valued index range based on range `rng`, dimension length `len`,
 or first and last indices `start` and `stop`. In the case of a given dimension length, a
@@ -133,18 +138,18 @@ centered range of this length is returned (for even lengths, the same convention
 See [`LocalFilters.kernel`](@ref), [`LocalFilters.centered_offset`](@ref), and
 [`LocalFilters.centered`](@ref).
 
-""" centered_range
-@public centered_range
+""" kernel_range
+@public kernel_range
 
-centered_range(rng::AbstractRange{<:Integer}) = unit_range(rng)
+kernel_range(rng::AbstractRange{<:Integer}) = unit_range(rng)
 
-function centered_range(len::Integer)
+function kernel_range(len::Integer)
     len = as(Int, len)
     off = centered_offset(len)
     return unit_range(off + 1, off + len)
 end
 
-centered_range(start::Integer, stop::Integer) = unit_range(start, stop)
+kernel_range(start::Integer, stop::Integer) = unit_range(start, stop)
 
 """
     kernel([Dims{N},] args...)
@@ -155,7 +160,7 @@ kernel in local filtering operations.
 * If `args...` is composed of `N` integers and/or ranges or if it is an `N`-tuple of
   integers and/or ranges, a uniformly true abstract array is returned whose axes are
   specified by `args...`. Each integer argument is converted in a centered unit range of
-  this length (see [`LocalFilters.centered_range`](@ref)).
+  this length (see [`LocalFilters.kernel_range`](@ref)).
 
 * If `Dims{N}` is provided and `args...` is a single integer or range, it is interpreted
   as being the same for all dimensions. Thus `kernel(Dims{3},5)` yields a 3-dimensional
@@ -176,18 +181,18 @@ the result or to provide the number of dimensions when it cannot be guessed from
 arguments. For example, when `args...` is a single integer length or range which should be
 interpreted as being the same for all dimensions.
 
-See also [`LocalFilters.strel`](@ref), [`LocalFilters.centered_range`](@ref),
+See also [`LocalFilters.strel`](@ref), [`LocalFilters.kernel_range`](@ref),
 [`LocalFilters.reverse_kernel`](@ref), and [`LocalFilters.cartesian_limits`](@ref).
 
 """
-kernel(::Type{Dims{N}}, arg::Axis) where {N} = kernel(Dims{N}, centered_range(arg))
+kernel(::Type{Dims{N}}, arg::Axis) where {N} = kernel(Dims{N}, kernel_range(arg))
 kernel(::Type{Dims{N}}, rng::AbstractUnitRange{Int}) where {N} = kernel(ntuple(Returns(rng), Val(N)))
 
 kernel(::Type{Dims{N}}, inds::Vararg{Axis,N}) where {N} = kernel(inds)
 kernel(inds::Axis...) = kernel(inds)
 
 kernel(::Type{Dims{N}}, inds::NTuple{N,Axis}) where {N} = kernel(inds)
-kernel(inds::Tuple{Vararg{Axis}}) = kernel(map(centered_range, inds))
+kernel(inds::Tuple{Vararg{Axis}}) = kernel(map(kernel_range, inds))
 kernel(inds::Tuple{Vararg{AbstractUnitRange{Int}}}) = FastUniformArray(true, inds)
 
 kernel(::Type{Dims{N}}, R::CartesianIndices{N}) where {N} = kernel(R)
@@ -202,7 +207,7 @@ kernel(inds::NTuple{2,CartesianIndex{N}}) where {N} = kernel(inds...)
 kernel(::Type{Dims{N}}, start::CartesianIndex{N}, stop::CartesianIndex{N}) where {N} =
     kernel(start, stop)
 kernel(start::CartesianIndex{N}, stop::CartesianIndex{N}) where {N} =
-    kernel(map(centered_range, Tuple(start), Tuple(stop)))
+    kernel(map(kernel_range, Tuple(start), Tuple(stop)))
 
 # Error catcher.
 @noinline function kernel(::Type{Dims{N}}, args...) where {N}
@@ -327,7 +332,7 @@ For example `OffsetArrays.centered` is similar but has a slightly different sema
 Argument `A` can also be an index range (linear or Cartesian), in which case a centered
 index range of same size is returned.
 
-See also [`LocalFilters.centered_range`](@ref), [`LocalFilters.centered_offset`](@ref).
+See also [`LocalFilters.kernel_range`](@ref), [`LocalFilters.centered_offset`](@ref).
 
 """ centered
 @public centered
@@ -335,7 +340,7 @@ centered(A::AbstractArray) = OffsetArray(A, map(centered_offset, size(A)))
 centered(A::OffsetArray) = centered(parent(A))
 for type in (:UniformArray, :FastUniformArray, :MutableUniformArray)
     @eval centered(A::$type) =
-        $type(StructuredArrays.value(A), map(centered_range, axes(A)))
+        $type(StructuredArrays.value(A), map(kernel_range, axes(A)))
 end
 
 """
