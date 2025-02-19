@@ -53,16 +53,6 @@ check_indices(::Type{Bool}, A::AbstractArray...) = false
     check_indices(Bool, I, A...) ? nothing : throw(DimensionMismatch(
         "arrays must have the given indices"))
 
-"""
-    LocalFilters.all_yield(x, f, args...)
-
-yields whether `f(arg) == x` holds for all `arg` in `args...`.
-
-"""
-@inline all_yield(x, f::Function) = false
-@inline all_yield(x, f::Function, A) = (f(A) == x)
-@inline all_yield(x, f::Function, A, B...) = all_yield(x, f, A) && all_yield(x, f, B...)
-
 Indices(::S) where {S<:IndexStyle} = Indices{S}()
 #Indices(::S, A::AbstractArray) where {S<:IndexStyle} = Indices{S}()
 #Indices(::S, A::AbstractArray, B::AbstractArray...) where {S<:IndexStyle} =
