@@ -1,5 +1,11 @@
 # New features and user visible changes in branch 2.0
 
+* `LocalFilters.ball(DimS{N}, r)` now yields a *centered* `N`-dimensional ball where
+  values are set according to whether the distance to the center is `≤ r`. Compared to the
+  previous versions, add `1//2` to `r` to get a similar shape. The algorithm is faster and
+  has been fixed for `N > 2`. The result is identical whether `r` is integer or
+  floating-point.
+
 * New exported function `reverse_kernel(A)` to yield a kernel `B` such that a correlation
   by `B` yields the same result as a convolution by `A` and conversely.
 

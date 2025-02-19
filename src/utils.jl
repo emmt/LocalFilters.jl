@@ -430,13 +430,14 @@ end
     LocalFilters.ball(Dims{N}, r)
 
 yields a mask approximating a `N`-dimensional ball of radius `r`. The result is
-`N`-dimensional array of booleans with all dimensions odd and equal and whose values are
-`true` inside the ball and `false` otherwise. The mask may be used to specify the
-neighborhood, the kernel, or the structuring element in local filtering operations.
+`N`-dimensional array of Boolean's with all dimensions odd and equal and whose values are
+`true` inside the ball (that for distance to the center `≤ r`) and `false` otherwise. The
+mask may be used to specify the neighborhood, the kernel, or the structuring element in
+local filtering operations.
 
-To have a mask with centered index ranges, call:
+The returned mask has centered axes, to get a mask with 1-based indices, call:
 
-    LocalFilters.centered(LocalFilters.ball(Dims{N}, r))
+    LocalFilters.ball(Dims{N}, r).parent
 
 See also [`LocalFilters.kernel`](@ref) and [`LocalFilters.strel`](@ref).
 
@@ -444,41 +445,24 @@ See also [`LocalFilters.kernel`](@ref) and [`LocalFilters.strel`](@ref).
 @public ball
 
 function ball(::Type{Dims{N}}, radius::Real) where {N}
-    b = radius + 1//2
-    r = ceil(Int, b - one(b))
-    dim = 2*r + 1
-    dims = ntuple(Returns(dim), Val(N))
-    arr = Array{Bool}(undef, dims)
-    bb = b^2
-    qmax = ceil(Int, bb - one(bb))
-    unsafe_ball!(arr, 0, qmax, r, 1:dim, tail(dims))
+    radius ≥ zero(radius) || throw(ArgumentError("ball radius must be non-negative"))
+    if radius isa Integer
+        r = as(Int, radius)
+        qmax = r*r
+    else
+        r = floor(Int, radius)
+        qmax = floor(Int, radius*radius)
+    end
+    arr = new_array(Bool, ntuple(Returns(-r:r), Val(N)))
+    @inbounds @simd for I in eachindex(IndexCartesian(), arr)
+        arr[I] = squared_Euclidean_norm(I) ≤ qmax
+    end
     return arr
 end
 
 @deprecate ball(N::Int, radius::Real) ball(Dims{N}, radius) false
 
-@inline function unsafe_ball!(arr::AbstractArray{Bool,N},
-                              q::Int, qmax::Int, r::Int,
-                              range::AbstractUnitRange{Int},
-                              dims::Tuple{Int}, I::Int...) where {N}
-    nextdims = tail(dims)
-    x = -r
-    for i in range
-        unsafe_ball!(arr, q + x*x, qmax, r, range, nextdims, I..., i)
-        x += 1
-    end
-end
-
-@inline function unsafe_ball!(arr::AbstractArray{Bool,N},
-                              q::Int, qmax::Int, r::Int,
-                              range::AbstractUnitRange{Int},
-                              ::Tuple{}, I::Int...) where {N}
-    x = -r
-    @inbounds for i in range
-        arr[I...,i] = (q + x*x ≤ qmax)
-        x += 1
-    end
-end
+squared_Euclidean_norm(I::CartesianIndex) = mapreduce(abs2, +, Tuple(I))
 
 # Boundary conditions.
 #
