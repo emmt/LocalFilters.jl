@@ -205,9 +205,18 @@ kernel(start::CartesianIndex{N}, stop::CartesianIndex{N}) where {N} =
     kernel(map(centered_range, Tuple(start), Tuple(stop)))
 
 # Error catcher.
-@noinline kernel(::Type{Dims{N}}, args...) where {N} =
-    throw(ArgumentError(
-        "cannot create a $N-dimensional kernel for argument(s) of type $(typeof(args))"))
+@noinline function kernel(::Type{Dims{N}}, args...) where {N}
+    len = length(args)
+    msg = "cannot create a $N-dimensional kernel from $len additional argument"
+    if len == 1
+        msg *= " of type `$(typeof(args[1]))`"
+    elseif len == 2
+        msg *= "s of types `$(typeof(args[1]))` and `$(typeof(args[2]))`"
+    elseif len > 2
+        msg *= "s of types `"*join(map(typeof, args), "`, `", "`, and `")*"`"
+    end
+    throw(ArgumentError(msg))
+end
 
 """
     reverse_kernel(A::AbstractArray) -> B

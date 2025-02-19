@@ -215,6 +215,10 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
             @test_throws ArgumentError kernel(CartesianIndices((1:2:6,)))
             @test kernel(CartesianIndices((1:1:6,))) === box(1:6)
         end
+        @test_throws ArgumentError kernel(Dims{11})
+        @test_throws ArgumentError kernel(Dims{11}, :e)
+        @test_throws ArgumentError kernel(Dims{11}, :e, 1)
+        @test_throws ArgumentError kernel(Dims{11}, :e, 1, [1,3])
 
         # ordering
         let B = reshape(collect(1:20), (4,5)), R = box(CartesianIndices(B))
