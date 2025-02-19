@@ -23,6 +23,12 @@ Base.IndexStyle(::Type{<:Indices{S}}) where {S} = S()
 @inline (I::Indices)(A::AbstractArray, B::AbstractArray) = (check_indices(A, B); I(A))
 @inline (I::Indices)(A::AbstractArray, B::AbstractArray...) = (check_indices(A, B...); I(A))
 
+Indices(::S) where {S<:IndexStyle} = Indices{S}()
+Indices(A::AbstractVector) = Indices(IndexStyle(A))
+Indices(A::AbstractVector, B::AbstractVector...) = Indices(IndexStyle(A, B...))
+Indices(A::AbstractArray) = Indices{IndexCartesian}()
+Indices(A::AbstractArray, B::AbstractArray...) = Indices{IndexCartesian}()
+
 """
     LocalFilters.check_indices(Bool, [I,] A...)
 
@@ -52,16 +58,6 @@ check_indices(::Type{Bool}, A::AbstractArray) = true
 @inline check_indices(I::ArrayAxes, A::AbstractArray...) =
     check_indices(Bool, I, A...) ? nothing : throw(DimensionMismatch(
         "arrays must have the given indices"))
-
-Indices(::S) where {S<:IndexStyle} = Indices{S}()
-#Indices(::S, A::AbstractArray) where {S<:IndexStyle} = Indices{S}()
-#Indices(::S, A::AbstractArray, B::AbstractArray...) where {S<:IndexStyle} =
-#    Indices{S}()
-
-Indices(A::AbstractVector) = Indices(IndexStyle(A))
-Indices(A::AbstractVector, B::AbstractVector...) = Indices(IndexStyle(A, B...))
-Indices(A::AbstractArray) = Indices{IndexCartesian}()
-Indices(A::AbstractArray, B::AbstractArray...) = Indices{IndexCartesian}()
 
 """
     LocalFilters.unit_range(r::Union{AbstractRange{<:Integer},CartesianIndices})
@@ -385,6 +381,8 @@ is_morpho_math_box(A::AbstractArray{<:AbstractFloat}) = all(iszero, A)
 is_morpho_math_box(R::CartesianIndices) =
     error("Cartesian range must be converted to a kernel")
 
+# Yield a an hyper-rectangular box for mathematical morphology operations
+# with the same axes or indices as its arguments.
 morpho_math_box(A::Box) = A
 morpho_math_box(A::AbstractArray{<:Any,N}) where {N} = Box{N}(axes(A))
 morpho_math_box(R::CartesianIndices{N}) where {N} = Box{N}(R.indices)
