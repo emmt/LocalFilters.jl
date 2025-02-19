@@ -6,6 +6,9 @@
 * Non-exported `Box{N}` is now an alias to `FastUniformArray{Bool,N,true}` from the
   `StructuredArrays` package.
 
+* Morphological methods have a `slow` keyword (false by default) to force not using the
+  the van Herk-Gil-Werman algorithm.
+
 * Macro `@public` to declare *public* methods even though they are not exported. This
   concept was introduced in Julia 1.11, for older Julia versions, nothing change.
 

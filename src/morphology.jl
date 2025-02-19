@@ -12,11 +12,11 @@
 #
 
 """
-    erode(A, [ord=ForwardFilter,] B=3) -> Amin
+    erode(A, [ord=ForwardFilter,] B=3; slow=false) -> Amin
 
-yields the erosion of `A` by the structuring element defined by `B`. The erosion is the
-array of local minima of `A`. The returned result `Amin` is similar to `A` (same size and
-type).
+yields the erosion of `A` by the structuring element defined by `B`. The returned result,
+`Amin`, is similar to `A` (same size and type) and its values are the local minima of `A`
+in the neighborhood defined by `B`.
 
 If `B` is not a kernel (that is, if `B` is not an array or is an instance of
 `CartesianIndices`), [`kernel(Dims{N},B)`](@ref) is called to build a kernel with `N` the
@@ -33,15 +33,15 @@ single pass.
 """ erode
 
 """
-    erode!(Amin, A, [ord=ForwardFilter,] B=3) -> Amin
+    erode!(Amin, A, [ord=ForwardFilter,] B=3; slow=false) -> Amin
 
 overwrites `Amin` with the erosion of the array `A` by the structuring element defined by
 `B` and returns `Amin`.
 
 If the structuring element `B` is equivalent to a simple hyper-rectangular sliding window
-(which is the case by default), the much faster van Herk-Gil-Werman algorithm is used and
-the operation can be done in-place. That is, `A` and `Amin` can be the same arrays. In
-that case, the following syntax is allowed:
+(which is the case by default) and unless keyword `slow` is true, the much faster van
+Herk-Gil-Werman algorithm is used and the operation can be done in-place. That is, `A` and
+`Amin` can be the same arrays. In that case, the following syntax is allowed:
 
     erode!(A, [ord=ForwardFilter,] B=3) -> A
 
@@ -50,11 +50,11 @@ See [`erode`](@ref) for an out-of-place version and for more information.
 """ erode!
 
 """
-    dilate(A, [ord=ForwardFilter,] B=3) -> Amax
+    dilate(A, [ord=ForwardFilter,] B=3; slow=false) -> Amax
 
-yields the dilation of `A` by the structuring element defined by `B`. The dilation is the
-array of local maxima of `A`. The returned result `Amax` is similar to `A` (same size and
-type).
+yields the dilation of `A` by the structuring element defined by `B`. The returned result,
+`Amax`, is similar to `A` (same size and type) and its values are the local maxima of `A`
+in the neighborhood defined by `B`.
 
 If `B` is not a kernel (that is, if `B` is not an array or is an instance of
 `CartesianIndices`), [`kernel(Dims{N},B)`](@ref) is called to build a kernel with `N` the
@@ -71,15 +71,15 @@ single pass.
 """ dilate
 
 """
-    dilate!(Amax, A, [ord=ForwardFilter,] B=3) -> Amax
+    dilate!(Amax, A, [ord=ForwardFilter,] B=3; slow=false) -> Amax
 
 overwrites `Amax` with a dilation of the array `A` by the structuring element defined by
 `B` and returns `Amax`.
 
 If the structuring element `B` is equivalent to a simple hyper-rectangular sliding window
-(which is the case by default), the much faster van Herk-Gil-Werman algorithm is used and
-the operation can be done in-place. That is, `A` and `Amin` can be the same arrays. In
-that case, the following syntax is allowed:
+(which is the case by default) and unless keyword `slow` is true, the much faster van
+Herk-Gil-Werman algorithm is used and the operation can be done in-place. That is, `A` and
+`Amin` can be the same arrays. In that case, the following syntax is allowed:
 
     dilate!(A, [ord=ForwardFilter,] B=3) -> A
 
@@ -90,38 +90,40 @@ See [`dilate`](@ref) for an out-of-place version and for more information.
 for (f, op) in ((:erode, :min), (:dilate, :max))
     f! = Symbol(f,:!)
     slow_f! = Symbol(:slow_,f!)
+    fast_f! = Symbol(:fast_,f!)
     @eval begin
         # Provide destination array.
-        $f(A::AbstractArray, args...) = $f!(similar(A), A, args...)
+        $f(A::AbstractArray, args...; kwds...) = $f!(similar(A), A, args...; kwds...)
 
         # Provide default ordering and default structuring element.
         function $f!(dst::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
-                     B::Union{Window{N},
-                              AbstractArray{<:Any,N}} = 3) where {N}
-            return $f!(dst, A, ForwardFilter, B)
+                     B::Union{Window{N},AbstractArray{<:Any,N}} = 3;
+                     kwds...) where {N}
+            return $f!(dst, A, ForwardFilter, B; kwds...)
         end
 
         # Build structuring element.
         function $f!(dst::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
                      ord::FilterOrdering,
-                     B::Window{N} = 3) where {N}
-            return $f!(dst, A, ord, kernel(Dims{N}, B)) # FIXME: strel(...)
+                     B::Window{N} = 3;
+                     kwds...) where {N}
+            return $f!(dst, A, ord, kernel(Dims{N}, B); kwds...) # FIXME: strel(...)
         end
 
         # Fast separable filter (out-of-place).
-        function $f!(dst::AbstractArray{<:Any,N},
-                     A::AbstractArray{<:Any,N},
-                     ord::FilterOrdering,
-                     B::Box{N}) where {N}
+        function $fast_f!(dst::AbstractArray{<:Any,N},
+                          A::AbstractArray{<:Any,N},
+                          ord::FilterOrdering,
+                          B::Box{N}) where {N}
             localfilter!(dst, A, :, $op, ord, axes(B))
         end
-        function $f!(dst::AbstractArray{T,N},
-                     A::AbstractArray{<:Any,N},
-                     ord::FilterOrdering,
-                     B::Box{N},
-                     wrk::Vector{T}) where {T,N}
+        function $fast_f!(dst::AbstractArray{T,N},
+                          A::AbstractArray{<:Any,N},
+                          ord::FilterOrdering,
+                          B::Box{N},
+                          wrk::Vector{T}) where {T,N}
             localfilter!(dst, A, :, $op, ord, axes(B), wrk)
         end
 
@@ -142,12 +144,14 @@ for (f, op) in ((:erode, :min), (:dilate, :max))
         function $f!(dst::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
                      ord::FilterOrdering,
-                     B::AbstractArray{<:Any,N}) where {N}
-            if is_morpho_math_box(B)
+                     B::AbstractArray{<:Any,N};
+                     slow::Bool = false) where {N}
+            if !slow && is_morpho_math_box(B)
                 # Use fast separable filter.
-                $f!(dst, A, ord, Box(axes(B)))
+                $fast_f!(dst, A, ord, morpho_math_box(B))
             else
-                $slow_f!(dst, A, ord, B,)
+                # Use slow filter.
+                $slow_f!(dst, A, ord, B)
             end
             return dst
         end
@@ -350,7 +354,7 @@ end
 # Higher level operators.
 
 """
-    closing(A, [ord=ForwardFilter,] B=3) -> dst
+    closing(A, [ord=ForwardFilter,] B=3; slow=false) -> dst
 
 yields a closing of array `A` by the structuring element defined by `B`. A closing is a
 dilation followed by an erosion. The result `dst` is an array similar to `A`.
@@ -362,7 +366,7 @@ operations.
 """ closing
 
 """
-    closing!(dst, wrk, A, B=3) -> dst
+    closing!(dst, wrk, A, [ord=ForwardFilter,] B=3; slow=false) -> dst
 
 overwrites `dst` with the result of a closing of `A` by the structuring element defined by
 `B` using `wrk` as a workspace array. The arguments `dst`, `wrk`, and `A` must be similar
@@ -375,7 +379,7 @@ arguments.
 """ closing!
 
 """
-    opening(A, B=3) -> dst
+    opening(A, [ord=ForwardFilter,] B=3; slow=false) -> dst
 
 yields an opening of array `A` by the structuring element defined by `B`. An opening is an
 erosion followed by a dilation. The result `dst` is an array similar to `A`.
@@ -387,7 +391,7 @@ operations.
 """ opening
 
 """
-    opening!(dst, wrk, A, B=3) -> dst
+    opening!(dst, wrk, A, [ord=ForwardFilter,] B=3; slow=false) -> dst
 
 overwrites `dst` with the result of an opening of `A` by the structuring element defined
 by `B` using `wrk` as a workspace array. The arguments `dst`, `wrk`, and `A` must be
@@ -403,20 +407,20 @@ for f in (:closing, :opening)
     f! = Symbol(f,:!)
     @eval begin
         # Provide destination and workspace.
-        $f(A::AbstractArray, args...) = $f!(similar(A), similar(A), A, args...)
+        $f(A::AbstractArray, args...; kwds...) = $f!(similar(A), similar(A), A, args...; kwds...)
 
         # Provide default ordering and default structuring element.
         function $f!(dst::AbstractArray{<:Any,N},
                      wrk::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
-                     B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
-            $f!(dst, wrk, A, ForwardFilter, B)
+                     B::Union{Window{N},AbstractArray{<:Any,N}} = 3; kwds...) where {N}
+            $f!(dst, wrk, A, ForwardFilter, B; kwds...)
         end
         function $f!(dst::AbstractArray{<:Any,N},
                      wrk::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
-                     ord::FilterOrdering) where {N}
-            $f!(dst, wrk, A, ord, 3)
+                     ord::FilterOrdering; kwds...) where {N}
+            $f!(dst, wrk, A, ord, 3; kwds...)
         end
 
         # Build structuring element.
@@ -424,8 +428,8 @@ for f in (:closing, :opening)
                      wrk::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
                      ord::FilterOrdering,
-                     B::Window{N}) where {N}
-            return $f!(dst, wrk, A, ord, kernel(Dims{N}, B)) # FIXME: strel(...)
+                     B::Window{N}; kwds...) where {N}
+            return $f!(dst, wrk, A, ord, kernel(Dims{N}, B); kwds...) # FIXME: strel(...)
         end
     end
 end
@@ -434,20 +438,20 @@ function closing!(dst::AbstractArray{<:Any,N},
                   wrk::AbstractArray{<:Any,N},
                   A::AbstractArray{<:Any,N},
                   ord::FilterOrdering,
-                  B::AbstractArray{<:Any,N}) where {N}
-    erode!(dst, dilate!(wrk, A, ord, B), ord, B)
+                  B::AbstractArray{<:Any,N}; kwds...) where {N}
+    erode!(dst, dilate!(wrk, A, ord, B; kwds...), ord, B; kwds...)
 end
 
 function opening!(dst::AbstractArray{<:Any,N},
                   wrk::AbstractArray{<:Any,N},
                   A::AbstractArray{<:Any,N},
                   ord::FilterOrdering,
-                  B::AbstractArray{<:Any,N}) where {N}
-    dilate!(dst, erode!(wrk, A, ord, B), ord, B)
+                  B::AbstractArray{<:Any,N}; kwds...) where {N}
+    dilate!(dst, erode!(wrk, A, ord, B; kwds...), ord, B; kwds...)
 end
 
 """
-    top_hat(A, B=3 [, C]) -> dst
+    top_hat(A, [B_ord=ForwardFilter,] B=3 [, [C_ord=B_ord,] C]; slow=false) -> dst
 
 performs a *summit detection* by applying a top-hat filter to array `A` using the
 structuring element defined by `B` for the feature detection. Top-hat filtering is
@@ -468,9 +472,8 @@ in-place version.
 
 """ top_hat
 
-
 """
-    LocalFilters.top_hat!(dst, wrk, A, [ord=ForwardFilter,] B=3) -> dst
+    LocalFilters.top_hat!(dst, wrk, A, [ord=ForwardFilter,] B=3; slow=false) -> dst
 
 overwrites `dst` with the result of a top-hat filter applied to `A` with structuring
 element `B`, and using `wrk` as a workspace whose contents is not preserved. The arguments
@@ -482,7 +485,7 @@ See also [`top_hat`](@ref) for more details.
 """ top_hat!
 
 """
-    bottom_hat(A, B=3 [, C]) -> dst
+    bottom_hat(A, [B_ord=ForwardFilter,] B=3 [, [C_ord=B_ord,] C]; slow=false) -> dst
 
 performs a *valley detection* by applying a bottom-hat filter to array `A` using the
 structuring element defined by `B` for the feature detection. Bottom-hat filtering is
@@ -500,7 +503,7 @@ in-place version.
 """ bottom_hat
 
 """
-    LocalFilters.bottom_hat!(dst, wrk, A, B=3) -> dst
+    LocalFilters.bottom_hat!(dst, wrk, A, [ord=ForwardFilter,] B=3; slow=false) -> dst
 
 overwrites `dst` with the result of a bottom-hat filter applied to `A` with structuring
 element `B` and optional smoothing element `C`. Argument `wrk` is a workspace array whose
@@ -517,29 +520,28 @@ for (f, pf) in ((:top_hat,    :closing),
     pf! = Symbol(pf,:!) # pre-filter
     @eval begin
         # Provide default ordering and default structuring element.
-        $f(A::AbstractArray, B=3) = $f(A, ForwardFilter, B)
-        $f(A::AbstractArray, ord::FilterOrdering) = $f(A, ord, 3)
-        $f(A::AbstractArray, B, C) = $f(A, ForwardFilter, B, C)
-        $f(A::AbstractArray, ord::FilterOrdering, B, C) = $f(A, ord, B, ord, C)
+        $f(A::AbstractArray, B=3; kwds...) = $f(A, ForwardFilter, B; kwds...)
+        $f(A::AbstractArray, B, C; kwds...) = $f(A, ForwardFilter, B, C; kwds...)
+        $f(A::AbstractArray, ord::FilterOrdering, B, C; kwds...) = $f(A, ord, B, ord, C; kwds...)
 
         # Provide destination and workspace. Out-of-place top/bottom hat
         # filters require 2 allocations without a pre-filtering, 3 allocations
         # with a pre-filtering.
-        $f(A::AbstractArray, ord::FilterOrdering, B) =
-            $f!(similar(A), similar(A), A, ord, B)
+        $f(A::AbstractArray, ord::FilterOrdering, B=3; kwds...) =
+            $f!(similar(A), similar(A), A, ord, B; kwds...)
         function $f(A::AbstractArray,
                     B_ord::FilterOrdering, B,
-                    C_ord::FilterOrdering, C)
+                    C_ord::FilterOrdering, C; kwds...)
             wrk = similar(A)
-            $f!(similar(A), wrk, $pf!(similar(A), wrk, A, C_ord, C), B_ord, B)
+            $f!(similar(A), wrk, $pf!(similar(A), wrk, A, C_ord, C; kwds...), B_ord, B; kwds...)
         end
 
         # Provide default ordering and default structuring element.
         function $f!(dst::AbstractArray{<:Any,N},
                      wrk::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
-                     B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
-            return $f!(dst, wrk, A, ForwardFilter, B)
+                     B::Union{Window{N},AbstractArray{<:Any,N}} = 3; kwds...) where {N}
+            return $f!(dst, wrk, A, ForwardFilter, B; kwds...)
         end
 
         # Build structuring element.
@@ -547,8 +549,8 @@ for (f, pf) in ((:top_hat,    :closing),
                      wrk::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
                      ord::FilterOrdering,
-                     B::Window{N} = 3) where {N}
-            return $f!(dst, wrk, A, ord, kernel(Dims{N}, B)) # FIXME: use strel(...)
+                     B::Window{N} = 3; kwds...) where {N}
+            return $f!(dst, wrk, A, ord, kernel(Dims{N}, B); kwds...) # FIXME: use strel(...)
         end
     end
 end
@@ -557,8 +559,8 @@ function top_hat!(dst::AbstractArray{<:Any,N},
                   wrk::AbstractArray{<:Any,N},
                   A::AbstractArray{<:Any,N},
                   ord::FilterOrdering,
-                  B::AbstractArray{<:Any,N}) where {N}
-    opening!(dst, wrk, A, ord, B)
+                  B::AbstractArray{<:Any,N}; kwds...) where {N}
+    opening!(dst, wrk, A, ord, B; kwds...)
     @inbounds for i in eachindex(dst, A)
         dst[i] = A[i] - dst[i]
     end
@@ -569,8 +571,8 @@ function bottom_hat!(dst::AbstractArray{<:Any,N},
                      wrk::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
                      ord::FilterOrdering,
-                     B::AbstractArray{<:Any,N}) where {N}
-    closing!(dst, wrk, A, B)
+                     B::AbstractArray{<:Any,N}; kwds...) where {N}
+    closing!(dst, wrk, A, B; kwds...)
     @inbounds for i in eachindex(dst, A)
         dst[i] -= A[i]
     end

@@ -442,11 +442,15 @@ mathematical morphology operations like the van Herk-Gil-Werman algorithm.
 
 """ is_morpho_math_box
 @public is_morpho_math_box
-is_morpho_math_box(::Box) = true
-is_morpho_math_box(R::AbstractArray{Bool}) = all(R)
-is_morpho_math_box(R::AbstractArray{<:AbstractFloat}) = all(iszero, R)
-is_morpho_math_box(::CartesianIndices) =
+is_morpho_math_box(A::Box) = true
+is_morpho_math_box(A::AbstractArray{Bool}) = all(A)
+is_morpho_math_box(A::AbstractArray{<:AbstractFloat}) = all(iszero, A)
+is_morpho_math_box(R::CartesianIndices) =
     error("Cartesian range must be converted to a kernel")
+
+morpho_math_box(A::Box) = A
+morpho_math_box(A::AbstractArray{<:Any,N}) where {N} = Box{N}(axes(A))
+morpho_math_box(R::CartesianIndices{N}) where {N} = Box{N}(R.indices)
 
 """
     strel(T, A)
