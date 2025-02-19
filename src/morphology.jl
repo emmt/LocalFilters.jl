@@ -109,7 +109,7 @@ for (f, op) in ((:erode, :min), (:dilate, :max))
                      ord::FilterOrdering,
                      B::Window{N} = 3;
                      kwds...) where {N}
-            return $f!(dst, A, ord, kernel(Dims{N}, B); kwds...) # FIXME: strel(...)
+            return $f!(dst, A, ord, kernel(Dims{N}, B); kwds...)
         end
 
         # Fast separable filter (out-of-place).
@@ -158,7 +158,8 @@ for (f, op) in ((:erode, :min), (:dilate, :max))
     end
 end
 
-# By default, the fast version of this is always used.
+# This version is for a simple hyper-rectangular structuring element. By default, the fast
+# version of this is always used.
 function slow_erode!(dst::AbstractArray{<:Any,N},
                      A::AbstractArray{T,N},
                      ord::FilterOrdering,
@@ -174,6 +175,7 @@ function slow_erode!(dst::AbstractArray{<:Any,N},
     return dst
 end
 
+# This version is for a boolean structuring element representing a shaped neighborhood.
 function slow_erode!(dst::AbstractArray{<:Any,N},
                      A::AbstractArray{T,N},
                      ord::FilterOrdering,
@@ -189,6 +191,7 @@ function slow_erode!(dst::AbstractArray{<:Any,N},
     return dst
 end
 
+# This version is for a "flat" structuring element or for grayscale morphology.
 function slow_erode!(dst::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
                      ord::FilterOrdering,
@@ -205,7 +208,8 @@ function slow_erode!(dst::AbstractArray{<:Any,N},
     return dst
 end
 
-# By default, the fast version of this is always used.
+# This version is for a simple hyper-rectangular structuring element. By default, the fast
+# version of this is always used.
 function slow_dilate!(dst::AbstractArray{<:Any,N},
                       A::AbstractArray{T,N},
                       ord::FilterOrdering,
@@ -221,6 +225,7 @@ function slow_dilate!(dst::AbstractArray{<:Any,N},
     return dst
 end
 
+# This version is for a boolean structuring element representing a shaped neighborhood.
 function slow_dilate!(dst::AbstractArray{<:Any,N},
                       A::AbstractArray{T,N},
                       ord::FilterOrdering,
@@ -236,6 +241,7 @@ function slow_dilate!(dst::AbstractArray{<:Any,N},
     return dst
 end
 
+# This version is for a "flat" structuring element or for grayscale morphology.
 function slow_dilate!(dst::AbstractArray{<:Any,N},
                       A::AbstractArray{<:Any,N},
                       ord::FilterOrdering,
@@ -263,8 +269,7 @@ See [`localextrema!`](@ref) for an in-place version of the method, and [`erode`]
 [`dilate`](@ref) for a description of these operations.
 
 """
-localextrema(A::AbstractArray, args...) =
-    localextrema!(similar(A), similar(A), A, args...)
+localextrema(A::AbstractArray, args...) = localextrema!(similar(A), similar(A), A, args...)
 
 """
     localextrema!(Amin, Amax, A, [ord=ForwardFilter,] B=3) -> Amin, Amax
@@ -278,9 +283,8 @@ See [`localextrema`](@ref) for an out-of-place version for more information.
 function localextrema!(Amin::AbstractArray{<:Any,N},
                        Amax::AbstractArray{<:Any,N},
                        A::AbstractArray{<:Any,N},
-                       B::Union{Window{N},
-                                AbstractArray{<:Any,N}} = 3) where {N}
-    localextrema!(Amin, Amax, A, ForwardFilter, B)
+                       B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
+    return localextrema!(Amin, Amax, A, ForwardFilter, B)
 end
 
 function localextrema!(Amin::AbstractArray{<:Any,N},
@@ -288,9 +292,10 @@ function localextrema!(Amin::AbstractArray{<:Any,N},
                        A::AbstractArray{<:Any,N},
                        ord::FilterOrdering,
                        B::Window{N} = 3) where {N}
-    localextrema!(Amin, Amax, A, ord, kernel(Dims{N}, B))
+    return localextrema!(Amin, Amax, A, ord, kernel(Dims{N}, B))
 end
 
+# This version is for a simple hyper-rectangular structuring element.
 function localextrema!(Amin::AbstractArray{<:Any,N},
                        Amax::AbstractArray{<:Any,N},
                        A::AbstractArray{T,N},
@@ -310,6 +315,7 @@ function localextrema!(Amin::AbstractArray{<:Any,N},
     return Amin, Amax
 end
 
+# This version is for a boolean structuring element representing a shaped neighborhood.
 function localextrema!(Amin::AbstractArray{<:Any,N},
                        Amax::AbstractArray{<:Any,N},
                        A::AbstractArray{T,N},
@@ -330,6 +336,7 @@ function localextrema!(Amin::AbstractArray{<:Any,N},
     return Amin, Amax
 end
 
+# This version is for a "flat" structuring element or for grayscale morphology.
 function localextrema!(Amin::AbstractArray{<:Any,N},
                        Amax::AbstractArray{<:Any,N},
                        A::AbstractArray{<:Any,N},
@@ -430,7 +437,7 @@ for f in (:closing, :opening)
                      A::AbstractArray{<:Any,N},
                      ord::FilterOrdering,
                      B::Window{N}; kwds...) where {N}
-            return $f!(dst, wrk, A, ord, kernel(Dims{N}, B); kwds...) # FIXME: strel(...)
+            return $f!(dst, wrk, A, ord, kernel(Dims{N}, B); kwds...)
         end
     end
 end
@@ -553,7 +560,7 @@ for (f, pf) in ((:top_hat,    :closing),
                      A::AbstractArray{<:Any,N},
                      ord::FilterOrdering,
                      B::Window{N} = 3; kwds...) where {N}
-            return $f!(dst, wrk, A, ord, kernel(Dims{N}, B); kwds...) # FIXME: use strel(...)
+            return $f!(dst, wrk, A, ord, kernel(Dims{N}, B); kwds...)
         end
     end
 end
