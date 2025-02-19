@@ -164,7 +164,8 @@ kernel_range(::ReverseFilterOrdering, rng::AbstractUnitRange{Int}) = reverse_ker
     kernel([Dims{N},] args...)
 
 yields an `N`-dimensional abstract array built from `args...` and which can be used as a
-kernel in local filtering operations.
+kernel in local filtering operations. The kernel is also called a *neighborhood* when its
+element type is `Bool`.
 
 * If `args...` is composed of `N` integers and/or ranges or if it is an `N`-tuple of
   integers and/or ranges, a uniformly true abstract array is returned whose axes are
@@ -190,8 +191,9 @@ the result or to provide the number of dimensions when it cannot be guessed from
 arguments. For example, when `args...` is a single integer length or range which should be
 interpreted as being the same for all dimensions.
 
-See also [`LocalFilters.strel`](@ref), [`LocalFilters.kernel_range`](@ref),
-[`LocalFilters.reverse_kernel`](@ref), and [`LocalFilters.cartesian_limits`](@ref).
+See also [`LocalFilters.strel`](@ref), [`LocalFilters.ball`](@ref),
+[`LocalFilters.kernel_range`](@ref), [`LocalFilters.reverse_kernel`](@ref), and
+[`LocalFilters.cartesian_limits`](@ref).
 
 """
 kernel(::Type{Dims{N}}, arg::Axis) where {N} = kernel(Dims{N}, kernel_range(arg))
@@ -457,7 +459,7 @@ elements.
 If `T` is a floating-point type, then the result is a so-called *flat* structuring element
 whose coefficients are `zero(T)` inside the shape defined by `A` and `-T(Inf)` elsewhere.
 
-See also [`LocalFilters.kernel`](@ref).
+See also [`LocalFilters.kernel`](@ref) and [`LocalFilters.ball`](@ref).
 
 """
 strel(::Type{Bool}, A::AbstractArray{Bool}) = A
@@ -488,47 +490,52 @@ end
 """
     LocalFilters.ball(Dims{N}, r)
 
-yields a boolean mask which is a `N`-dimensional array with all dimensions odd and equal
-and set to true where position is inside a `N`-dimensional ball of radius `r`.
+yields a mask approximating a `N`-dimensional ball of radius `r`. The result is
+`N`-dimensional array of booleans with all dimensions odd and equal and whose values are
+`true` inside the ball and `false` otherwise. The mask may be used to specify the
+neighborhood, the kernel, or the structuring element in local filtering operations.
 
 To have a mask with centered index ranges, call:
 
     LocalFilters.centered(LocalFilters.ball(Dims{N}, r))
 
+See also [`LocalFilters.kernel`](@ref) and [`LocalFilters.strel`](@ref).
+
 """ ball
 @public ball
+
 function ball(::Type{Dims{N}}, radius::Real) where {N}
-    b = radius + 1/2
+    b = radius + 1//2
     r = ceil(Int, b - one(b))
     dim = 2*r + 1
-    dims = ntuple(d->dim, Val(N))
+    dims = ntuple(Returns(dim), Val(N))
     arr = Array{Bool}(undef, dims)
     bb = b^2
     qmax = ceil(Int, bb - one(bb))
-    _ball!(arr, 0, qmax, r, 1:dim, tail(dims))
+    unsafe_ball!(arr, 0, qmax, r, 1:dim, tail(dims))
     return arr
 end
 
 @deprecate ball(N::Int, radius::Real) ball(Dims{N}, radius) false
 
-@inline function _ball!(arr::AbstractArray{Bool,N},
-                        q::Int, qmax::Int, r::Int,
-                        range::AbstractUnitRange{Int},
-                        dims::Tuple{Int}, I::Int...) where {N}
+@inline function unsafe_ball!(arr::AbstractArray{Bool,N},
+                              q::Int, qmax::Int, r::Int,
+                              range::AbstractUnitRange{Int},
+                              dims::Tuple{Int}, I::Int...) where {N}
     nextdims = tail(dims)
     x = -r
     for i in range
-        _ball!(arr, q + x*x, qmax, r, range, nextdims, I..., i)
+        unsafe_ball!(arr, q + x*x, qmax, r, range, nextdims, I..., i)
         x += 1
     end
 end
 
-@inline function _ball!(arr::AbstractArray{Bool,N},
-                        q::Int, qmax::Int, r::Int,
-                        range::AbstractUnitRange{Int},
-                        ::Tuple{}, I::Int...) where {N}
+@inline function unsafe_ball!(arr::AbstractArray{Bool,N},
+                              q::Int, qmax::Int, r::Int,
+                              range::AbstractUnitRange{Int},
+                              ::Tuple{}, I::Int...) where {N}
     x = -r
-    for i in range
+    @inbounds for i in range
         arr[I...,i] = (q + x*x ≤ qmax)
         x += 1
     end
