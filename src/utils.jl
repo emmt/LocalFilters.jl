@@ -20,32 +20,38 @@ Base.IndexStyle(::Type{<:Indices{S}}) where {S} = S()
 @inline (::Indices{IndexLinear})(A::AbstractVector) = AbstractUnitRange{Int}(Base.axes1(A))
 @inline (::Indices{IndexCartesian})(A::AbstractArray) = CartesianIndices(A)
 
-@inline (I::Indices)(A::AbstractArray, B::AbstractArray) =
-    (have_same_indices(A, B); I(A))
-@inline (I::Indices)(A::AbstractArray, B::AbstractArray...) =
-    (have_same_indices(A, B...); I(A))
+@inline (I::Indices)(A::AbstractArray, B::AbstractArray) = (check_indices(A, B); I(A))
+@inline (I::Indices)(A::AbstractArray, B::AbstractArray...) = (check_indices(A, B...); I(A))
 
 """
-    LocalFilters.have_same_indices(Bool, A...)
+    LocalFilters.check_indices(Bool, [I,] A...)
 
-yields whether all arrays `A...` have the same indices.
+yields whether all arrays `A...` have the same indices, or all have indices `I` if
+specified.
 
-    LocalFilters.have_same_indices(A...)
+    LocalFilters.check_indices([I,] A...)
 
-throws an exception if not all arrays `A...` have the same indices.
+throws an exception if not all arrays `A...` have the same indices, or all have indices
+`I` if specified.
 
 """
-have_same_indices(::Type{Bool}, A::AbstractArray) = true
-have_same_indices(::Type{Bool}, A::AbstractArray...) = false
-have_same_indices(::Type{Bool}, A::AbstractArray{N}, B::AbstractArray{N}) where {N} =
-    axes(A) == axes(B)
-@inline function have_same_indices(::Type{Bool}, A::AbstractArray{N},
-                                   B::AbstractArray{N}...) where {N}
-    return all_yield(axes(A), axes, B...)
-end
-have_same_indices(A::AbstractArray...) =
-    have_same_indices(Bool, A...) || throw(DimensionMismatch(
+check_indices(::Type{Bool}, A::AbstractArray) = true
+check_indices(::Type{Bool}, A::AbstractArray...) = false
+@inline check_indices(::Type{Bool}, A::AbstractArray{N}, B::AbstractArray{N}...) where {N} =
+    check_indices(Bool, axes(A), B...)
+
+@inline check_indices(::Type{Bool}, I::ArrayAxes{N}, A::AbstractArray...) = false
+@inline check_indices(::Type{Bool}, I::ArrayAxes{N}, A::AbstractArray{N}) where {N} = axes(A) == I
+@inline check_indices(::Type{Bool}, I::ArrayAxes{N}, A::AbstractArray{N}, B::AbstractArray{N}...) where {N} =
+    axes(A) == I && check_indices(Bool, B...)
+
+@inline check_indices(A::AbstractArray...) =
+    check_indices(Bool, A...) ? nothing : throw(DimensionMismatch(
         "arrays must have the same indices"))
+
+@inline check_indices(I::ArrayAxes, A::AbstractArray...) =
+    check_indices(Bool, I, A...) ? nothing : throw(DimensionMismatch(
+        "arrays must have the given indices"))
 
 """
     LocalFilters.all_yield(x, f, args...)
@@ -361,65 +367,6 @@ yields the infimum and supremum of a type `T`.
 
 """
 limits(T::Type) = (typemin(T), typemax(T))
-
-"""
-    check_indices(A...)
-
-throws an exception if arrays `A...` have different indices.
-
----
-
-    check_indices(Bool, [I,] A...)
-
-yields whether arrays `A...` all have the same indices, or all have indices `I` if
-specified.
-
-"""
-check_indices(A::AbstractArray) = nothing
-
-function check_indices(A::AbstractArray, B::AbstractArray...)
-    throw(DimensionMismatch(
-        "arrays have different number of dimensions"))
-end
-
-# This version is forced to be in-lined to unroll the recursion.
-@inline function check_indices(A::AbstractArray{<:Any,N},
-                               B::AbstractArray{<:Any,N}...) where {N}
-    check_indices(Bool, axes(A), B...) || throw(DimensionMismatch(
-        "arrays have different indices"))
-    return nothing
-end
-
-check_indices(::Type{Bool}) = false
-check_indices(::Type{Bool}, A::AbstractArray) = true
-check_indices(::Type{Bool}, A::AbstractArray...) = false
-
-# This version is forced to be in-lined to unroll the recursion.
-@inline function check_indices(::Type{Bool},
-                               A::AbstractArray{<:Any,N},
-                               B::AbstractArray{<:Any,N}...) where {N}
-    return check_indices(Bool, axes(A), B...)
-end
-
-function check_indices(::Type{Bool},
-                       I::Tuple{Vararg{AbstractUnitRange{<:Integer}}},
-                       A::AbstractArray...)
-    return false
-end
-
-# This version is forced to be in-lined to unroll the recursion.
-@inline function check_indices(::Type{Bool},
-                               I::NTuple{N,AbstractUnitRange{<:Integer}},
-                               A::AbstractArray{<:Any,N},
-                               B::AbstractArray{<:Any,N}...) where {N}
-    return axes(A) == I && check_indices(Bool, I, B...)
-end
-
-function check_indices(::Type{Bool},
-                       I::NTuple{N,AbstractUnitRange{<:Integer}},
-                       A::AbstractArray{<:Any,N}) where {N}
-    return axes(A) == I
-end
 
 """
     result_eltype(f, A[, B]) -> T

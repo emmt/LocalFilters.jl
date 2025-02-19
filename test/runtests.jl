@@ -269,6 +269,7 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
         let dims = (4,5), A = reshape(collect(1:prod(dims)), dims),
             B = ones(dims), C = rand(Float32, dims), D = centered(C)
             @test_throws DimensionMismatch check_indices(A, B, C, D)
+            @test_throws DimensionMismatch check_indices(axes(A), B, C, D)
             @test check_indices(A) === check_indices(D)
             @test check_indices(A,B) === check_indices(D)
             @test check_indices(A,B,C) === check_indices(D)

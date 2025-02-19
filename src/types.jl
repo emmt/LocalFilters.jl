@@ -21,6 +21,9 @@ of types accepted by the [`LocalFilters.kernel_range`](@ref) method.
 """
 const Axis = Union{Integer,AbstractRange{<:Integer}}
 
+# Type of the result of `axes(A)`.
+const ArrayAxes{N} = NTuple{N,AbstractUnitRange{<:Integer}}
+
 """
     LocalFilters.Indices(A...) -> indices
 
