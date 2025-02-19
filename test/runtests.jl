@@ -197,17 +197,23 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
         # kernel_range
         @test_throws ArgumentError kernel_range(-1)
         @test isempty(kernel_range(0))
-        @test kernel_range(0) === 0:-1
-        @test kernel_range(1) === 0:0
-        @test kernel_range(4) === -2:1
-        @test kernel_range(5) === -2:2
-        @test kernel_range(-4:5) === -4:5
-        @test kernel_range(-4:1:5) === -4:5
+        @test (@inferred kernel_range(0)) === 0:-1
+        @test (@inferred kernel_range(1)) === 0:0
+        @test (@inferred kernel_range(4)) === -2:1
+        @test (@inferred kernel_range(5)) === -2:2
+        @test (@inferred kernel_range(-4:5)) === -4:5
+        @test (@inferred kernel_range(-4:1:5)) === -4:5
         @test_throws ArgumentError kernel_range(-4:2:7)
-        @test kernel_range(1,3) === 1:3
-        @test kernel_range(Int16(-3),Int8(5)) === -3:5
-        @test kernel_range(Base.OneTo(7)) === Base.OneTo{Int}(7)
-        @test kernel_range(Base.OneTo(Int16(7))) === Base.OneTo{Int}(7)
+        @test (@inferred kernel_range(1,3)) === 1:3
+        @test (@inferred kernel_range(Int16(-3),Int8(5))) === -3:5
+        @test (@inferred kernel_range(Base.OneTo(7))) === Base.OneTo{Int}(7)
+        @test (@inferred kernel_range(Base.OneTo(Int16(7)))) === Base.OneTo{Int}(7)
+        @test (@inferred kernel_range(ForwardFilter, -4:5)) === -4:5
+        @test (@inferred kernel_range(ReverseFilter, -4:5)) === -5:4
+        @test (@inferred kernel_range(ForwardFilter, -4:1:5)) === -4:5
+        @test (@inferred kernel_range(ReverseFilter, -4:1:5)) === -5:4
+        @test (@inferred kernel_range(ForwardFilter, 2, 8)) === 2:8
+        @test (@inferred kernel_range(ReverseFilter, -1, 4)) === -4:1
 
         # kernel
         # FIXME: @test length(kernel()) == 0

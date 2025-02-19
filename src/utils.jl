@@ -126,14 +126,16 @@ function centered_offset(len::Integer)
 end
 
 """
-    LocalFilters.kernel_range(rng::AbstractRange{<:Integer})
-    LocalFilters.kernel_range(len::Integer)
-    LocalFilters.kernel_range(start::Integer, stop::Integer)
+    LocalFilters.kernel_range([ord=ForwardFilter,] rng::AbstractRange{<:Integer})
+    LocalFilters.kernel_range([ord=ForwardFilter,] len::Integer)
+    LocalFilters.kernel_range([ord=ForwardFilter,] start::Integer, stop::Integer)
 
 yield an unit-step `Int`-valued index range based on range `rng`, dimension length `len`,
 or first and last indices `start` and `stop`. In the case of a given dimension length, a
 centered range of this length is returned (for even lengths, the same conventions as in
 `fftshift` are used).
+
+If ordering `ord` is specified, the returned range is suitable for this ordering.
 
 See [`LocalFilters.kernel`](@ref), [`LocalFilters.centered_offset`](@ref), and
 [`LocalFilters.centered`](@ref).
@@ -150,6 +152,13 @@ function kernel_range(len::Integer)
 end
 
 kernel_range(start::Integer, stop::Integer) = unit_range(start, stop)
+
+kernel_range(org::FilterOrdering, arg::Axis) = kernel_range(org, kernel_range(arg))
+kernel_range(org::FilterOrdering, start::Integer, stop::Integer) =
+    kernel_range(org, kernel_range(start, stop))
+
+kernel_range(::ForwardFilterOrdering, rng::AbstractUnitRange{Int}) = rng
+kernel_range(::ReverseFilterOrdering, rng::AbstractUnitRange{Int}) = reverse_kernel_axis(rng)
 
 """
     kernel([Dims{N},] args...)
