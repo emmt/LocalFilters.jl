@@ -483,6 +483,7 @@ returned.
 See also [`top_hat`](@ref) for more details.
 
 """ top_hat!
+@public top_hat!
 
 """
     bottom_hat(A, [B_ord=ForwardFilter,] B=3 [, [C_ord=B_ord,] C]; slow=false) -> dst
@@ -513,6 +514,7 @@ different arrays. The destination `dst` is returned.
 See also [`bottom_hat`](@ref) for more details.
 
 """ bottom_hat!
+@public bottom_hat!
 
 for (f, pf) in ((:top_hat,    :closing),
                 (:bottom_hat, :opening))
