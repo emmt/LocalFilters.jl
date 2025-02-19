@@ -35,14 +35,14 @@ throws an exception if not all arrays `A...` have the same indices, or all have 
 `I` if specified.
 
 """
-check_indices(::Type{Bool}, A::AbstractArray) = true
 check_indices(::Type{Bool}, A::AbstractArray...) = false
-@inline check_indices(::Type{Bool}, A::AbstractArray{N}, B::AbstractArray{N}...) where {N} =
+check_indices(::Type{Bool}, A::AbstractArray) = true
+@inline check_indices(::Type{Bool}, A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N}...) where {N} =
     check_indices(Bool, axes(A), B...)
 
-@inline check_indices(::Type{Bool}, I::ArrayAxes{N}, A::AbstractArray...) = false
-@inline check_indices(::Type{Bool}, I::ArrayAxes{N}, A::AbstractArray{N}) where {N} = axes(A) == I
-@inline check_indices(::Type{Bool}, I::ArrayAxes{N}, A::AbstractArray{N}, B::AbstractArray{N}...) where {N} =
+@inline check_indices(::Type{Bool}, I::ArrayAxes,    A::AbstractArray...) = false
+@inline check_indices(::Type{Bool}, I::ArrayAxes{N}, A::AbstractArray{<:Any,N}) where {N} = axes(A) == I
+@inline check_indices(::Type{Bool}, I::ArrayAxes{N}, A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N}...) where {N} =
     axes(A) == I && check_indices(Bool, B...)
 
 @inline check_indices(A::AbstractArray...) =
