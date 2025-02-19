@@ -94,7 +94,7 @@ function unit_range(rng::AbstractRange{<:Integer})
     isone(abs(step)) || throw(ArgumentError("invalid non-unit step range"))
     start, stop = as(Int, first(rng)), as(Int, last(rng)) # convert to Int prior to negate
     if step < zero(step)
-        start, stop = -stop, -start
+        start, stop = stop, start
     end
     return unit_range(start, stop)
 end
