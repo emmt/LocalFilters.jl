@@ -400,15 +400,15 @@ elements.
 If `T` is a floating-point type, then the result is a so-called *flat* structuring element
 whose coefficients are `zero(T)` inside the shape defined by `A` and `-T(Inf)` elsewhere.
 
+See also [`LocalFilters.kernel`](@ref) and [`LocalFilters.ball`](@ref).
+
 """
 strel(::Type{Bool}, A::AbstractArray{Bool}) = A
 strel(::Type{Bool}, A::CartesianIndices) = FastUniformArray(true, ranges(A))
 strel(T::Type{<:AbstractFloat}, A::CartesianIndices) = FastUniformArray(zero(T), ranges(A))
+strel(::Type{T}, A::AbstractArray{Bool}) where {T<:AbstractFloat} = map(Base.Fix1(_flat, T), A)
 
-function strel(::Type{T}, A::AbstractArray{Bool}) where {T<:AbstractFloat}
-    flat(::Type{T}, x::Bool) where {T<:AbstractFloat} = ifelse(x, zero(T), -T(Inf))
-    map(flat, A)
-end
+_flat(::Type{T}, flag::Bool) where {T<:AbstractFloat} = ifelse(flag, zero(T), -T(Inf))
 
 """
     LocalFilters.ball(Dims{N}, r)
