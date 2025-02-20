@@ -8,24 +8,25 @@
   has been fixed for `N > 2`. The result is identical whether `r` is integer or
   floating-point.
 
+* In `localfilter!`, argument `initial` may be a function to compute the state variable
   from the value of the source array at the current destination index. This imposes that
   the source and destination arrays have the same axes. This fixes [issue#3](#3).
 
-- `localmean` and `localmean!` accept a `null` keyword to specify the value of the result
+* `localmean` and `localmean!` accept a `null` keyword to specify the value of the result
   when the sum of weights in a neighborhood is zero.
 
-- The algorithm to infer the result type is now based on Julia's arithmetic rules and can
+* The algorithm to infer the result type is now based on Julia's arithmetic rules and can
   cope with arguments that have units.
 
-- To represent hyper-rectangular neighborhoods, instances of non-exported
+* To represent hyper-rectangular neighborhoods, instances of non-exported
   `LocalFilters.Box` have been replaced by fast uniform arrays with offset axes from the
   [`StructuredArrays`](https://github.com/emmt/StructuredArrays.jl) package.
-  `LocalFilters.Box{N}` is now an alias to `FastUniformArray{Boll,N,true}`.
+  `LocalFilters.Box{N,I}` is now an alias to `FastUniformArray{Boll,N,true,I}`.
 
-- Exported method `reverse_kernel` yields a reversed kernel such that correlation by
-  `reverse_kernel(B)` is identical to convolution by `B`.
+* Exported method `reverse_kernel` yields a reversed kernel such that correlation by
+  `reverse_kernel(B)` is identical to convolution by `B` and conversely.
 
-- Constants for filter ordering follow more general naming rules: `FORWARD_FILTER` and
+* Constants for filter ordering follow more general naming rules: `FORWARD_FILTER` and
   `REVERSE_FILTER` instead of `ForwardFilter` and `ReverseFilter`.
 
 ## Version 2.0.0
