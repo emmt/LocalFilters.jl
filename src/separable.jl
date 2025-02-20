@@ -41,33 +41,6 @@ const Dimensions = Union{Colon, Integer, Tuple{Vararg{Integer}},
 const Ranges = Union{LocalAxis, Tuple{Vararg{LocalAxis}}, AbstractVector{<:LocalAxis}}
 
 """
-    filter_range([ord=FORWARD_FILTER,] len)
-    filter_range([ord=FORWARD_FILTER,] rng)
-
-yields an `Int`-valued unit step range for specifying the filter range for ordering `ord`.
-The result is of length `len` or is based on index range `rng`.
-
-"""
-filter_range(len::Integer) = kernel_range(len)
-filter_range(rng::AbstractUnitRange{Int}) = rng
-filter_range(rng::AbstractUnitRange{<:Integer}) = Int(first(rng)):Int(last(rng))
-filter_range(rng::OrdinalRange{<:Integer,<:Integer}) = begin
-    s = step(rng)
-    if s == one(s)
-        return Int(first(rng)):Int(last(rng))
-    elseif s == -one(s)
-        return -Int(last(r)):-Int(first(r))
-    else
-        throw(ArgumentError("unsupported non-unit step index range"))
-    end
-end
-filter_range(::ForwardFilterOrdering, args...) = filter_range(args...)
-filter_range(::ReverseFilterOrdering, args...) = begin
-    rng = filter_range(args...)
-    return -last(rng):-first(rng)
-end
-
-"""
     WorkVector(buf, len, skip=0) -> A
     WorkVector(buf, rng, skip=0) -> A
 
@@ -268,7 +241,7 @@ function localfilter!(dst::AbstractArray{T,N},
                       wrk::Vector{T}) where {T,N}
     # small optimization: convert range once
     return localfilter!(dst, A, dims, op, FORWARD_FILTER,
-                        filter_range(ord, rng), wrk)
+                        kernel_range(ord, rng), wrk)
 end
 
 function localfilter!(dst::AbstractArray{T,N},
@@ -364,7 +337,7 @@ function localfilter!(dst::AbstractArray{T,N},
                       wrk::Vector{T}) where {T,N}
     1 ≤ dim ≤ N || throw(ArgumentError("out of bounds dimension"))
     isempty(rng) &&  throw(ArgumentError("invalid filter size"))
-    unsafe_localfilter!(dst, A, Val(Int(dim)), op, filter_range(ord, rng), wrk)
+    unsafe_localfilter!(dst, A, Val(Int(dim)), op, kernel_range(ord, rng), wrk)
     return dst
 end
 

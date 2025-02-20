@@ -129,31 +129,88 @@ kernel(::Type{Dims{N}}, args...) where {N} = throw(ArgumentError(
     "cannot create a $N-dimensional kernel for argument(s) of type $(typeof(args))"))
 
 """
-    LocalFilters.kernel_range(start, stop)
-    LocalFilters.kernel_range(rng)
-    LocalFilters.kernel_range(dim)
+   LocalFilters.centered_offset(len)
 
-yield an `Int`-valued unit range based on first and last indices `start` and `stop`, unit
-range `rng`, or dimension length `dim`. In the case of a given dimension length, a
+yields the index offset along a centered dimension of length `len`. That is,
+`-div(Int(len)+2,2)`. For even dimension lengths, this amounts to using the same
+conventions as in `fftshift`.
+
+See [`LocalFilters.kernel_range`](@ref) and [`LocalFilters.centered`](@ref).
+
+"""
+function centered_offset(len::Integer)
+    len ≥ 0 || throw(ArgumentError("invalid dimension length"))
+    return -((Int(len) + 2) >> 1)
+end
+
+"""
+    LocalFilters.kernel_range([ord=FORWARD_FILTER,] rng::AbstractRange{<:Integer})
+    LocalFilters.kernel_range([ord=FORWARD_FILTER,] len::Integer)
+    LocalFilters.kernel_range([ord=FORWARD_FILTER,] start::Integer, stop::Integer)
+
+yield an unit-step `Int`-valued index range based on range `rng`, dimension length `len`,
+or first and last indices `start` and `stop`. In the case of a given dimension length, a
 centered range of this length is returned (for even lengths, the same conventions as in
 `fftshift` are used).
 
-See [`LocalFilters.kernel`](@ref) and [`LocalFilters.centered`](@ref).
+If ordering `ord` is specified, the returned range is suitable for this ordering.
+
+See also [`LocalFilters.kernel`](@ref), [`LocalFilters.centered_offset`](@ref), and
+[`LocalFilters.centered`](@ref).
 
 """
-kernel_range(start::Integer, stop::Integer) = as(Int, start):as(Int, stop)
-kernel_range(rng::AbstractUnitRange{Int}) = rng
-kernel_range(rng::AbstractUnitRange{<:Integer}) = convert_eltype(Int, rng)
-function kernel_range(rng::AbstractRange{<:Integer})
-    isone(step(rng)) || throw(ArgumentError("not a unit step range, got step of $(step(rng))"))
-    return kernel_range(first(rng), last(rng))
+kernel_range(start::Integer, stop::Integer) = unit_range(start, stop)
+kernel_range(rng::AbstractRange{<:Integer}) = unit_range(rng)
+function kernel_range(len::Integer)
+    len = as(Int, len)
+    off = centered_offset(len)
+    return unit_range(off + 1, off + len)
 end
-function kernel_range(dim::Integer)
-    dim ≥ zero(dim) || throw(ArgumentError("dimension must be ≥ 0, got $dim"))
-    dim = as(Int, dim)
-    start = -(dim ÷ 2)
-    stop = dim - 1 + start
-    return kernel_range(start, stop)
+
+kernel_range(org::FilterOrdering, arg::LocalAxis) = kernel_range(org, kernel_range(arg))
+kernel_range(org::FilterOrdering, start::Integer, stop::Integer) =
+    kernel_range(org, kernel_range(start, stop))
+
+kernel_range(::ForwardFilterOrdering, rng::AbstractUnitRange{Int}) = rng
+kernel_range(::ReverseFilterOrdering, rng::AbstractUnitRange{Int}) = reverse_kernel_axis(rng)
+
+"""
+    LocalFilters.unit_range(r::Union{AbstractRange{<:Integer},CartesianIndices})
+
+converts `r` into an `Int`-valued unit step index range. `r` may be a linear or a
+Cartesian index range. If `r` is a linear range, the absolute value of its step must be 1.
+
+    LocalFilters.unit_range(start::Integer, stop::Integer)
+
+yields the `Int`-valued unit step range `Int(start):Int(stop)`.
+
+"""
+unit_range(r::OneTo{Int}) = r
+unit_range(r::OneTo{<:Integer}) = OneTo{Int}(length(r))
+
+unit_range(r::AbstractUnitRange{Int}) = r
+unit_range(r::AbstractUnitRange{<:Integer}) = unit_range(first(r), last(r))
+
+unit_range(start::Integer, stop::Integer) = unit_range(as(Int, start), as(Int, stop))
+unit_range(start::Int, stop::Int) = start:stop
+
+function unit_range(rng::AbstractRange{<:Integer})
+    step = Base.step(rng)
+    isone(abs(step)) || throw(ArgumentError("invalid non-unit step range"))
+    start, stop = as(Int, first(rng)), as(Int, last(rng)) # convert to Int prior to negate
+    if step < zero(step)
+        start, stop = stop, start
+    end
+    return unit_range(start, stop)
+end
+
+function unit_range(R::CartesianIndices{N}) where {N}
+    # Since Julia 1.6, non-unit step Cartesian ranges may be defined.
+    if R isa CartesianIndices{N,<:NTuple{N,AbstractUnitRange{Int}}}
+        return R
+    else
+        return CartesianIndices(map(unit_range, R.indices))
+    end
 end
 
 """
