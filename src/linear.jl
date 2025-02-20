@@ -280,9 +280,9 @@ end
 
 # See `base/reduce.jl`.
 const SmallSigned = Union{filter(T -> sizeof(T) < sizeof(Int),
-                                 (Int8, Int16, Int32, Int64, Int128))...,}
+                                 [Int8, Int16, Int32, Int64, Int128])...,}
 const SmallUnsigned = Union{filter(T -> sizeof(T) < sizeof(UInt),
-                                   (UInt8, UInt16, UInt32, UInt64, UInt128))...,}
+                                   [UInt8, UInt16, UInt32, UInt64, UInt128])...,}
 const SmallInteger = Union{SmallSigned, SmallUnsigned}
 
 # Addition and multiplication of terms as assumed by linear filters. To avoid overflows,
