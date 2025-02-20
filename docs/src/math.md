@@ -24,15 +24,14 @@ c(x) = \mathrm{Conv}(a,b)(x)
 = \int b(z)\,a(x - z)\,\mathrm{d}z,
 ```
 
-with ``z = x - y``. This also shows that the convolution product is
-symmetrical:
+with ``z = x - y``. This also shows that the convolution product is symmetrical:
 
 ```math
 \mathrm{Conv}(b,a) = \mathrm{Conv}(a,b).
 ```
 
-Taking ``z = x - y``, the Fourier transform of the convolution product can be
-expanded as follows:
+Taking ``z = x - y``, the Fourier transform of the convolution product can be expanded as
+follows:
 
 ```math
 \begin{align*}
@@ -56,15 +55,15 @@ r(x) = \mathrm{Corr}(a,b)(x)
 = \int {b}^\star(z - x)\,a(z)\,\mathrm{d}z,
 ```
 
-where ``{b}^\star(y)`` denotes the complex conjugate of ``b(y)`` and with ``z =
-x + y``. From this follows that:
+where ``{b}^\star(y)`` denotes the complex conjugate of ``b(y)`` and with ``z = x + y``.
+From this follows that:
 
 ```math
 \mathrm{Corr}(b,a)(x) = {\mathrm{Corr}(a,b)}^\star(-x).
 ```
 
-Taking ``z = x + y``, the Fourier transform of the correlation product can be
-expanded as follows:
+Taking ``z = x + y``, the Fourier transform of the correlation product can be expanded as
+follows:
 
 ```math
 \begin{align*}
@@ -79,8 +78,8 @@ expanded as follows:
 
 ## Discrete convolution and correlation
 
-Following the continuous definition, the discrete convolution of ``a`` by ``b``
-is given by:
+Following the continuous definition, the discrete convolution of ``a`` by ``b`` is given
+by:
 
 ```math
 c[i] = \sum_j a[j]\,b[i - j] = \sum_k b[k]\,a[i - k],

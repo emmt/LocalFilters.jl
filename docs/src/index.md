@@ -1,7 +1,6 @@
 # Introduction
 
-The `LocalFilters` package provides local linear and non-linear filters
-for Julia.
+The `LocalFilters` package provides local linear and non-linear filters for Julia.
 
 The source code of `LocalFilters` is available on
 [GitHub](https://github.com/emmt/LocalFilters.jl).

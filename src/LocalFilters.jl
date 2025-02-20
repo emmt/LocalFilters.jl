@@ -3,12 +3,12 @@
 #
 # Local filters for Julia arrays.
 #
-#------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------
 #
-# This file is part of the `LocalFilters.jl` package licensed under the MIT
-# "Expat" License.
+# This file is part of the `LocalFilters.jl` package licensed under the MIT "Expat"
+# License.
 #
-# Copyright (c) 2017-2024, Éric Thiébaut.
+# Copyright (c) 2017-2025, Éric Thiébaut.
 #
 
 module LocalFilters

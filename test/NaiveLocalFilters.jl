@@ -1,15 +1,15 @@
 #
 # NaiveLocalFilters.jl -
 #
-# Naive (non-optimized) implementation of local filters. This module provides
-# reference implementations of methods for checking results and benchmarking.
+# Naive (non-optimized) implementation of local filters. This module provides reference
+# implementations of methods for checking results and benchmarking.
 #
 #------------------------------------------------------------------------------
 #
-# This file is part of the `LocalFilters.jl` package licensed under the MIT
-# "Expat" License.
+# This file is part of the `LocalFilters.jl` package licensed under the MIT "Expat"
+# License.
 #
-# Copyright (C) 2017-2022, Éric Thiébaut.
+# Copyright (c) 2017-2025, Éric Thiébaut.
 #
 
 module NaiveLocalFilters
@@ -120,9 +120,9 @@ function dilate!(::Val{:Naive},
                  (d,i,v) -> d[i] = v)
 end
 
-#------------------------------------------------------------------------------
-# Variants for computing interesecting regions. This is the most critical part
-# for indexing a neighborhood (apart from using a non-naive algorithm).
+#-----------------------------------------------------------------------------------------
+# Variants for computing intersecting regions. This is the most critical part for indexing
+# a neighborhood (apart from using a non-naive algorithm).
 
 # "Base" variant: use constructors and methods provided by the Base package.
 @inline function _cartesianregion(::Val{:Base},
@@ -160,8 +160,8 @@ end
                                  min(imax[k], i[k] - kmin[k])), N))
 end
 
-# "NTupleVal" variant: use `ntuple()` to expand expressions and `Val(...)` to
-# force specialized versions.
+# "NTupleVal" variant: use `ntuple()` to expand expressions and `Val(...)` to force
+# specialized versions.
 for N in (1,2,3,4)
     @eval begin
         @inline function _cartesianregion(::Val{:NTupleVar},
@@ -207,7 +207,7 @@ end
     cartesian_region(map(_range, imin.I, imax.I, i.I, kmin.I, kmax.I))
 end
 
-#------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------
 # Methods for rectangular boxes (with optimization for centered boxes).
 
 function localmean!(variant::Val,
@@ -337,8 +337,8 @@ function localextrema!(variant::Val,
     return Amin, Amax
 end
 
-#------------------------------------------------------------------------------
-# Nethods for kernels of booleans.
+#-----------------------------------------------------------------------------------------
+# Methods for kernels of booleans.
 
 function localmean!(variant::Val,
                     dst::AbstractArray{<:Any,N},
@@ -440,7 +440,7 @@ function localextrema!(variant::Val,
     return Amin, Amax
 end
 
-#------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------
 # Methods for other kernels.
 
 function localmean!(variant::Val,

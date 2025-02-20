@@ -3,12 +3,12 @@
 #
 # Implements the bilateral filter.
 #
-#------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------
 #
-# This file is part of the `LocalFilters.jl` package licensed under the MIT
-# "Expat" License.
+# This file is part of the `LocalFilters.jl` package licensed under the MIT "Expat"
+# License.
 #
-# Copyright (c) 2018-2024, Éric Thiébaut.
+# Copyright (c) 2018-2025, Éric Thiébaut.
 #
 
 module BilateralFilter
@@ -26,13 +26,13 @@ using Base: @propagate_inbounds
 """
     LocalFilters.BilateralFilter.GaussianWindow{T}(σ) -> f
 
-yields a callable object `f` with the shape of a Gaussian of standard deviation
-`σ` but with a peak value of one, i.e. `f(0) -> 1`. The functor `f` can be
-applied to a single value, to 2 values, say `x` and `y`, to yield `f(y - x)`,
-or to a coordinate difference expressed as a Cartesian index.
+yields a callable object `f` with the shape of a Gaussian of standard deviation `σ` but
+with a peak value of one, i.e. `f(0) -> 1`. The functor `f` can be applied to a single
+value, to 2 values, say `x` and `y`, to yield `f(y - x)`, or to a coordinate difference
+expressed as a Cartesian index.
 
-Type parameter `T` is to specify the numerical type of the parameter of the
-functor. It can be omitted if `σ` is real.
+Type parameter `T` is to specify the numerical type of the parameter of the callable
+object. It can be omitted if `σ` is real.
 
 """
 struct GaussianWindow{T<:AbstractFloat,S} <: AbstractTypeStableFunction{T}
@@ -69,37 +69,33 @@ yields the result of applying the bilateral filter on array `A`.
 
 Argument `F` specifies how to smooth the differences in values. It can be:
 
-- a function, say `f`, which is called as `f(A[i],A[j])` to yield a nonnegative
-  weight for `i` the central index and `j` the index in a nearby position;
+- a function, say `f`, which is called as `f(A[i],A[j])` to yield a nonnegative weight for
+  `i` the central index and `j` the index in a nearby position;
 
-- a positive real, say `σ`, which is assumed to be the standard deviation of a
-  Gaussian.
+- a positive real, say `σ`, which is assumed to be the standard deviation of a Gaussian.
 
-Arguments `G, ...` specify the settings of the distance filter for smoothing
-differences in coordinates. There are several possibilities:
+Arguments `G, ...` specify the settings of the distance filter for smoothing differences
+in coordinates. There are several possibilities:
 
-- `G... = wgt` an array of nonnegative weights or of booleans. The axes of
-  `wgt` must have offsets so that the zero index is part of the indices of
-  `wgt`.
+- `G... = wgt` an array of nonnegative weights or of Booleans. The axes of `wgt` must have
+  offsets so that the zero index is part of the indices of `wgt`.
 
-- `G... = f, w` with `f` a function and `w` any kind of argument that can be
-  used to build a window `win` specifying the extension of the neighborhood.
-  The value of the distance filter will be `max(f(i),0)` for all Cartesian
-  index `i` of `win` such that `win[i]` is true. See [`kernel`](@ref) for the
-  different ways to specify a window.
+- `G... = f, w` with `f` a function and `w` any kind of argument that can be used to build
+  a window `win` specifying the extension of the neighborhood. The value of the distance
+  filter will be `max(f(i),0)` for all Cartesian index `i` of `win` such that `win[i]` is
+  true. See [`kernel`](@ref) for the different ways to specify a window.
 
-- `G... = σ` or , `G... = σ, w` with `σ` a positive real assumed to be the
-  standard deviation of a Gaussian function and `w` any kind of argument that
-  can be used to build a window `win` specifying the extension of the
-  neighborhood. If `w` is not specified, a default window of size `±3σ` is
-  assumed.
+- `G... = σ` or , `G... = σ, w` with `σ` a positive real assumed to be the standard
+  deviation of a Gaussian function and `w` any kind of argument that can be used to build
+  a window `win` specifying the extension of the neighborhood. If `w` is not specified, a
+  default window of size `±3σ` is assumed.
 
-Optional argument `T` can be used to force the element type of the result. This
-argument is needed if the element type of `A` is not a real.
+Optional argument `T` can be used to force the element type of the result. This argument
+is needed if the element type of `A` is not a real.
 
 See [`bilateralfilter!`](@ref) for an in-place version of this function and see
-[Wikipedia](https://en.wikipedia.org/wiki/Bilateral_filter) for a description
-of the bilateral filter.
+[Wikipedia](https://en.wikipedia.org/wiki/Bilateral_filter) for a description of the
+bilateral filter.
 
 """
 bilateralfilter(A::AbstractArray{<:Real}, args...) =
@@ -112,12 +108,12 @@ bilateralfilter(T::Type, A::AbstractArray, args...) =
 """
     bilateralfilter!(dst, A, F, [ord=FORWARD_FILTER,] G...) -> dst
 
-overwrites `dst` with the result of applying the bilateral filter on array `A`
-and returns `dst`.
+overwrites `dst` with the result of applying the bilateral filter on array `A` and returns
+`dst`.
 
-See [`bilateralfilter`](@ref) for a description of the other arguments than
-`dst` and see [Wikipedia](https://en.wikipedia.org/wiki/Bilateral_filter) for a
-description of the bilateral filter.
+See [`bilateralfilter`](@ref) for a description of the other arguments than `dst` and see
+[Wikipedia](https://en.wikipedia.org/wiki/Bilateral_filter) for a description of the
+bilateral filter.
 
 """ bilateralfilter!
 
@@ -134,8 +130,8 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
     # Get the (unconverted) type returned by the value filter.
     Tf = value_filter_type(eltype(A), F)
 
-    # Get the (unconverted) element type of the distance filter and simplify
-    # trailing arguments.
+    # Get the (unconverted) element type of the distance filter and simplify trailing
+    # arguments.
     Tg, Gp = distance_filter(Dims{N}, G...)
 
     # Determine the resulting weights type.
@@ -147,8 +143,8 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
                             ord, distance_filter(Tw, Gp))
 end
 
-# Yield the type returned by default by the value filter (at least single
-# precision floating-point for a Gaussian window).
+# Yield the type returned by default by the value filter (at least single precision
+# floating-point for a Gaussian window).
 value_filter_type(T::Type, f::Function) = Base.promote_op(f, T)
 function value_filter_type(T::Type, σ::Real)
     (isfinite(σ) && σ > 0) || throw(ArgumentError(
@@ -156,9 +152,9 @@ function value_filter_type(T::Type, σ::Real)
     return promote_type(real(T), Float32)
 end
 
-# First pass to determine the distance filter. Yield a 2-tuple: an element type
-# and anything else that may be used in the second pass to effectivelu build
-# the filter as an array.
+# First pass to determine the distance filter. Yield a 2-tuple: an element type and
+# anything else that may be used in the second pass to effectively build the filter as an
+# array.
 distance_filter(::Type{Dims{N}}, wgt::AbstractArray{T,N}) where {T,N} = (T, wgt)
 distance_filter(::Type{Dims{N}}, win::Window{N}) where {N} =
     (Bool, kernel(Dims{N}, win))
@@ -177,13 +173,11 @@ weight_type(Tf::Type{<:Real}, Tg::Type{<:Real}) = promote_type(Tf, Tg)
 weight_type(Tf::Type{<:Complex}, Tg::Type) =
     throw(ArgumentError("value filter must not yield complex type"))
 
-# Yield a callable object to be used as the *value filter* in the bilateral
-# filter.
+# Yield a callable object to be used as the *value filter* in the bilateral filter.
 value_filter(T::Type, f::Function) = AbstractTypeStableFunction{T}(f)
 value_filter(T::Type, σ::Real) = GaussianWindow{T}(σ)
 
-# Second pass to build/convert the distance filter. Argument T is the type of
-# the weights.
+# Second pass to build/convert the distance filter. Argument T is the type of the weights.
 distance_filter(::Type{T}, win::AbstractArray{Bool}) where {T} = win
 distance_filter(::Type{T}, wgt::AbstractArray{T}) where {T} = wgt
 distance_filter(::Type{T}, wgt::AbstractArray) where {T} = AbstractArray{T}(wgt)

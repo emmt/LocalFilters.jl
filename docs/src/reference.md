@@ -1,8 +1,8 @@
 # Reference
 
 The following summarizes the documentation of types and methods provided by the
-`LocalFilters` package. This information is also available from the REPL by
-typing `?` followed by the name of a method or a type.
+`LocalFilters` package. This information is also available from the REPL by typing `?`
+followed by the name of a method or a type.
 
 
 ## Index
@@ -75,8 +75,8 @@ LocalFilters.centered
 
 ## Utilities
 
-Below are described non-exported types and methods that may be useful in the
-context of building local filters.
+Below are described non-exported types and methods that may be useful in the context of
+building local filters.
 
 ```@docs
 LocalFilters.Indices
