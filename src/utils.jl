@@ -183,7 +183,7 @@ function kernel_range(len::Integer)
     return unit_range(off + 1, off + len)
 end
 
-kernel_range(org::FilterOrdering, arg::LocalAxis) = kernel_range(org, kernel_range(arg))
+kernel_range(org::FilterOrdering, arg::Axis) = kernel_range(org, kernel_range(arg))
 kernel_range(org::FilterOrdering, start::Integer, stop::Integer) =
     kernel_range(org, kernel_range(start, stop))
 

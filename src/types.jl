@@ -12,16 +12,16 @@
 #
 
 """
-    LocalFilters.LocalAxis
+    LocalFilters.Axis
 
 is the union of types suitable to specify a neighborhood axis. It may be an integer
 (assumed to be the length of the axis) or an integer-valued range. This is also the union
 of types accepted by the [`LocalFilters.kernel_range`](@ref) method.
 
 """
-const LocalAxis = Union{Integer,AbstractRange{<:Integer}}
+const Axis = Union{Integer,AbstractRange{<:Integer}}
 
-const LocalAxes{N} = NTuple{N,LocalAxis}
+const LocalAxes{N} = NTuple{N,Axis}
 
 const Axes{N} = NTuple{N,AbstractUnitRange{Int}}
 
@@ -68,7 +68,7 @@ hyper-rectangular sliding window and that can be converted into a kernel by the
 [`LocalFilters.kernel`](@ref) method.
 
 """
-const Window{N} = Union{LocalAxis,NTuple{N,LocalAxis},NTuple{2,CartesianIndex{N}},
+const Window{N} = Union{Axis,NTuple{N,Axis},NTuple{2,CartesianIndex{N}},
                         CartesianUnitRange{N}}
 
 """
