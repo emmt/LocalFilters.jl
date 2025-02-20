@@ -169,11 +169,6 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
             @test I(B) === eachindex(IndexStyle(I), B)
         end
 
-        @test nothing === check_axes(ball3x3)
-        @test nothing === check_axes(ball3x3, similar(ball3x3))
-        @test nothing === check_axes(ones(Int8, size(ball3x3)), ball3x3, similar(ball3x3))
-        @test_throws Exception check_axes(ball3x3, ball7x7)
-
         # kernel_range
         @test_throws ArgumentError kernel_range(-1)
         @test isempty(kernel_range(0))
@@ -235,6 +230,28 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
         # limits
         @test limits(Float32) === (-Float32(Inf), Float32(Inf))
         @test limits(Int8) === (Int8(-128),Int8(127))
+
+        # check_axes
+        let dims = (4,5), A = reshape(collect(1:prod(dims)), dims),
+            B = ones(dims), C = rand(Float32, dims), D = centered(C), E = ones(dims..., 2)
+            @test_throws DimensionMismatch check_axes(A, B, C, D)
+            @test_throws DimensionMismatch check_axes(A, E)
+            @test_throws DimensionMismatch check_axes(axes(A), B, C, D)
+            @test_throws DimensionMismatch check_axes(axes(A), E)
+            @test check_axes(A) === check_axes(D)
+            @test check_axes(A,B) === check_axes(D)
+            @test check_axes(A,B,C) === check_axes(D)
+            @test check_axes(Bool,A) === true
+            @test check_axes(Bool,A,B) === true
+            @test check_axes(Bool,A,B,C) === true
+            @test check_axes(Bool,A,B,C,D) === false
+            @test check_axes(Bool,centered(A),D) === true
+            @test check_axes(Bool) === false
+            @test check_axes(Bool,axes(A)) === false
+            @test check_axes(Bool,axes(A),B) === true
+            @test check_axes(Bool,axes(A),B,C) === true
+            @test check_axes(Bool,axes(A),B,C,D) === false
+        end
 
         # FORWARD_FILTER/REVERSE_FILTER
         @test reverse(FORWARD_FILTER) === REVERSE_FILTER
