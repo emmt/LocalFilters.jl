@@ -59,6 +59,7 @@ inherit from this type.
 
 """
 abstract type FilterOrdering end
+@public FilterOrdering
 
 """
     LocalFilters.ForwardFilterOrdering
@@ -68,6 +69,7 @@ singleton instance [`FORWARD_FILTER`](@ref) of this type is exported by `LocalFi
 
 """
 struct ForwardFilterOrdering <: FilterOrdering end
+@public ForwardFilterOrdering
 
 """
     LocalFilters.ForwardFilterOrdering
@@ -77,6 +79,7 @@ singleton instance [`REVERSE_FILTER`](@ref) of this type is exported by `LocalFi
 
 """
 struct ReverseFilterOrdering <: FilterOrdering end
+@public ReverseFilterOrdering
 
 """
     FORWARD_FILTER
@@ -115,6 +118,7 @@ is the super-type of types representing boundary conditions.
 
 """
 abstract type BoundaryConditions end
+@public BoundaryConditions
 
 """
     LocalFilters.FlatBoundaries(inds)
@@ -133,3 +137,4 @@ struct FlatBoundaries{R<:Union{AbstractUnitRange{Int},
         return new{R}(indices)
     end
 end
+@public FlatBoundaries
