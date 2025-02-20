@@ -375,7 +375,11 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
                 # FIXME: @test B2 === @inferred func!(copyto!(B2, A), R)
                 # FIXME: @test B2 == B1 # check if in-place and out-of-place yield the same result
                 if T <: AbstractFloat
-                    F = @inferred strel(T, R) # flat structuring element like R
+                    if VERSION < v"1.8" # Inference broken here for old Julia versions
+                        F = strel(T, R) # flat structuring element like R
+                    else
+                        F = @inferred strel(T, R) # flat structuring element like R
+                    end
                     @test B1 == @inferred func(A, F)
                     @test C == A   # check that A is left unchanged
                     @test B2 === @inferred func!(B2, A, F)
@@ -389,7 +393,11 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
                 @test C == A   # check that A is left unchanged
                 @test B2 == B1 # check if in-place and out-of-place yield the same result
                 if T <: AbstractFloat
-                    F = @inferred strel(T, S) # flat structuring element like S
+                    if VERSION < v"1.8" # Inference broken here for old Julia versions
+                        F = strel(T, S) # flat structuring element like S
+                    else
+                        F = @inferred strel(T, S) # flat structuring element like S
+                    end
                     @test B1 == @inferred func(A, F)
                     @test C == A   # check that A is left unchanged
                     @test B2 === @inferred func!(B2, A, F)
@@ -409,7 +417,11 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
                 @test B1 == A1
                 @test B2 == A2
                 if T <: AbstractFloat
-                    F = @inferred strel(T, R) # flat structuring element like R
+                    if VERSION < v"1.8" # Inference broken here for old Julia versions
+                        F = strel(T, R) # flat structuring element like R
+                    else
+                        F = @inferred strel(T, R) # flat structuring element like R
+                    end
                     @test (A1, A2) == @inferred localextrema(A, F)
                     @test C == A   # check that A is left unchanged
                     @test (B1, B2) === @inferred localextrema!(B1, B2, A, F)
@@ -427,7 +439,11 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
                 @test B1 == A1
                 @test B2 == A2
                 if T <: AbstractFloat
-                    F = @inferred strel(T, S) # flat structuring element like S
+                    if VERSION < v"1.8" # Inference broken here for old Julia versions
+                        F = strel(T, S) # flat structuring element like S
+                    else
+                        F = @inferred strel(T, S) # flat structuring element like S
+                    end
                     @test (A1, A2) == @inferred localextrema(A, F)
                     @test C == A   # check that A is left unchanged
                     @test (B1, B2) === @inferred localextrema!(B1, B2, A, F)
@@ -455,7 +471,11 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
                 @test C == A   # check that A is left unchanged
                 @test B2 == B1 # check if in-place and out-of-place yield the same result
                 if T <: AbstractFloat
-                    F = @inferred strel(T, R) # flat structuring element like R
+                    if VERSION < v"1.8" # Inference broken here for old Julia versions
+                        F = strel(T, R) # flat structuring element like R
+                    else
+                        F = @inferred strel(T, R) # flat structuring element like R
+                    end
                     @test B1 == @inferred func(A, F)
                     @test C == A   # check that A is left unchanged
                     @test B2 === @inferred func!(B2, wrk, A, F)
@@ -474,7 +494,11 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
                 @test C == A   # check that A is left unchanged
                 @test B2 == B1 # check if in-place and out-of-place yield the same result
                 if T <: AbstractFloat
-                    F = @inferred strel(T, S) # flat structuring element like S
+                    if VERSION < v"1.8" # Inference broken here for old Julia versions
+                        F = strel(T, S) # flat structuring element like S
+                    else
+                        F = @inferred strel(T, S) # flat structuring element like S
+                    end
                     @test B1 == @inferred func(A, F)
                     @test C == A   # check that A is left unchanged
                     @test B2 === @inferred func!(B2, wrk, A, F)
@@ -501,7 +525,11 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
                 @test C == A   # check that A is left unchanged
                 @test B2 == B1 # check that in-place and out-of-place yield the same result
                 if T <: AbstractFloat
-                    F = @inferred strel(T, R) # flat structuring element like R
+                    if VERSION < v"1.8" # Inference broken here for old Julia versions
+                        F = strel(T, R) # flat structuring element like R
+                    else
+                        F = @inferred strel(T, R) # flat structuring element like R
+                    end
                     @test B1 == @inferred func(A, F)
                     @test C == A   # check that A is left unchanged
                     @test B2 === @inferred func!(B2, wrk, A, F)
@@ -520,7 +548,11 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
                 @test C == A   # check that A is left unchanged
                 @test B2 == B1 # check if in-place and out-of-place yield the same result
                 if T <: AbstractFloat
-                    F = @inferred strel(T, S) # flat structuring element like S
+                    if VERSION < v"1.8" # Inference broken here for old Julia versions
+                        F = strel(T, S) # flat structuring element like S
+                    else
+                        F = @inferred strel(T, S) # flat structuring element like S
+                    end
                     @test B1 == @inferred func(A, F)
                     @test C == A   # check that A is left unchanged
                     @test B2 === @inferred func!(B2, wrk, A, F)
