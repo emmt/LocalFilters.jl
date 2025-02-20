@@ -12,14 +12,6 @@
 #
 
 """
-    LocalFilters.IntegerRange
-
-is the abstract type of integer-valued ranges.
-
-"""
-const IntegerRange = OrdinalRange{<:Integer,<:Integer}
-
-"""
     LocalFilters.LocalAxis
 
 is the union of types suitable to specify a neighborhood axis. It may be an integer
@@ -27,7 +19,7 @@ is the union of types suitable to specify a neighborhood axis. It may be an inte
 of types accepted by the [`LocalFilters.neighborhood_range`](@ref) method.
 
 """
-const LocalAxis = Union{Integer,IntegerRange}
+const LocalAxis = Union{Integer,AbstractRange{<:Integer}}
 
 const LocalAxes{N} = NTuple{N,LocalAxis}
 

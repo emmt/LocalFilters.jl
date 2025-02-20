@@ -197,7 +197,7 @@ centered(A::AbstractArray) = OffsetArray(A, map(kernel_range, size(A)))
 centered(A::OffsetArray) = centered(parent(A))
 centered(R::CartesianIndices) = CartesianIndices(map(centered, ranges(R)))
 centered(R::AbstractUnitRange{<:Integer}) = kernel_range(length(R))
-centered(R::IntegerRange) = begin
+centered(R::AbstractRange{<:Integer}) = begin
     abs(step(R)) == 1 || throw(ArgumentError("invalid non-unit step range"))
     return kernel_range(length(R))
 end
@@ -278,9 +278,9 @@ yields the index ranges of `A` and `B` in a consistent way:
     B_inds = indices(B)
 
 """
-@inline function localindices(A::IntegerRange,
+@inline function localindices(A::AbstractRange{<:Integer},
                               ::ForwardFilterOrdering,
-                              B::IntegerRange,
+                              B::AbstractRange{<:Integer},
                               I::Integer)
     return @range A ∩ (I + B)
 end
@@ -292,9 +292,9 @@ end
     return @range A ∩ (I + B)
 end
 
-@inline function localindices(A::IntegerRange,
+@inline function localindices(A::AbstractRange{<:Integer},
                               ::ReverseFilterOrdering,
-                              B::IntegerRange,
+                              B::AbstractRange{<:Integer},
                               I::Integer)
     return @range A ∩ (I - B)
 end
