@@ -106,7 +106,7 @@ function localmean!(dst::AbstractArray{<:Any,N},
                     ord::FilterOrdering,
                     B::AbstractArray{<:Any,N};
                     null = zero(eltype(dst))) where {N}
-    null = nearest(eltype(dst), null)
+    null = as(eltype(dst), null)
     indices = Indices(dst, A, B)
     T_num = typeof_sum_prod(eltype(A), eltype(B))
     T_den = typeof_sum(eltype(B))
