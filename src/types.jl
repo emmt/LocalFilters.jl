@@ -16,7 +16,7 @@
 
 is the union of types suitable to specify a neighborhood axis. It may be an integer
 (assumed to be the length of the axis) or an integer-valued range. This is also the union
-of types accepted by the [`LocalFilters.neighborhood_range`](@ref) method.
+of types accepted by the [`LocalFilters.kernel_range`](@ref) method.
 
 """
 const LocalAxis = Union{Integer,AbstractRange{<:Integer}}
@@ -62,18 +62,18 @@ struct Indices{S<:IndexStyle} <: Function end
 
 is the union of types of arguments suitable to define a simple `N`-dimensional
 hyper-rectangular sliding window and that can be converted into a kernel by the
-[`LocalFilters.kernel`](@ref) method or by the [`LocalFilters.Box`](@ref) constructor.
+[`LocalFilters.kernel`](@ref) method.
 
 """
 const Window{N} = Union{LocalAxis,NTuple{N,LocalAxis},NTuple{2,CartesianIndex{N}},
                         CartesianUnitRange{N}}
 
 """
-    LocalFilters.Box{N,I}
+    const LocalFilters.Box{N,I} = FastUniformArray{Bool,N,true,I}
 
 is an alias to the type of `N`-dimensional arrays whose elements are all `true`. Parameter
-`I` is the type of the tuple storing the size or axes of the array. This kind of arrays is
-used to represent hyper-rectangular sliding windows in `LocalFilters`.
+`I` is the type of the tuple storing the size or axes of the array. Instances of this kind
+are used to represent hyper-rectangular sliding windows in `LocalFilters`.
 
 Method [`LocalFilters.box`](@ref) can be used to build such an object with of this type
 .

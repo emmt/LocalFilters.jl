@@ -165,7 +165,7 @@ variety of linear and non-linear local filters:
 
   ```julia
   localfilter!(dst, A, B,
-               #= initial =# typemin(a),
+               #= initial =# typemin(eltype(A)),
                #= update  =# (v,a,b) -> ((b & (v < a)) ? a : v))
   ```
 
@@ -182,6 +182,11 @@ and type at the `... pkg>` prompt:
 add LocalFilters
 ```
 
+To use the last development version, type instead:
+
+```julia
+add https://github.com/emmt/LocalFilters.jl
+```
 
 The `LocalFilters` package is pure Julia code and nothing has to be build.
 
