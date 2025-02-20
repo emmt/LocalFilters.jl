@@ -12,6 +12,9 @@
   from the value of the source array at the current destination index. This imposes that
   the source and destination arrays have the same axes. This fixes [issue#3](#3).
 
+* Morphological methods have a `slow` keyword (`false` by default) to force not using the
+  the van Herk-Gil-Werman algorithm.
+
 * `localmean` and `localmean!` accept a `null` keyword to specify the value of the result
   when the sum of weights in a neighborhood is zero.
 
