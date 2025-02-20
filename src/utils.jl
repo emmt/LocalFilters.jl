@@ -455,7 +455,7 @@ indices(B::FlatBoundaries) = getfield(B, :indices)
 (B::FlatBoundaries{<:AbstractUnitRange{Int}})(i::Int) = clamp_to_range(i, indices(B))
 (B::FlatBoundaries{<:AbstractUnitRange{Int}})(i::Integer) =
     clamp_to_range(Int(i), indices(B))
-(B::FlatBoundaries{<:CartesianUnitRange{N}})(i::CartesianIndex{N}) where {N} =
+(B::FlatBoundaries{<:CartesianIndices{N}})(i::CartesianIndex{N}) where {N} =
     CartesianIndex(map(clamp_to_range, Tuple(i), ranges(indices(B))))
 
 # Clamp to range. Range must not be empty.

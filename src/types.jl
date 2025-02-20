@@ -24,15 +24,6 @@ const Axis = Union{Integer,AbstractRange{<:Integer}}
 # Type of the result of `axes(A)`.
 const ArrayAxes{N} = NTuple{N,AbstractUnitRange{<:Integer}}
 
-"""
-    LocalFilters.CartesianUnitRange{N}
-
-is an alias for a `N`-dimensional Cartesian index range with unit step. Since Julia 1.6,
-non-unit step Cartesian ranges may be defined.
-
-"""
-const CartesianUnitRange{N} = CartesianIndices{N,<:NTuple{N,AbstractUnitRange{Int}}}
-
 struct Indices{S<:IndexStyle} <: Function end
 
 """
@@ -44,7 +35,7 @@ hyper-rectangular sliding window and that can be converted into a kernel by the
 
 """
 const Window{N} = Union{Axis,NTuple{N,Axis},NTuple{2,CartesianIndex{N}},
-                        CartesianUnitRange{N}}
+                        CartesianIndices{N}}
 
 """
     const LocalFilters.Box{N,I} = FastUniformArray{Bool,N,true,I}
@@ -133,11 +124,11 @@ yields an object representing *flat* boundary conditions for arrays with index r
 
 """
 struct FlatBoundaries{R<:Union{AbstractUnitRange{Int},
-                               CartesianUnitRange}} <: BoundaryConditions
+                               CartesianIndices}} <: BoundaryConditions
     indices::R
     # Inner constructor to refuse to build object is range is empty.
     function FlatBoundaries(indices::R) where {R<:Union{AbstractUnitRange{Int},
-                                                        CartesianUnitRange}}
+                                                        CartesianIndices}}
         isempty(indices) && throw(ArgumentError("empty index range"))
         return new{R}(indices)
     end
