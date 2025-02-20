@@ -352,20 +352,6 @@ for type in (:UniformArray, :FastUniformArray, :MutableUniformArray)
 end
 
 """
-    LocalFilters.replicate(NTuple{N}, val)
-
-yields the `N`-tuple `(val, val, ...)`.
-
-    LocalFilters.replicate(NTuple{N,T}, val)
-
-yields the `N`-tuple `(x, x,...)` where `x` is `val` converted to type `T`.
-
-"""
-replicate(::Type{NTuple{0}}, val) = ()
-replicate(::Type{NTuple{N}}, val) where {N} = ntuple(Returns(val), Val(N))
-replicate(::Type{NTuple{N,T}}, val) where {N,T} = ntuple(Returns{T}(val), Val(N))
-
-"""
     limits(T::DataType) -> typemin(T), typemax(T)
 
 yields the infimum and supremum of a type `T`.

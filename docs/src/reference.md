@@ -81,6 +81,5 @@ building local filters.
 ```@docs
 LocalFilters.Indices
 LocalFilters.localindices
-LocalFilters.replicate
 LocalFilters.kernel_range
 ```

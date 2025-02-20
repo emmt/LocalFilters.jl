@@ -11,7 +11,7 @@ using LocalFilters:
     FilterOrdering, ForwardFilterOrdering, ReverseFilterOrdering,
     Box, Indices, kernel_range, kernel, ball, limits,
     is_morpho_math_box, check_axes, localindices,
-    ranges, centered, replicate
+    ranges, centered
 
 # A bit of type-piracy for more readable error messages.
 Base.show(io::IO, x::CartesianIndices) =
@@ -231,14 +231,6 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
             @test axes(centered(centered(B))) === axes(centered(B))
             @test ranges(centered(R)) === (-2:1, -2:2)
         end
-
-        # replicate
-        @test replicate(NTuple{0}, 'a') === ()
-        @test replicate(NTuple{1}, 'a') === ('a',)
-        @test replicate(NTuple{2}, 'a') === ('a', 'a')
-        @test replicate(NTuple{3}, 'a') === ('a', 'a', 'a')
-        @test replicate(NTuple{3,Char}, 'a') === ('a', 'a', 'a')
-        @test replicate(NTuple{2,Int}, 'a') === (97, 97)
 
         # limits
         @test limits(Float32) === (-Float32(Inf), Float32(Inf))
