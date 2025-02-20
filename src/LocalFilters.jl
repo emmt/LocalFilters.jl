@@ -53,6 +53,7 @@ function bilateralfilter! end
 @deprecate ForwardFilter FORWARD_FILTER true
 @deprecate ReverseFilter REVERSE_FILTER true
 
+include("compat.jl")
 include("types.jl")
 include("utils.jl")
 include("generic.jl")

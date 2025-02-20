@@ -360,12 +360,10 @@ yields the `N`-tuple `(val, val, ...)`.
 
 yields the `N`-tuple `(x, x,...)` where `x` is `val` converted to type `T`.
 
-See [`LocalFilters.Yields`](@ref).
-
 """
 replicate(::Type{NTuple{0}}, val) = ()
-replicate(::Type{NTuple{N}}, val) where {N} = ntuple(Yields(val), Val(N))
-replicate(::Type{NTuple{N,T}}, val) where {N,T} = ntuple(Yields{T}(val), Val(N))
+replicate(::Type{NTuple{N}}, val) where {N} = ntuple(Returns(val), Val(N))
+replicate(::Type{NTuple{N,T}}, val) where {N,T} = ntuple(Returns{T}(val), Val(N))
 
 """
     limits(T::DataType) -> typemin(T), typemax(T)

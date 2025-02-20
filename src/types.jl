@@ -163,25 +163,3 @@ struct FlatBoundaries{R<:Union{AbstractUnitRange{Int},
         return new{R}(indices)
     end
 end
-
-"""
-    f = LocalFilters.Yields(value)
-    f = LocalFilters.Yields{V}(value)
-
-build a callable object `f` such that `f(args...; kwds...)` yields `value` whatever the
-arguments `args...` and the keywords `kwds...`. If type `V` is supplied, `value` is
-converted to that type.
-
-"""
-struct Yields{V} <: Function
-    value::V
-    Yields{V}(value) where {V} = new{V}(value)
-    Yields(value::V) where {V} = new{V}(value)
-end
-(obj::Yields)(args...; kwds...) = getfield(obj, 1)
-function Base.show(io::IO, obj::Yields)
-    show(io, typeof(obj))
-    print(io, "(")
-    show(io, obj())
-    print(io, ")")
-end

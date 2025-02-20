@@ -80,7 +80,6 @@ building local filters.
 
 ```@docs
 LocalFilters.Indices
-LocalFilters.Yields
 LocalFilters.localindices
 LocalFilters.replicate
 LocalFilters.kernel_range
