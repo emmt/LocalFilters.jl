@@ -13,6 +13,8 @@
 
 module LocalFilters
 
+include("compat.jl")
+
 export
     # Index ordering in filters.
     FORWARD_FILTER,
@@ -53,7 +55,6 @@ function bilateralfilter! end
 @deprecate ForwardFilter FORWARD_FILTER true
 @deprecate ReverseFilter REVERSE_FILTER true
 
-include("compat.jl")
 include("types.jl")
 include("utils.jl")
 include("generic.jl")

@@ -31,7 +31,8 @@ Call:
 with `S = IndexLinear` or `S = IndexCartesian` to specifically choose the
 indexing style.
 
-"""
+""" Indices
+@public Indices
 Indices(A::AbstractVector) = Indices{IndexLinear}()
 Indices(A::AbstractVector, B::AbstractVector...) = Indices{IndexLinear}()
 Indices(A::AbstractArray) = Indices{IndexCartesian}()
@@ -54,7 +55,8 @@ Base.IndexStyle(::Type{<:Indices{S}}) where {S} = S()
 throws an exception if not all arrays `A...` have the same axes, or all have axes `I` if
 specified.
 
-"""
+""" check_axes
+@public check_axes
 @inline check_axes(A::AbstractArray...) =
     check_axes(Bool, A...) ? nothing : throw(DimensionMismatch(
         "arrays must have the same axes"))
@@ -162,7 +164,8 @@ conventions as in `fftshift`.
 
 See [`LocalFilters.kernel_range`](@ref) and [`LocalFilters.centered`](@ref).
 
-"""
+""" centered_offset
+@public centered_offset
 function centered_offset(len::Integer)
     len ≥ 0 || throw(ArgumentError("invalid dimension length"))
     return -((Int(len) + 2) >> 1)
@@ -183,7 +186,8 @@ If ordering `ord` is specified, the returned range is suitable for this ordering
 See also [`LocalFilters.kernel`](@ref), [`LocalFilters.centered_offset`](@ref), and
 [`LocalFilters.centered`](@ref).
 
-"""
+""" kernel_range
+@public kernel_range
 kernel_range(start::Integer, stop::Integer) = unit_range(start, stop)
 kernel_range(rng::AbstractRange{<:Integer}) = unit_range(rng)
 function kernel_range(len::Integer)
@@ -209,7 +213,8 @@ Cartesian index range. If `r` is a linear range, the absolute value of its step 
 
 yields the `Int`-valued unit step range `Int(start):Int(stop)`.
 
-"""
+""" unit_range
+@public unit_range
 unit_range(r::OneTo{Int}) = r
 unit_range(r::OneTo{<:Integer}) = OneTo{Int}(length(r))
 
@@ -352,7 +357,8 @@ index range of same size is returned.
 
 See also [`LocalFilters.kernel_range`](@ref), [`LocalFilters.centered_offset`](@ref).
 
-"""
+""" centered
+@public centered
 centered(A::AbstractArray) = OffsetArray(A, map(centered_offset, size(A)))
 centered(A::OffsetArray) = centered(parent(A))
 for type in (:UniformArray, :FastUniformArray, :MutableUniformArray)
@@ -375,7 +381,8 @@ yields whether structuring element `B` has the same effect as an hyper-rectangul
 mathematical morphology operations. This may be used to use fast separable versions of
 mathematical morphology operations like the van Herk-Gil-Werman algorithm.
 
-"""
+""" is_morpho_math_box
+@public is_morpho_math_box
 is_morpho_math_box(::Box) = true
 is_morpho_math_box(B::AbstractArray{Bool}) = all(B)
 is_morpho_math_box(B::AbstractArray{<:AbstractFloat}) = all(iszero, B)

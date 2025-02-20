@@ -81,5 +81,9 @@ building local filters.
 ```@docs
 LocalFilters.Indices
 LocalFilters.localindices
+LocalFilters.check_axes
+LocalFilters.is_morpho_math_box
 LocalFilters.kernel_range
+LocalFilters.unit_range
+LocalFilters.centered_offset
 ```

@@ -18,6 +18,9 @@
 * `localmean` and `localmean!` accept a `null` keyword to specify the value of the result
   when the sum of weights in a neighborhood is zero.
 
+* Macro `@public` to declare *public* methods even though they are not exported. This
+  concept was introduced in Julia 1.11, for older Julia versions, nothing change.
+
 * The algorithm to infer the result type is now based on Julia's arithmetic rules and can
   cope with arguments that have units.
 
