@@ -316,7 +316,7 @@ function localextrema!(Amin::AbstractArray{<:Any,N},
             a = A[j]
             b = B[ord(i,j)]
             vmin = ifelse(b, min(vmin, a), vmin)
-            vmax = ifelse(b, min(vmax, a), vmax)
+            vmax = ifelse(b, max(vmax, a), vmax)
         end
         Amin[i] = vmin
         Amax[i] = vmax
@@ -327,6 +327,7 @@ end
 function localextrema!(Amin::AbstractArray{<:Any,N},
                        Amax::AbstractArray{<:Any,N},
                        A::AbstractArray{<:Any,N},
+                       ord::FilterOrdering,
                        B::AbstractArray{<:Any,N}) where {N}
     T = promote_type(eltype(A), eltype(B))
     indices = Indices(Amin, Amax, A, B)
