@@ -230,26 +230,35 @@ function unit_range(R::CartesianIndices{N}) where {N}
 end
 
 """
-    reverse_kernel(A) -> B
+    reverse_kernel(A::AbstractArray) -> B
 
-yields an array `B` such that `B[i] = A[-i]` holds for all indices `i` such that
-`-i` is a valid index in `A`.
+yields a kernel `B` which is equivalent to `A` but with reversed ordering in the sense
+that `B[i] == A[-i]` holds for all indices `i` such that `-i` is a valid index in `A`. As
+a consequence, a correlation by `B` yields the same result as a convolution by `A` and
+conversely.
+
+See also [`LocalFilters.kernel`](@ref) and [`LocalFilters.strel`](@ref).
 
 """
-reverse_kernel(A::AbstractArray) = OffsetArray(reverse(A), reverse_axes(A))
-reverse_kernel(A::OffsetArray) = OffsetArray(reverse(parent(A)), reverse_axes(A))
-for cls in (:MutableUniformArray, :UniformArray, :FastUniformArray)
-    @eval begin
-        # Rebuild a uniform array of same type and value but reversed axes.
-        reverse_kernel(A::$cls{T}) where {T} =
-            $cls{T}(StructuredArrays.value(A), reverse_axes(A))
-    end
+reverse_kernel(A::AbstractArray) = OffsetArray(reverse(A), map(reverse_kernel_axis, axes(A)))
+reverse_kernel(A::OffsetArray) = OffsetArray(reverse(parent(A)), map(reverse_kernel_axis, axes(A)))
+for type in (:UniformArray, :FastUniformArray, :MutableUniformArray)
+    @eval reverse_kernel(A::$type) =
+        $type(StructuredArrays.value(A), map(reverse_kernel_axis, axes(A)))
 end
 
-reverse_axes(A::AbstractArray) = map(reverse_axis, axes(A))
-function reverse_axis(I::AbstractUnitRange{<:Integer})
-    I_first, I_last = EasyRanges.first_last(I)
-    return (-I_last):(-I_first)
+function reverse_kernel_axis(r::AbstractUnitRange{<:Integer})
+    start, stop = as(Int, first(r)), as(Int, last(r))
+    return (-stop):(-start)
+end
+function reverse_kernel_axis(r::AbstractRange{<:Integer})
+    # Always yields a range with a nonnegative step.
+    start, step, stop = as(Int, first(r)), as(Int, Base.step(r)), as(Int, last(r))
+    if step ≥ zero(step)
+        return (-stop):step:(-start)
+    else
+        return (-start):(-step):(-stop)
+    end
 end
 
 """
