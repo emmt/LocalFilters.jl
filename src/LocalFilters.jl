@@ -40,10 +40,10 @@ export
     # Kernels and neighborhoods.
     kernel,
     reverse_kernel,
+    strel,
 
     # Generic filters.
-    localfilter, localfilter!,
-    strel
+    localfilter, localfilter!
 
 using OffsetArrays, StructuredArrays, EasyRanges, TypeUtils
 using EasyRanges: ranges
