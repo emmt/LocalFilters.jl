@@ -1,11 +1,12 @@
 # Wish list and remaining issues
 
+- Implement other boundary conditions.
+
 - More possibilities for `strel`.
 
+- Check doc. for math. morphology and bilateral filter.
 
-- Check doc. for math morphology and bilateral filter.
-
-- Make doc. for van Herk-Gil-Werman algorithm more direct to found.
+- Write doc. for van Herk-Gil-Werman algorithm and make it more direct to found.
 
 - Homogenize names: `LocalFilters.reversed` and `LocalFilters.centered` or
   `reverse_kernel` and `center_kernel`. The former makes more sense since the
