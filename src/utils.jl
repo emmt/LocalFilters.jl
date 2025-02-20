@@ -338,20 +338,6 @@ function strel(::Type{T}, A::AbstractArray{Bool}) where {T<:AbstractFloat}
 end
 
 """
-    LocalFilters.nearest(T, x)
-
-converts value `x` to the nearest value of type `T`. By default, the result is given by
-`convert(T,x)` unless `T` is floating-point type and `x` is integer in which case the
-result is given by `round(T,x)`.
-
-This method may be extended for foreign types to implement other conversions.
-
-"""
-nearest(::Type{T}, x::T) where {T} = x
-nearest(::Type{T}, x::Any) where {T} = convert(T, x)
-nearest(::Type{T}, x::Integer) where {T<:AbstractFloat} = round(T, x)
-
-"""
     LocalFilters.ball(Dims{N}, r)
 
 yields a boolean mask which is a `N`-dimensional array with all dimensions odd and equal

@@ -82,7 +82,6 @@ building local filters.
 LocalFilters.Indices
 LocalFilters.Yields
 LocalFilters.localindices
-LocalFilters.nearest
 LocalFilters.replicate
 LocalFilters.kernel_range
 ```

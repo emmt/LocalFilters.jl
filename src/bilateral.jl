@@ -16,7 +16,7 @@ module BilateralFilter
 using ..LocalFilters
 using ..LocalFilters:
     Box, FilterOrdering, Indices, BoundaryConditions, FlatBoundaries,
-    ranges, Window, localindices, kernel, nearest
+    ranges, Window, localindices
 
 import ..LocalFilters: bilateralfilter!, bilateralfilter
 
