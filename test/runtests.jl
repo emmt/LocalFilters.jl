@@ -9,12 +9,10 @@ using OffsetArrays, StructuredArrays
 using LocalFilters
 using LocalFilters:
     FilterOrdering, ForwardFilterOrdering, ReverseFilterOrdering,
-    Box, Indices, kernel_range, kernel, ball, limits,
+    Box, box, ball, Indices, kernel_range, kernel, limits,
     is_morpho_math_box, check_axes, localindices,
-    ranges, centered
-
-box(args...) = FastUniformArray(true, args...)
-box(R::CartesianIndices) = FastUniformArray(true, R.indices)
+    ranges, centered, centered_offset, unit_range,
+    top_hat!, bottom_hat!
 
 #=
 # Selector for reference methods.
@@ -352,6 +350,187 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
         @test C ≈ B
     end
 
+    @testset "Morphology (T = $T)" for (T, dims) in ((UInt8, (12, 13)), (Float32, (4,5,6)))
+        A = rand(T, dims);    # source
+        N = ndims(A);
+        S = ball(Dims{N}, 2.5);   # shaped structuring element
+        R = box((-2:2, -1:2, -1:1)[1:N]); # simple hyper-rectangular box
+        wrk = similar(A);     # workspace
+        B2 = similar(A);      # for in-place operation
+        C = copy(A);          # to check that the source is left unchanged
+        @testset "Morpho-math operations" begin
+            @testset "$name" for (name, func, func!) in (("Erosion", erode, erode!),
+                                                         ("Dilation", dilate, dilate!))
+                # ... with a simple rectangular structuring element
+                B1 = @inferred func(A, R; slow=true);
+                @test C == A   # check that A is left unchanged
+                @test B2 === @inferred func!(B2, A, R; slow=true)
+                @test C == A   # check that A is left unchanged
+                @test B2 == B1 # check if in-place and out-of-place yield the same result
+                @test B1 == @inferred func(A, R; slow=false);
+                @test C == A   # check that A is left unchanged
+                @test B2 === @inferred func!(B2, A, R; slow=false)
+                @test C == A   # check that A is left unchanged
+                @test B2 == B1 # check if in-place and out-of-place yield the same result
+                # FIXME: @test B2 === @inferred func!(copyto!(B2, A), R)
+                # FIXME: @test B2 == B1 # check if in-place and out-of-place yield the same result
+                if T <: AbstractFloat
+                    F = @inferred strel(T, R) # flat structuring element like R
+                    @test B1 == @inferred func(A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test B2 === @inferred func!(B2, A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test B2 == B1 # check if in-place and out-of-place yield the same result
+                end
+                # ... with a shaped structuring element
+                B1 = @inferred func(A, S);
+                @test C == A   # check that A is left unchanged
+                @test B2 === @inferred func!(B2, A, S)
+                @test C == A   # check that A is left unchanged
+                @test B2 == B1 # check if in-place and out-of-place yield the same result
+                if T <: AbstractFloat
+                    F = @inferred strel(T, S) # flat structuring element like S
+                    @test B1 == @inferred func(A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test B2 === @inferred func!(B2, A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test B2 == B1 # check if in-place and out-of-place yield the same result
+                end
+            end
+            @testset "Local min. and max." begin
+                B1 = similar(A)
+                # ... with a simple rectangular structuring element
+                A1, A2 = @inferred localextrema(A, R);
+                @test C == A   # check that A is left unchanged
+                @test A1 == erode(A, R)  # `erode` also yields local min.
+                @test A2 == dilate(A, R) # `dilate` also yields local max.
+                @test (B1, B2) === @inferred localextrema!(B1, B2, A, R)
+                @test C == A   # check that A is left unchanged
+                @test B1 == A1
+                @test B2 == A2
+                if T <: AbstractFloat
+                    F = @inferred strel(T, R) # flat structuring element like R
+                    @test (A1, A2) == @inferred localextrema(A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test (B1, B2) === @inferred localextrema!(B1, B2, A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test B1 == A1
+                    @test B2 == A2
+                end
+                # ... with a shaped structuring element
+                A1, A2 = @inferred localextrema(A, S);
+                @test C == A   # check that A is left unchanged
+                @test A1 == erode(A, S)  # `erode` also yields local min.
+                @test A2 == dilate(A, S) # `dilate` also yields local max.
+                @test (B1, B2) === @inferred localextrema!(B1, B2, A, S)
+                @test C == A   # check that A is left unchanged
+                @test B1 == A1
+                @test B2 == A2
+                if T <: AbstractFloat
+                    F = @inferred strel(T, S) # flat structuring element like S
+                    @test (A1, A2) == @inferred localextrema(A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test (B1, B2) === @inferred localextrema!(B1, B2, A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test B1 == A1
+                    @test B2 == A2
+                end
+            end
+            @testset "$name" for (name, func, func!) in (("Opening", opening, opening!),
+                                                         ("Closing", closing, closing!))
+                # ... with a simple rectangular structuring element
+                B1 = @inferred func(A, R; slow=true);
+                @test C == A   # check that A is left unchanged
+                if func === opening
+                    @test B1 == dilate(erode(A, R), R) # opening is erosion followed by dilation
+                elseif func === closing
+                    @test B1 == erode(dilate(A, R), R) # closing is dilation followed by erosion
+                end
+                @test B2 === @inferred func!(B2, wrk, A, R; slow=true)
+                @test C == A   # check that A is left unchanged
+                @test B2 == B1 # check if in-place and out-of-place yield the same result
+                @test B1 == @inferred func(A, R; slow=false);
+                @test C == A   # check that A is left unchanged
+                @test B2 === @inferred func!(B2, wrk, A, R; slow=false)
+                @test C == A   # check that A is left unchanged
+                @test B2 == B1 # check if in-place and out-of-place yield the same result
+                if T <: AbstractFloat
+                    F = @inferred strel(T, R) # flat structuring element like R
+                    @test B1 == @inferred func(A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test B2 === @inferred func!(B2, wrk, A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test B2 == B1 # check if in-place and out-of-place yield the same result
+                end
+                # ... with a shaped structuring element
+                B1 = @inferred func(A, S);
+                @test C == A   # check that A is left unchanged
+                if func === opening
+                    @test B1 == dilate(erode(A, S), S) # opening is erosion followed by dilation
+                elseif func === closing
+                    @test B1 == erode(dilate(A, S), S) # closing is dilation followed by erosion
+                end
+                @test B2 === @inferred func!(B2, wrk, A, S)
+                @test C == A   # check that A is left unchanged
+                @test B2 == B1 # check if in-place and out-of-place yield the same result
+                if T <: AbstractFloat
+                    F = @inferred strel(T, S) # flat structuring element like S
+                    @test B1 == @inferred func(A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test B2 === @inferred func!(B2, wrk, A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test B2 == B1 # check if in-place and out-of-place yield the same result
+                end
+            end
+            @testset "$name" for (name, func, func!) in (("Top-hat", top_hat, top_hat!),
+                                                         ("Bottom-hat", bottom_hat, bottom_hat!))
+                # ... with a simple rectangular structuring element
+                B1 = @inferred func(A, R; slow=true);
+                @test C == A   # check that A is left unchanged
+                if func === top_hat
+                    @test B1 == A .- opening(A, R) # definition of top-hat
+                elseif func === bottom_hat
+                    @test B1 == closing(A, R) .- A # definition of bottom-hat
+                end
+                @test B2 === @inferred func!(B2, wrk, A, R; slow=true)
+                @test C == A   # check that A is left unchanged
+                @test B2 == B1 # check that in-place and out-of-place yield the same result
+                @test B1 == @inferred func(A, R; slow=false);
+                @test C == A   # check that A is left unchanged
+                @test B2 === @inferred func!(B2, wrk, A, R; slow=false)
+                @test C == A   # check that A is left unchanged
+                @test B2 == B1 # check that in-place and out-of-place yield the same result
+                if T <: AbstractFloat
+                    F = @inferred strel(T, R) # flat structuring element like R
+                    @test B1 == @inferred func(A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test B2 === @inferred func!(B2, wrk, A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test B2 == B1 # check if in-place and out-of-place yield the same result
+                end
+                # ... with a shaped structuring element
+                B1 = @inferred func(A, S);
+                @test C == A   # check that A is left unchanged
+                if func === top_hat
+                    @test B1 == A .- opening(A, S) # definition of top-hat
+                elseif func === bottom_hat
+                    @test B1 == closing(A, S) .- A # definition of bottom-hat
+                end
+                @test B2 === @inferred func!(B2, wrk, A, S)
+                @test C == A   # check that A is left unchanged
+                @test B2 == B1 # check if in-place and out-of-place yield the same result
+                if T <: AbstractFloat
+                    F = @inferred strel(T, S) # flat structuring element like S
+                    @test B1 == @inferred func(A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test B2 === @inferred func!(B2, wrk, A, F)
+                    @test C == A   # check that A is left unchanged
+                    @test B2 == B1 # check if in-place and out-of-place yield the same result
+                end
+            end
+        end
+    end
+
 #=
     @testset "Neighborhoods" begin
         for (dims, rngs) in (((3,), (-1:1,)),
@@ -363,61 +542,6 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
             A = rand(dims...)
             msk = rand(Bool, dims)
             ker = centered(A)
-
-            # Test limits(), first_cartesian_index() and last_cartesian_index().
-            @test first_cartesian_index(CartesianIndices(rngs)) === Imin
-            @test last_cartesian_index(CartesianIndices(rngs)) === Imax
-            @test limits(CartesianIndices(rngs)) === (Imin, Imax)
-            @test first_cartesian_index(box) === Imin
-            @test last_cartesian_index(box) === Imax
-            @test limits(box) === (Imin, Imax)
-            @test first_cartesian_index(A) === oneunit(CartesianIndex{N})
-            @test last_cartesian_index(A) === CartesianIndex(size(A))
-            @test limits(A) === (oneunit(CartesianIndex{N}),
-                                 CartesianIndex(size(A)))
-
-            # Test neighborhood().
-            region = CartesianIndices(rngs)
-            @test neighborhood(Imin,Imax) === region
-            @test neighborhood(CartesianIndices(rngs)) === region
-            @test neighborhood(box) === region
-            @test neighborhood(A) === CartesianIndices(A)
-
-            # Neighborhood constructors.
-            @test neighborhood(box) === box
-            @test neighborhood(ker) === ker
-            @test neighborhood(A) === ker
-            @test neighborhood(dims...) === box
-            @test neighborhood(rngs) === box
-            @test neighborhood(rngs...) === box
-            @test neighborhood(CartesianIndices(rngs)) === box
-            @test convert(Neighborhood, box) === box
-            @test convert(Neighborhood, ker) === ker
-            @test convert(Neighborhood, rngs) === box
-            @test convert(Neighborhood, dims) === box
-
-            # RectangularBox constructors.
-            @test RectangularBox(box) === box
-            @test RectangularBox(dims) === box
-            @test RectangularBox(dims...) === box
-            @test RectangularBox(rngs) === box
-            @test RectangularBox(rngs...) === box
-            @test convert(RectangularBox, box) === box
-            @test convert(RectangularBox, rngs) === box
-            @test convert(RectangularBox, dims) === box
-            dim = dims[end]
-            rng = rngs[end]
-            @test neighborhood(Dims{N}, dim) === RectangularBox(ntuple(d -> dim, N))
-            @test neighborhood(Dims{N}, rng) === RectangularBox(ntuple(d -> rng, N))
-
-            # Conversions RectangularBox <-> CartesianIndices.
-            @test CartesianIndices(box) === CartesianIndices(rngs)
-            @test RectangularBox(CartesianIndices(rngs)) === box
-            @test convert(RectangularBox, CartesianIndices(rngs)) === box
-            @test convert(RectangularBox{N}, CartesianIndices(rngs)) === box
-            @test CartesianIndices(box) === CartesianIndices(rngs)
-            @test convert(CartesianIndices, box) === CartesianIndices(rngs)
-            @test convert(CartesianIndices{N}, box) === CartesianIndices(rngs)
 
             # Kernel constructors.
             @test Kernel(ker) === ker
@@ -487,65 +611,6 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
             mask = Kernel(box)
             fse = strel(eltype(a), mask) # flat structuring element
             kern = Kernel((1.0, 0.0), mask) # kernel for convolution
-            @testset "erode" begin
-                result = erode(REF, a, box)
-                @test samevalues(erode(a, box), result)
-                @test samevalues(erode(a, mask), result)
-                @test samevalues(erode(a, fse), result)
-                @test samevalues(erode!(copy(a), box), result)
-            end
-            @testset "dilate" begin
-                result = dilate(REF, a, box)
-                @test samevalues(dilate(a, box), result)
-                @test samevalues(dilate(a, mask), result)
-                @test samevalues(dilate(a, fse), result)
-                @test samevalues(dilate!(copy(a), box), result)
-            end
-            @testset "closing" begin
-                result = closing(REF, a, box)
-                @test samevalues(closing(a, box), result)
-                @test samevalues(closing(a, mask), result)
-                @test samevalues(closing(a, fse), result)
-            end
-            @testset "opening" begin
-                result = opening(REF, a, box)
-                @test samevalues(opening(a, box), result)
-                @test samevalues(opening(a, mask), result)
-                @test samevalues(opening(a, fse), result)
-            end
-            @testset "bottom-hat" begin
-                result = bottom_hat(REF, a, box)
-                @test samevalues(bottom_hat(a, box), result)
-                @test samevalues(bottom_hat(a, mask), result)
-                @test samevalues(bottom_hat(a, fse), result)
-                result = bottom_hat(REF, a, box, 3)
-                @test samevalues(bottom_hat(a, box, 3), result)
-                @test samevalues(bottom_hat(a, mask, 3), result)
-                @test samevalues(bottom_hat(a, fse, 3), result)
-            end
-            @testset "top-hat" begin
-                result = top_hat(REF, a, box)
-                @test samevalues(top_hat(a, box), result)
-                @test samevalues(top_hat(a, mask), result)
-                @test samevalues(top_hat(a, fse), result)
-                result = top_hat(REF, a, box, 3)
-                @test samevalues(top_hat(a, box,  3), result)
-                @test samevalues(top_hat(a, mask, 3), result)
-                @test samevalues(top_hat(a, fse, 3), result)
-            end
-            @testset "localextrema" begin
-                e0, d0 = erode(REF, a, box), dilate(REF, a, box)
-                e1, d1 = localextrema(REF, a, box)
-                @test samevalues(e0, e1) && samevalues(d0, d1)
-                e1, d1 = localextrema(a, box)
-                @test samevalues(e0, e1) && samevalues(d0, d1)
-                e1, d1 = localextrema!(similar(a), similar(a), a, box)
-                @test samevalues(e0, e1) && samevalues(d0, d1)
-                e1, d1 = localextrema(a, mask)
-                @test samevalues(e0, e1) && samevalues(d0, d1)
-                e1, d1 = localextrema(a, fse)
-                @test samevalues(e0, e1) && samevalues(d0, d1)
-            end
             @testset "localmean" begin
                 result = localmean(REF, a, box)
                 @test similarvalues(localmean(a, box), result)
@@ -561,54 +626,8 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
         end
     end
 
-
-    @testset "2D test with a 5x5 ball" begin
-        a = rand(162,181)
-        mask = Kernel(ball5x5)
-        fse = strel(eltype(a), mask)
-        @testset "erode" begin
-            result = erode(REF, a, mask)
-            @test samevalues(erode(a, mask), result)
-            @test samevalues(erode(a, fse), result)
-        end
-        @testset "dilate" begin
-            result = dilate(REF, a, mask)
-            @test samevalues(dilate(a, mask), result)
-            @test samevalues(dilate(a, fse), result)
-        end
-    end
-
     # Test van Herk / Gil & Werman algorithm.
     @testset "van Herk / Gil & Werman algorithm" begin
-        # Test erode and dilate.
-        for dims in ((45,), (30, 21), (7, 8, 9)),
-            T in (Float32, Int32)
-            N = length(dims)
-            A = rand(T, dims)
-            B = Array{eltype(A),ndims(A)}(undef, size(A))
-            C = Array{eltype(A),ndims(A)}(undef, size(A))
-            box = neighborhood(Dims{N}, 5)
-            rng = -2:2
-            result = erode(REF, A, box)
-            @test samevalues(erode(A, :, rng), result)
-            @test samevalues(erode!(B, A, :, rng), result)
-            @test samevalues(erode!(copyto!(B, A), :, rng), result)
-            @test samevalues(localfilter!(B, A, 1:N, min, rng), result)
-            if N > 1
-                # Reverse order of dimensions.
-                @test samevalues(localfilter!(B, A, N:-1:1, min, rng), result)
-            end
-            result = dilate(REF, A, box)
-            @test samevalues(dilate(A, :, rng), result)
-            @test samevalues(dilate!(B, A, :, rng), result)
-            @test samevalues(dilate!(copyto!(B, A), :, rng), result)
-            @test samevalues(localfilter!(B, A, 1:N, max, rng), result)
-            if N > 1
-                # Reverse order of dimensions.
-                @test samevalues(localfilter!(B, A, N:-1:1, max, rng), result)
-            end
-        end
-
         # Test shifts.
         A = rand(30)
         B = Array{eltype(A),ndims(A)}(undef, size(A))
@@ -654,8 +673,6 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
         @test isodd(width)
         radius = (width - 1) ÷ 2
         ball = @inferred LocalFilters.ball(Dims{2}, radius)
-        @test axes(ball) === map(Base.OneTo, size(ball))
-        ball = LocalFilters.centered(ball)
         # FIXME: B4 = @inferred bilateralfilter(A, σr, σs, ball)
         @test axes(ball) == ntuple(_ -> -radius:radius, ndims(ball))
         box = fill!(similar(ball), one(eltype(ball)))
