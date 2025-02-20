@@ -1,0 +1,44 @@
+#! /usr/bin/bash
+
+dir=`dirname "$0"`
+cd "$dir"
+vers=""
+update="false"
+instantiate="false"
+resolve="false"
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -h | --help )
+            prog=$(basename "$0")
+            echo "usage: $prog [-h|--help] [-i|--instantiate] [-r|--resolve] [-u|--update] [version ...]"
+            exit 0
+            ;;
+        -i | --instantiate )
+            instantiate="true"
+            ;;
+        -r | --resolve )
+            resolve="true"
+            ;;
+        -u | --update )
+            update="true"
+            ;;
+        * )
+            vers="${vers:+$vers }$1"
+            ;;
+    esac
+    shift
+done
+vers="${vers:=$(echo 1.{0..11})}"
+
+for ver in $vers; do
+    echo "########################################### Julia version $ver"
+    rm -f Manifest.toml
+    test -r ".Manifest-$ver.toml" && cp -pf ".Manifest-$ver.toml" Manifest.toml
+    julia +$ver --color=yes --check-bounds=yes --depwarn=yes --project -e "
+        using Pkg;
+        $update && Pkg.update();
+        $instantiate && Pkg.instantiate();
+        $resolve && Pkg.resolve();
+        Pkg.test();"
+    test -r Manifest.toml && mv -f Manifest.toml ".Manifest-$ver.toml"
+done
