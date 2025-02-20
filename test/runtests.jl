@@ -13,9 +13,8 @@ using LocalFilters:
     is_morpho_math_box, check_axes, localindices,
     ranges, centered
 
-# A bit of type-piracy for more readable error messages.
-Base.show(io::IO, x::CartesianIndices) =
-    print(io, "CartesianIndices($(x.indices))")
+box(args...) = FastUniformArray(true, args...)
+box(R::CartesianIndices) = FastUniformArray(true, R.indices)
 
 #=
 # Selector for reference methods.
@@ -221,12 +220,12 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
         @test kernel(Dims{0}, ()) === FastUniformArray(true)
         @test kernel(Dims{0}) === FastUniformArray(true)
         @test kernel(Dims{2}, 6) === kernel(6, 6)
-        @test kernel(Dims{2}, 6) === FastUniformArray(true, -3:2,-3:2)
-        @test kernel(Dims{2}, 5, 6) === FastUniformArray(true, -2:2,-3:2)
-        @test kernel(5, 6) === FastUniformArray(true, -2:2,-3:2)
-        @test kernel(-2:4, 6) === FastUniformArray(true, -2:4,-3:2)
-        @test kernel(CartesianIndex(-2,1,0), CartesianIndex(4,9,5)) === FastUniformArray(true, -2:4, 1:9, 0:5)
-        @test kernel(-2:4, 1:9, 0:5) === FastUniformArray(true, -2:4, 1:9, 0:5)
+        @test kernel(Dims{2}, 6) === box(-3:2,-3:2)
+        @test kernel(Dims{2}, 5, 6) === box(-2:2,-3:2)
+        @test kernel(5, 6) === box(-2:2,-3:2)
+        @test kernel(-2:4, 6) === box(-2:4,-3:2)
+        @test kernel(CartesianIndex(-2,1,0), CartesianIndex(4,9,5)) === box(-2:4, 1:9, 0:5)
+        @test kernel(-2:4, 1:9, 0:5) === box(-2:4, 1:9, 0:5)
         for args in ((6, -1:3, 2:4),
                      (CartesianIndex(-2,1,0), CartesianIndex(4,9,5)))
             @test kernel(args...) === kernel(args)
@@ -234,17 +233,21 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
                 kernel(Dims{3}, args)
         end
         let R = CartesianIndices((6, -1:3, 2:4))
-            @test_broken kernel(R) === FastUniformArray(true, R)
-            @test_broken kernel(Dims{3}, R) === FastUniformArray(true, R)
+            @test kernel(R) === box(R)
+            @test kernel(Dims{3}, R) === box(R)
         end
         if VERSION ≥ v"1.6"
             # Ranges can have a step in CartesianIndices
             @test_throws ArgumentError kernel(CartesianIndices((1:2:6,)))
-            @test kernel(CartesianIndices((1:1:6,))) === FastUniformArray(true, 1:6)
+            @test kernel(CartesianIndices((1:1:6,))) === box(1:6)
         end
+        @test_throws ArgumentError kernel(Dims{11})
+        @test_throws ArgumentError kernel(Dims{11}, :e)
+        @test_throws ArgumentError kernel(Dims{11}, :e, 1)
+        @test_throws ArgumentError kernel(Dims{11}, :e, 1, [1,3])
 
         # ordering
-        let B = reshape(collect(1:20), (4,5)), R = FastUniformArray(true, #= FIXME: =# ranges(CartesianIndices(B)))
+        let B = reshape(collect(1:20), (4,5)), R = box(CartesianIndices(B))
             @test B[FORWARD_FILTER(CartesianIndex(2,3), CartesianIndex(3,5))] == B[1,2]
             @test B[REVERSE_FILTER(CartesianIndex(2,3), CartesianIndex(-1,1))] == B[3,2]
             @test R[FORWARD_FILTER(CartesianIndex(2,3), CartesianIndex(3,5))] == true
@@ -252,10 +255,10 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
         end
 
         # centered
-        let B = reshape(collect(1:20), (4,5)), R = CartesianIndices(B)
+        let B = reshape(collect(1:20), (4,5))
             @test axes(centered(B)) == (-2:1, -2:2)
             @test axes(centered(centered(B))) === axes(centered(B))
-            @test ranges(centered(R)) === (-2:1, -2:2)
+            @test centered(centered(B)) === centered(B)
         end
 
         # limits
