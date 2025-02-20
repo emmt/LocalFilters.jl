@@ -16,7 +16,7 @@ module BilateralFilter
 using ..LocalFilters
 using ..LocalFilters:
     Box, FilterOrdering, Indices, BoundaryConditions, FlatBoundaries,
-    ranges, Window, localindices
+    ranges, Window, localindices, store!
 
 import ..LocalFilters: bilateralfilter!, bilateralfilter
 
@@ -235,9 +235,9 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
             num += w*Aj
         end
         if den > zero(den)
-            dst[i] = nearest(eltype(dst), num/den)
+            store!(dst, i, num/den)
         else
-            dst[i] = nearest(eltype(dst), Ai)
+            store!(dst, i, Ai)
         end
     end
     return dst
@@ -264,9 +264,9 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
             end
         end
         if den > zero(den)
-            dst[i] = nearest(eltype(dst), num/den)
+            store!(dst, i, num/den)
         else
-            dst[i] = nearest(eltype(dst), Ai)
+            store!(dst, i, Ai)
         end
     end
     return dst
@@ -291,9 +291,9 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
             num += w*Aj
         end
         if den > zero(den)
-            dst[i] = nearest(eltype(dst), num/den)
+            store!(dst, i, num/den)
         else
-            dst[i] = nearest(eltype(dst), Ai)
+            store!(dst, i, Ai)
         end
     end
     return dst

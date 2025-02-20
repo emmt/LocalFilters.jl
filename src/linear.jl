@@ -92,7 +92,7 @@ function localmean!(dst::AbstractArray{<:Any,N},
             @simd for j in J
                 num += A[j]
             end
-            dst[i] = nearest(eltype(dst), _div(num, den))
+            store!(dst, i, _div(num, den))
         else
             dst[i] = null
         end
@@ -120,7 +120,7 @@ function localmean!(dst::AbstractArray{<:Any,N},
             den += wgt
         end
         if !iszero(den)
-            dst[i] = nearest(eltype(dst), _div(num, den))
+            store!(dst, i, _div(num, den))
         else
             dst[i] = null
         end
@@ -255,7 +255,7 @@ function local_sum_prod!(dst::AbstractArray{<:Any,N},
         @simd for j in J
             v += A[j]
         end
-        dst[i] = nearest(eltype(dst), v)
+        store!(dst, i, v)
     end
     return dst
 end
@@ -273,7 +273,7 @@ function local_sum_prod!(dst::AbstractArray{<:Any,N},
         @simd for j in J
             v += _mul(A[j], B[ord(i,j)])
         end
-        dst[i] = nearest(eltype(dst), v)
+        store!(dst, i, v)
     end
     return dst
 end

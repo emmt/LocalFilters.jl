@@ -419,6 +419,15 @@ strel(::Type{T}, A::AbstractArray{Bool}) where {T<:AbstractFloat} = map(Base.Fix
 _flat(::Type{T}, flag::Bool) where {T<:AbstractFloat} = ifelse(flag, zero(T), -T(Inf))
 
 """
+    LocalFilters.store!(A, I, x)
+
+stores value `x` in array `A` at index `I`, taking care of converting `x` to the nearest
+value of type `eltype(A)`. This method propagates the current in-bounds settings.
+
+"""
+@propagate_inbounds store!(A, I, x) = setindex!(A, nearest(eltype(A), x), I)
+
+"""
     LocalFilters.ball(Dims{N}, r)
 
 yields a mask approximating a `N`-dimensional ball of radius `r`. The result is
