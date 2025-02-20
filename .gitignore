@@ -7,7 +7,7 @@ work/
 articles/
 docs/build
 Manifest.toml
+.Manifest-*.toml
 
 # Backup files
 *~
-
