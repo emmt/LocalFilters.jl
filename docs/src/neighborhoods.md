@@ -142,23 +142,7 @@ LocalFilters.ball(Dims{N}, r)
 For instance:
 
 ```julia
-julia> B = LocalFilters.ball(Dims{2}, 3)
-7×7 Matrix{Bool}:
- 0  0  1  1  1  0  0
- 0  1  1  1  1  1  0
- 1  1  1  1  1  1  1
- 1  1  1  1  1  1  1
- 1  1  1  1  1  1  1
- 0  1  1  1  1  1  0
- 0  0  1  1  1  0  0
-
-```
-
-This neighborhood is however not geometrically centered (its first index is at Cartesian
-index `(1,1)`), to make it centered use [`LocalFilters.centered`](@ref):
-
-```julia
-julia> B = LocalFilters.centered(LocalFilters.ball(Dims{2}, 3))
+julia> B = LocalFilters.ball(Dims{2}, 3.5)
 7×7 OffsetArray(::Matrix{Bool}, -3:3, -3:3) with eltype Bool with indices -3:3×-3:3:
  0  0  1  1  1  0  0
  0  1  1  1  1  1  0
@@ -167,5 +151,19 @@ julia> B = LocalFilters.centered(LocalFilters.ball(Dims{2}, 3))
  1  1  1  1  1  1  1
  0  1  1  1  1  1  0
  0  0  1  1  1  0  0
+```
 
+This neighborhood is geometrically centered thanks to offset axes, to have a 1-based
+indices, you can do:
+
+```julia
+julia> B = LocalFilters.ball(Dims{2}, 3.5).parent
+7×7 Matrix{Bool}:
+ 0  0  1  1  1  0  0
+ 0  1  1  1  1  1  0
+ 1  1  1  1  1  1  1
+ 1  1  1  1  1  1  1
+ 1  1  1  1  1  1  1
+ 0  1  1  1  1  1  0
+ 0  0  1  1  1  0  0
 ```

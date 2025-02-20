@@ -2,7 +2,12 @@
 
 ## Version 2.1.0
 
-- In `localfilter!`, argument `initial` may be a function to compute the state variable
+* `LocalFilters.ball(DimS{N}, r)` now yields a *centered* `N`-dimensional ball where
+  values are set according to whether the distance to the center is `≤ r`. Compared to the
+  previous versions, add `1//2` to `r` to get a similar shape. The algorithm is faster and
+  has been fixed for `N > 2`. The result is identical whether `r` is integer or
+  floating-point.
+
   from the value of the source array at the current destination index. This imposes that
   the source and destination arrays have the same axes. This fixes [issue#3](#3).
 

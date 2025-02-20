@@ -132,23 +132,23 @@ f1(x) = 1 + x*x
 f2(x) = x > 0.5
 =#
 
-ball3x3 = Bool[1 1 1;
-               1 1 1;
-               1 1 1];
+ball3x3 = centered(Bool[1 1 1;
+                        1 1 1;
+                        1 1 1]);
 
-ball5x5 = Bool[0 1 1 1 0;
-               1 1 1 1 1;
-               1 1 1 1 1;
-               1 1 1 1 1;
-               0 1 1 1 0];
+ball5x5 = centered(Bool[0 1 1 1 0;
+                        1 1 1 1 1;
+                        1 1 1 1 1;
+                        1 1 1 1 1;
+                        0 1 1 1 0]);
 
-ball7x7 = Bool[0 0 1 1 1 0 0;
-               0 1 1 1 1 1 0;
-               1 1 1 1 1 1 1;
-               1 1 1 1 1 1 1;
-               1 1 1 1 1 1 1;
-               0 1 1 1 1 1 0;
-               0 0 1 1 1 0 0];
+ball7x7 = centered(Bool[0 0 1 1 1 0 0;
+                        0 1 1 1 1 1 0;
+                        1 1 1 1 1 1 1;
+                        1 1 1 1 1 1 1;
+                        1 1 1 1 1 1 1;
+                        0 1 1 1 1 1 0;
+                        0 0 1 1 1 0 0]);
 
 @testset "LocalFilters" begin
 
@@ -268,9 +268,10 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
         # FIXME: strel
 
         # ball
-        @test ball(Dims{2}, 1) == ball3x3
-        @test ball(Dims{2}, 2) == ball5x5
-        @test ball(Dims{2}, 3) == ball7x7
+        @test ball(Dims{2}, 1.5) == ball3x3
+        @test ball(Dims{2}, 2.5) == ball5x5
+        @test ball(Dims{2}, 3.5) == ball7x7
+        @test ball(Dims{3}, 3) == ball(Dims{3}, 3.0)
     end
 
     @testset "Local mean" begin

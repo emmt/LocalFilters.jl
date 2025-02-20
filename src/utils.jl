@@ -422,52 +422,40 @@ end
 """
     LocalFilters.ball(Dims{N}, r)
 
-yields a boolean mask which is a `N`-dimensional array with all dimensions odd and equal
-and set to true where position is inside a `N`-dimensional ball of radius `r`.
+yields a mask approximating a `N`-dimensional ball of radius `r`. The result is
+`N`-dimensional array of Boolean's with all dimensions odd and equal and whose values are
+`true` inside the ball (that for distance to the center `≤ r`) and `false` otherwise. The
+mask may be used to specify the neighborhood, the kernel, or the structuring element in
+local filtering operations.
 
-To have a mask with centered index ranges, call:
+The returned mask has centered axes, to get a mask with 1-based indices, call:
 
-    LocalFilters.centered(LocalFilters.ball(Dims{N}, r))
+    LocalFilters.ball(Dims{N}, r).parent
 
-"""
+See also [`LocalFilters.kernel`](@ref) and [`LocalFilters.strel`](@ref).
+
+""" ball
+@public ball
+
 function ball(::Type{Dims{N}}, radius::Real) where {N}
-    b = radius + 1/2
-    r = ceil(Int, b - one(b))
-    dim = 2*r + 1
-    dims = replicate(Dims{N}, dim)
-    b² = b*b
-    qmax = ceil(Int, b² - one(b²))
-    return _ball!(Array{Bool}(undef, dims), 0, qmax, r, 1:dim, tail(dims))
-end
-
-@deprecate ball(N::Integer, radius::Real) ball(Dims{as(Int, N)}, radius) false
-
-@inline function _ball!(arr::AbstractArray{Bool,N},
-                        q::Int, qmax::Int, r::Int,
-                        range::AbstractUnitRange{Int},
-                        dims::Tuple{Int}, I::Int...) where {N}
-    # Iterate over coordinates along dimension.
-    nextdims = tail(dims)
-    x = -r
-    for i in range
-        _ball!(arr, q + x*x, qmax, r, range, nextdims, I..., i)
-        x += 1
+    radius ≥ zero(radius) || throw(ArgumentError("ball radius must be non-negative"))
+    if radius isa Integer
+        r = as(Int, radius)
+        qmax = r*r
+    else
+        r = floor(Int, radius)
+        qmax = floor(Int, radius*radius)
+    end
+    arr = new_array(Bool, ntuple(Returns(-r:r), Val(N)))
+    @inbounds @simd for I in eachindex(IndexCartesian(), arr)
+        arr[I] = squared_Euclidean_norm(I) ≤ qmax
     end
     return arr
 end
 
-@inline function _ball!(arr::AbstractArray{Bool,N},
-                        q::Int, qmax::Int, r::Int,
-                        range::AbstractUnitRange{Int},
-                        ::Tuple{}, I::Int...) where {N}
-    # Iterate over coordinates along last dimension. This ends the recursion.
-    x = -r
-    for i in range
-        arr[I...,i] = (q + x*x ≤ qmax)
-        x += 1
-    end
-    return arr
-end
+@deprecate ball(N::Int, radius::Real) ball(Dims{N}, radius) false
+
+squared_Euclidean_norm(I::CartesianIndex) = mapreduce(abs2, +, Tuple(I))
 
 # Boundary conditions.
 #
