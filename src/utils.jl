@@ -261,38 +261,6 @@ function reverse_kernel_axis(r::AbstractRange{<:Integer})
     end
 end
 
-"""
-   LocalFilters.centered(A) -> B
-
-yields an abstract array `B` sharing the entries of array `A` but with offsets on indices
-so that the axes of `B` are *centered* (for even dimension lengths, the same conventions
-as in `fftshift` are used).
-
-This method is purposely not exported because it could introduce some confusions. For
-example `OffsetArrays.centered` is similar but has a slightly different semantic.
-
-Argument `A` can also be an index range (linear or Cartesian), in which case a centered
-index range of same size is returned.
-
-See [`LocalFilters.kernel_range`](@ref).
-
-"""
-centered(A::AbstractArray) = OffsetArray(A, map(kernel_range, size(A)))
-centered(A::OffsetArray) = centered(parent(A))
-centered(R::CartesianIndices) = CartesianIndices(map(centered, ranges(R)))
-centered(R::AbstractUnitRange{<:Integer}) = kernel_range(length(R))
-centered(R::AbstractRange{<:Integer}) = begin
-    abs(step(R)) == 1 || throw(ArgumentError("invalid non-unit step range"))
-    return kernel_range(length(R))
-end
-for cls in (:MutableUniformArray, :UniformArray, :FastUniformArray)
-    @eval begin
-        # Rebuild a uniform array of same type and value but reversed axes.
-        centered(A::$cls{T}) where {T} =
-            $cls{T}(StructuredArrays.value(A), map(kernel_range, size(A)))
-    end
-end
-
 Base.reverse(::ForwardFilterOrdering) = REVERSE_FILTER
 Base.reverse(::ReverseFilterOrdering) = FORWARD_FILTER
 
@@ -358,6 +326,38 @@ end
                               B::CartesianIndices{N},
                               I::CartesianIndex{N}) where {N}
     return @range A ∩ (I - B)
+end
+
+"""
+   LocalFilters.centered(A) -> B
+
+yields an abstract array `B` sharing the entries of array `A` but with offsets on indices
+so that the axes of `B` are *centered* (for even dimension lengths, the same conventions
+as in `fftshift` are used).
+
+This method is purposely not exported because it could introduce some confusions. For
+example `OffsetArrays.centered` is similar but has a slightly different semantic.
+
+Argument `A` can also be an index range (linear or Cartesian), in which case a centered
+index range of same size is returned.
+
+See [`LocalFilters.kernel_range`](@ref).
+
+"""
+centered(A::AbstractArray) = OffsetArray(A, map(kernel_range, size(A)))
+centered(A::OffsetArray) = centered(parent(A))
+centered(R::CartesianIndices) = CartesianIndices(map(centered, ranges(R)))
+centered(R::AbstractUnitRange{<:Integer}) = kernel_range(length(R))
+centered(R::AbstractRange{<:Integer}) = begin
+    abs(step(R)) == 1 || throw(ArgumentError("invalid non-unit step range"))
+    return kernel_range(length(R))
+end
+for cls in (:MutableUniformArray, :UniformArray, :FastUniformArray)
+    @eval begin
+        # Rebuild a uniform array of same type and value but reversed axes.
+        centered(A::$cls{T}) where {T} =
+            $cls{T}(StructuredArrays.value(A), map(kernel_range, size(A)))
+    end
 end
 
 """
