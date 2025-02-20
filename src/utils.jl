@@ -11,8 +11,27 @@
 # Copyright (c) 2017-2025, Éric Thiébaut.
 #
 
-# Constructors for `Indices`. Use linear indexing for vectors, Cartesian indices
-# otherwise.
+"""
+    LocalFilters.Indices(A...) -> indices
+
+yields a callable object that can be used to produce ranges of indices for each of the
+arrays `A...`. These ranges will all be of the same type: linear index ranges, if all
+arrays `A...` are vectors implementing fast linear indexing, Cartesian index ranges
+otherwise.
+
+The returned object is similar to the `eachindex` method but specialized for a style of
+indexing, it can be used as `indices(B...)` to yield a suitable index range to access all
+the entries of array(s) `B...` which are any number of the `A...` specified when building
+the `indices` object. If `B...` consists in several arrays, they must have the same axes.
+
+Call:
+
+    LocalFilters.Indices{S}()
+
+with `S = IndexLinear` or `S = IndexCartesian` to specifically choose the
+indexing style.
+
+"""
 Indices(A::AbstractVector) = Indices{IndexLinear}()
 Indices(A::AbstractVector, B::AbstractVector...) = Indices{IndexLinear}()
 Indices(A::AbstractArray) = Indices{IndexCartesian}()
@@ -24,20 +43,10 @@ Base.IndexStyle(::Type{<:Indices{S}}) where {S} = S()
 
 # `Indices` objects can be called like `eachindex` to yield the indices of an array (see
 # `abstractarray.jl`).
-@inline (::Indices{IndexLinear})(A::AbstractArray) = to_axis(length(A))
-@inline (::Indices{IndexLinear})(A::AbstractVector) = to_axis(Base.axes1(A))
+@inline (::Indices{IndexLinear})(A::AbstractArray) = OneTo{Int}(length(A))
+@inline (::Indices{IndexLinear})(A::AbstractVector) = AbstractUnitRange{Int}(Base.axes1(A))
 @inline (::Indices{IndexCartesian})(A::AbstractArray) = CartesianIndices(A)
-@inline function (I::Indices)(A::AbstractArray, B::AbstractArray...)
-    check_axes(A, B...)
-    return I(A)
-end
-
-to_axis(len::Integer) = Base.OneTo{Int}(len)
-to_axis(rng::AbstractUnitRange{Int}) = rng
-to_axis(rng::AbstractUnitRange{<:Integer}) = convert_eltype(Int, rng)
-to_axis(rng::AbstractRange{<:Integer}) =
-    isone(step(rng)) ? convert_eltype(Int, rng) : throw(ArgumentError(
-        "invalid non-unit step ($(step(rng))) array axis"))
+@inline (I::Indices)(A::AbstractArray, B::AbstractArray...) = (check_axes(A, B...); I(A))
 
 """
     LocalFilters.check_axes([I,] A...)
