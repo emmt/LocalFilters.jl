@@ -73,7 +73,8 @@ check_axes(::Type{Bool}, A::AbstractArray) = true
     kernel([Dims{N},] args...)
 
 yields an `N`-dimensional abstract array built from `args...` and which can be used as a
-kernel in local filtering operations.
+kernel in local filtering operations. The kernel is also called a *neighborhood* when its
+element type is `Bool`.
 
 * If `args...` is composed of `N` integers and/or ranges or if it is an `N`-tuple of
   integers and/or ranges, a uniformly true abstract array is returned whose axes are
@@ -85,9 +86,9 @@ kernel in local filtering operations.
   `kernel(Dims{3},5)` yields a 3-dimensional uniformly true array with index range `-2:2`
   in every dimension.
 
-* If `args...` is 2 Cartesian indices or a 2-tuple of Cartesian indices, say `I_first` and
-  `I_last`, a uniformly true abstract array is returned whose first and last indices are
-  `I_first` and `I_last`.
+* If `args...` is two Cartesian indices or a 2-tuple of Cartesian indices, say `start` and
+  `stop`, a uniformly true abstract array is returned whose first and last indices are
+  `start` and `stop`.
 
 * If `args...` is a Cartesian range, say `R::CartesianIndices{N}`, a uniformly true
   abstract array is returned whose axes are given by `R`.
@@ -100,33 +101,48 @@ the result or to provide the number of dimensions when it cannot be inferred fro
 arguments. For example, when `args...` is a single integer length or range which should be
 interpreted as being the same for all dimensions.
 
+See also [`LocalFilters.strel`](@ref), [`LocalFilters.ball`](@ref),
+[`LocalFilters.kernel_range`](@ref), [`LocalFilters.reverse_kernel`](@ref), and
+[`LocalFilters.cartesian_limits`](@ref).
+
 """
+kernel(::Type{Dims{N}}, arg::Axis) where {N} = kernel(Dims{N}, kernel_range(arg))
+kernel(::Type{Dims{N}}, rng::AbstractUnitRange{Int}) where {N} = kernel(ntuple(Returns(rng), Val(N)))
+
+kernel(::Type{Dims{N}}, inds::Vararg{Axis,N}) where {N} = kernel(inds)
+kernel(inds::Axis...) = kernel(inds)
+
+kernel(::Type{Dims{N}}, inds::NTuple{N,Axis}) where {N} = kernel(inds)
+kernel(inds::Tuple{Vararg{Axis}}) = kernel(map(kernel_range, inds))
+kernel(inds::Tuple{Vararg{AbstractUnitRange{Int}}}) = FastUniformArray(true, inds)
+
+kernel(::Type{Dims{N}}, R::CartesianIndices{N}) where {N} = kernel(R)
+kernel(R::CartesianIndices) = kernel(R.indices)
+
 kernel(::Type{Dims{N}}, A::AbstractArray{<:Any,N}) where {N} = kernel(A)
 kernel(A::AbstractArray) = A
 
-kernel(::Type{Dims{N}}, x::LocalAxis) where {N} = kernel(replicate(NTuple{N}, kernel_range(x)))
-
-kernel(::Type{Dims{N}}, args::Vararg{LocalAxis,N}) where {N} = kernel(args)
-kernel(::Type{Dims{N}}, args::NTuple{N,LocalAxis}) where {N} = kernel(args)
-kernel(args::LocalAxis...) = kernel(args)
-kernel(args::Tuple{Vararg{LocalAxis}}) = FastUniformArray(true, map(kernel_range, args))
-
-kernel(::Type{Dims{N}}, inds::CartesianIndices{N}) where {N} = kernel(inds)
-kernel(inds::CartesianIndices) = kernel(ranges(inds))
-
 kernel(::Type{Dims{N}}, inds::NTuple{2,CartesianIndex{N}}) where {N} = kernel(inds)
-kernel(::Type{Dims{N}}, inds::Vararg{CartesianIndex{N},2}) where {N} = kernel(inds)
 kernel(inds::NTuple{2,CartesianIndex{N}}) where {N} = kernel(inds...)
-kernel(a::CartesianIndex{N}, b::CartesianIndex{N}) where {N} =
-    FastUniformArray(true, map(kernel_range, Tuple(a), Tuple(b)))
 
-kernel(::Type{Dims{0}}) = kernel()
+kernel(::Type{Dims{N}}, start::CartesianIndex{N}, stop::CartesianIndex{N}) where {N} =
+    kernel(start, stop)
+kernel(start::CartesianIndex{N}, stop::CartesianIndex{N}) where {N} =
+    kernel(map(kernel_range, Tuple(start), Tuple(stop)))
 
 # Error catcher.
-kernel(::Type{Dims{N}}) where {N} = throw(ArgumentError(
-    "cannot create a $N-dimensional kernel with no additional argument(s)"))
-kernel(::Type{Dims{N}}, args...) where {N} = throw(ArgumentError(
-    "cannot create a $N-dimensional kernel for argument(s) of type $(typeof(args))"))
+@noinline function kernel(::Type{Dims{N}}, args...) where {N}
+    len = length(args)
+    msg = "cannot create a $N-dimensional kernel from $len additional argument"
+    if len == 1
+        msg *= " of type `$(typeof(args[1]))`"
+    elseif len == 2
+        msg *= "s of types `$(typeof(args[1]))` and `$(typeof(args[2]))`"
+    elseif len > 2
+        msg *= "s of types `"*join(map(typeof, args), "`, `", "`, and `")*"`"
+    end
+    throw(ArgumentError(msg))
+end
 
 """
    LocalFilters.centered_offset(len)
