@@ -164,7 +164,7 @@ _add(a::Any,  b::Any) = a+b
 _div(a::Any,  b::Any) = a/b
 
 """
-    correlate(A, B) -> dst
+    correlate(A, B=3) -> dst
 
 yields the discrete correlation of the array `A` by the kernel defined by `B`. The result
 `dst` is an array similar to `A`.
@@ -172,7 +172,6 @@ yields the discrete correlation of the array `A` by the kernel defined by `B`. T
 Using `Sup(A)` to denote the set of valid indices for array `A` and assuming `B` is an
 array of numerical values, the discrete convolution of `A` by `B` writes:
 
-    T = let x = oneunit(eltype(A))*oneunit(eltype(B)); typeof(x + x); end
     dst = similar(A, T)
     for i ∈ Sup(A)
         v = zero(T)
@@ -182,9 +181,9 @@ array of numerical values, the discrete convolution of `A` by `B` writes:
         dst[i] = v
     end
 
-with `T` the type of the product of elements of `A` and `B`, and where `Sup(A) ∩ (i -
-Sup(A))` denotes the subset of indices `k` such that `k ∈ Sup(B)` and `i - k ∈ Sup(A)` and
-thus for which `B[k]` and `A[i-k]` are valid.
+with `T` the type of the sum of the products of the elements of `A` and `B`, and where
+`Sup(A) ∩ (i - Sup(A))` denotes the subset of indices `k` such that `k ∈ Sup(B)` and `i -
+k ∈ Sup(A)` and thus for which `B[k]` and `A[i-k]` are valid.
 
 See also [`correlate!`](@ref) and [`convolve`](@ref).
 
@@ -200,7 +199,7 @@ See also [`correlate`](@ref) and [`localfilter!`](@ref).
 """ correlate!
 
 """
-    convolve(A, B)
+    convolve(A, B=3)
 
 yields the discrete convolution of array `A` by the kernel defined by `B`. The result
 `dst` is an array similar to `A`.
@@ -208,7 +207,6 @@ yields the discrete convolution of array `A` by the kernel defined by `B`. The r
 Using `Sup(A)` to denote the set of valid indices for array `A` and assuming `B` is an
 array of values, the discrete convolution of `A` by `B` writes:
 
-    T = let x = oneunit(eltype(A))*oneunit(eltype(B)); typeof(x + x); end
     for i ∈ Sup(A)
         v = zero(T)
         @inbounds for j ∈ Sup(B) ∩ (i - Sup(A))
@@ -217,9 +215,9 @@ array of values, the discrete convolution of `A` by `B` writes:
         dst[i] = v
     end
 
-with `T` the type of the product of elements of `A` and `B`, and where `Sup(B) ∩ (i -
-Sup(A))` denotes the subset of indices `k` such that `k ∈ Sup(B)` and `i - k ∈ Sup(A)` and
-thus for which `B[k]` and `A[i-k]` are valid.
+with `T` the type of the sum of the products of the elements of `A` and `B`, and where
+`Sup(B) ∩ (i - Sup(A))` denotes the subset of indices `k` such that `k ∈ Sup(B)` and `i -
+k ∈ Sup(A)` and thus for which `B[k]` and `A[i-k]` are valid.
 
 See also [`convolve!`](@ref) and [`localfilter!`](@ref).
 

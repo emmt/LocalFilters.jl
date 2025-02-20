@@ -349,8 +349,8 @@ yields an abstract array `B` sharing the entries of array `A` but with offsets o
 so that the axes of `B` are *centered* (for even dimension lengths, the same conventions
 as in `fftshift` are used).
 
-This method is purposely not exported because it could introduce some confusions. For
-example `OffsetArrays.centered` is similar but has a slightly different semantic.
+This *public* method is purposely not exported because it could introduce some confusions.
+For example `OffsetArrays.centered` is similar but has a slightly different semantic.
 
 Argument `A` can also be an index range (linear or Cartesian), in which case a centered
 index range of same size is returned.
