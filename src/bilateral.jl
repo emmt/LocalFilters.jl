@@ -128,14 +128,14 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
                           A::AbstractArray{<:Any,N}, F,
                           ord::FilterOrdering, G...) where {N}
     # Get the (unconverted) type returned by the value filter.
-    Tf = value_filter_type(eltype(A), F)
+    Tf = typeof_value_filter_result(eltype(A), F)
 
     # Get the (unconverted) element type of the distance filter and simplify trailing
     # arguments.
     Tg, Gp = distance_filter(Dims{N}, G...)
 
     # Determine the resulting weights type.
-    Tw = weight_type(Tf, Tg)
+    Tw = typeof_weight(Tf, Tg)
     F2 = value_filter(Tw, F)
 
     # Call the main function with filters of suitable types.
@@ -145,8 +145,8 @@ end
 
 # Yield the type returned by default by the value filter (at least single precision
 # floating-point for a Gaussian window).
-value_filter_type(T::Type, f::Function) = Base.promote_op(f, T)
-function value_filter_type(T::Type, σ::Real)
+typeof_value_filter_result(T::Type, f::Function) = Base.promote_op(f, T)
+function typeof_value_filter_result(T::Type, σ::Real)
     (isfinite(σ) && σ > 0) || throw(ArgumentError(
         "standard deviation of the value filter must be finite and positive"))
     return promote_type(real(T), Float32)
@@ -168,9 +168,9 @@ distance_filter(::Type{Dims{N}}, f::Function, win::Window{N}) where {N} =
     (Base.promote_op(f, CartesianIndex{N}), (f, kernel(Dims{N}, win)))
 
 # Yield the type of the weights given that of the value and distance filters.
-weight_type(Tf::Type{<:Real}, Tg::Type{Bool}) = Tf
-weight_type(Tf::Type{<:Real}, Tg::Type{<:Real}) = promote_type(Tf, Tg)
-weight_type(Tf::Type{<:Complex}, Tg::Type) =
+typeof_weight(Tf::Type{<:Real}, Tg::Type{Bool}) = Tf
+typeof_weight(Tf::Type{<:Real}, Tg::Type{<:Real}) = promote_type(Tf, Tg)
+typeof_weight(Tf::Type{<:Complex}, Tg::Type) =
     throw(ArgumentError("value filter must not yield complex type"))
 
 # Yield a callable object to be used as the *value filter* in the bilateral filter.

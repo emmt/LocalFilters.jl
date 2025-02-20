@@ -44,7 +44,7 @@ function localmean(A::AbstractArray{<:Any,N},
                    ord::FilterOrdering,
                    B::AbstractArray{<:Any,N}; kwds...) where {N}
     # Provide the destination array.
-    T = mean_type(eltype(A), eltype(B))
+    T = typeof_mean(eltype(A), eltype(B))
     return localmean!(similar(A, T), A, ord, B; kwds...)
 end
 
@@ -83,7 +83,7 @@ function localmean!(dst::AbstractArray{<:Any,N},
                     null = zero(eltype(dst))) where {N}
     null = nearest(eltype(dst), null)
     indices = Indices(dst, A, B)
-    T_num = sum_type(eltype(A))
+    T_num = typeof_sum(eltype(A))
     @inbounds for i in indices(dst)
         J = localindices(indices(A), ord, indices(B), i)
         den = length(J)
@@ -108,8 +108,8 @@ function localmean!(dst::AbstractArray{<:Any,N},
                     null = zero(eltype(dst))) where {N}
     null = nearest(eltype(dst), null)
     indices = Indices(dst, A, B)
-    T_num = sum_prod_type(eltype(A), eltype(B))
-    T_den = sum_type(eltype(B))
+    T_num = typeof_sum_prod(eltype(A), eltype(B))
+    T_den = typeof_sum(eltype(B))
     @inbounds for i in indices(dst)
         num = zero(T_num)
         den = zero(T_den)
@@ -129,20 +129,20 @@ function localmean!(dst::AbstractArray{<:Any,N},
 end
 
 # Yield the type of the sum of terms of a given type.
-function sum_type(::Type{A}) where {A}
+function typeof_sum(::Type{A}) where {A}
     x = oneunit(A)
     return typeof(_add(x, x))
 end
 
 # Yield the type of the sum of the product of terms of given types.
-function sum_prod_type(::Type{A}, ::Type{B}) where {A,B}
+function typeof_sum_prod(::Type{A}, ::Type{B}) where {A,B}
     x = _mul(oneunit(A), oneunit(B))
     return typeof(_add(x, x))
 end
 
 # Yield the type of a local, possibly weighted, mean.
-function mean_type(::Type{A} #= data type =#,
-                   ::Type{B} #= weight type =#) where {A,B}
+function typeof_mean(::Type{A} #= data type =#,
+                     ::Type{B} #= weight type =#) where {A,B}
     a = oneunit(A)
     b = oneunit(B)
     c = _mul(a, b)
@@ -238,7 +238,7 @@ See also [`convolve`](@ref) and [`localfilter!`](@ref).
 function local_sum_prod(A::AbstractArray{<:Any,N},
                         ord::FilterOrdering,
                         B::AbstractArray{<:Any,N}) where {N}
-    T = sum_prod_type(eltype(A), eltype(B))
+    T = typeof_sum_prod(eltype(A), eltype(B))
     return local_sum_prod!(similar(A, T), A, ord, B)
 end
 
@@ -248,7 +248,7 @@ function local_sum_prod!(dst::AbstractArray{<:Any,N},
                          ord::FilterOrdering,
                          B::Box{N}) where {N}
     indices = Indices(dst, A, B)
-    T = sum_type(eltype(A))
+    T = typeof_sum(eltype(A))
     @inbounds for i in indices(dst)
         J = localindices(indices(A), ord, indices(B), i)
         v = zero(T)
@@ -266,7 +266,7 @@ function local_sum_prod!(dst::AbstractArray{<:Any,N},
                          ord::FilterOrdering,
                          B::AbstractArray{<:Any,N}) where {N}
     indices = Indices(dst, A, B)
-    T = sum_prod_type(eltype(A), eltype(B))
+    T = typeof_sum_prod(eltype(A), eltype(B))
     @inbounds for i in indices(dst)
         J = localindices(indices(A), ord, indices(B), i)
         v = zero(T)
