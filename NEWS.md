@@ -29,6 +29,10 @@
   [`StructuredArrays`](https://github.com/emmt/StructuredArrays.jl) package.
   `LocalFilters.Box{N,I}` is now an alias to `FastUniformArray{Boll,N,true,I}`.
 
+* In local filtering operations, small integers arguments are automatically promoted to a
+  wider integer type to avoid overflows. This is similar to what is done by base reduction
+  methods such as `sum` and `prod`.
+
 * Exported method `reverse_kernel` yields a reversed kernel such that correlation by
   `reverse_kernel(B)` is identical to convolution by `B` and conversely.
 

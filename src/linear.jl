@@ -128,41 +128,6 @@ function localmean!(dst::AbstractArray{<:Any,N},
     return dst
 end
 
-# Yield the type of the sum of terms of a given type.
-function typeof_sum(::Type{A}) where {A}
-    x = oneunit(A)
-    return typeof(_add(x, x))
-end
-
-# Yield the type of the sum of the product of terms of given types.
-function typeof_sum_prod(::Type{A}, ::Type{B}) where {A,B}
-    x = _mul(oneunit(A), oneunit(B))
-    return typeof(_add(x, x))
-end
-
-# Yield the type of a local, possibly weighted, mean.
-function typeof_mean(::Type{A} #= data type =#,
-                     ::Type{B} #= weight type =#) where {A,B}
-    a = oneunit(A)
-    b = oneunit(B)
-    c = _mul(a, b)
-    return typeof(_div(_add(c, c), _add(b, b)))
-end
-
-# Compared to the base implementation in `bool.jl`, the following definition of the
-# multiplication by a boolean yields a significantly faster (~50%) `local_sum_prod!` for
-# big neighborhoods because `copysign` is avoided.
-_mul(a::Any,  b::Bool) = ifelse(b, a, zero(a))
-_mul(a::Bool, b::Any ) = _mul(b, a)
-_mul(a::Bool, b::Bool) = a&b
-_mul(a::Any,  b::Any ) = a*b
-
-# Addition of terms as assumed by linear filters.
-_add(a::Any,  b::Any) = a+b
-
-# division of terms as assumed by linear filters.
-_div(a::Any,  b::Any) = a/b
-
 """
     correlate(A, B=3) -> dst
 
@@ -291,3 +256,57 @@ for (f, ord) in ((:correlate, :FORWARD_FILTER),
         end
     end
 end
+
+# Yield the type of the sum of terms of a given type.
+function typeof_sum(::Type{A}) where {A}
+    x = oneunit(A)
+    return typeof(_add(x, x))
+end
+
+# Yield the type of the sum of the product of terms of given types.
+function typeof_sum_prod(::Type{A}, ::Type{B}) where {A,B}
+    x = _mul(oneunit(A), oneunit(B))
+    return typeof(_add(x, x))
+end
+
+# Yield the type of a local, possibly weighted, mean.
+function typeof_mean(::Type{A} #= data type =#,
+                     ::Type{B} #= weight type =#) where {A,B}
+    a = oneunit(A)
+    b = oneunit(B)
+    c = _mul(a, b)
+    return typeof(_div(_add(c, c), _add(b, b)))
+end
+
+# See `base/reduce.jl`.
+const SmallSigned = Union{filter(T -> sizeof(T) < sizeof(Int),
+                                 (Int8, Int16, Int32, Int64, Int128))...,}
+const SmallUnsigned = Union{filter(T -> sizeof(T) < sizeof(UInt),
+                                   (UInt8, UInt16, UInt32, UInt64, UInt128))...,}
+const SmallInteger = Union{SmallSigned, SmallUnsigned}
+
+# Addition and multiplication of terms as assumed by linear filters. To avoid overflows,
+# small integers are promoted to a wider type following the same rules as in `sum` or
+# `prod` except that we want to preserve the signedness.
+for (f, op) in ((:_add, :(+)), (:_mul, :(*)))
+    @eval begin
+        $f(x::SmallUnsigned, y::SmallUnsigned) = $op(UInt(x), UInt(y))
+        $f(x::SmallInteger, y::SmallInteger) = $op(Int(x), Int(y))
+        $f(x::Real, y::Real)::Real = $op(x, y)
+        $f(x::Any, y::Any) = $op(x, y)
+    end
+end
+
+# Compared to the base implementation in `bool.jl`, the following definition of the
+# multiplication by a Boolean yields a significantly faster (~50%) `local_sum_prod!` for
+# big neighborhoods because `copysign` is avoided.
+_mul(x::Real, y::Bool) = _mul(y, x)
+_mul(x::Any,  y::Bool) = _mul(y, x)
+_mul(x::Bool, y::Bool) = Int(x & y)
+_mul(x::Bool, y::Real) = ifelse(x, y, zero(y))
+_mul(x::Bool, y::Any ) = ifelse(x, y, zero(y))
+_mul(x::Bool, y::SmallSigned  ) = _mul(x,  Int(y))
+_mul(x::Bool, y::SmallUnsigned) = _mul(x, UInt(y))
+
+# Division of terms as assumed by linear filters.
+_div(x::Any, y::Any) = x/y
