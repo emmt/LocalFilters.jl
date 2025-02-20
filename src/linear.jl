@@ -28,24 +28,24 @@ See also [`localmean!`](@ref) and [`localfilter!`](@ref).
 
 """
 function localmean(A::AbstractArray{<:Any,N},
-                   B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
+                   B::Union{Window{N},AbstractArray{<:Any,N}} = 3; kwds...) where {N}
     # Provides default ordering.
-    return localmean(A, FORWARD_FILTER, B)
+    return localmean(A, FORWARD_FILTER, B; kwds...)
 end
 
 function localmean(A::AbstractArray{<:Any,N},
                    ord::FilterOrdering,
-                   B::Window{N} = 3) where {N}
+                   B::Window{N} = 3; kwds...) where {N}
     # Make `B` into a kernel array.
-    return localmean(A, ord, kernel(Dims{N}, B))
+    return localmean(A, ord, kernel(Dims{N}, B); kwds...)
 end
 
 function localmean(A::AbstractArray{<:Any,N},
                    ord::FilterOrdering,
-                   B::AbstractArray{<:Any,N}) where {N}
+                   B::AbstractArray{<:Any,N}; kwds...) where {N}
     # Provide the destination array.
     T = mean_type(eltype(A), eltype(B))
-    return localmean!(similar(A, T), A, ord, B)
+    return localmean!(similar(A, T), A, ord, B; kwds...)
 end
 
 """
@@ -62,17 +62,17 @@ See also [`localmean`](@ref) and [`localfilter!`](@ref).
 """
 function localmean!(dst::AbstractArray{<:Any,N},
                     A::AbstractArray{<:Any,N},
-                    B::Union{Window{N},AbstractArray{<:Any,N}} = 3) where {N}
+                    B::Union{Window{N},AbstractArray{<:Any,N}} = 3; kwds...) where {N}
     # Provide default ordering.
-    return localmean!(dst, A, FORWARD_FILTER, B)
+    return localmean!(dst, A, FORWARD_FILTER, B; kwds...)
 end
 
 function localmean!(dst::AbstractArray{<:Any,N},
                     A::AbstractArray{<:Any,N},
                     ord::FilterOrdering,
-                    B::Window{N} = 3) where {N}
+                    B::Window{N} = 3; kwds...) where {N}
     # Make `B` into a kernel array.
-    return localmean!(dst, A, ord, kernel(Dims{N}, B))
+    return localmean!(dst, A, ord, kernel(Dims{N}, B); kwds...)
 end
 
 # Local mean inside a simple sliding window.
