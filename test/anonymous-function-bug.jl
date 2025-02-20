@@ -1,14 +1,14 @@
 """
 
-This module is to tests the strong penalty in execution time and allocations of
-closures in `localfilters!` driver.
+This module is to tests the strong penalty in execution time and allocations of closures
+in `localfilters!` driver.
 
 """
 module ClosureBug
 
 using LocalFilters, BenchmarkTools
 
-using LocalFilters: Kernel, check_indices, type_of_sum, store!
+using LocalFilters: Kernel, check_axes, type_of_sum, store!
 
 import LocalFilters: localmean!, convolve!
 
@@ -27,7 +27,7 @@ function localmean!(::Val{:anonymous},
                     dst::AbstractArray{<:Any,N},
                     A::AbstractArray{<:Any,N},
                     B::RectangularBox{N}) where {N}
-    check_indices(dst, A)
+    check_axes(dst, A)
     T = type_of_sum(eltype(A))
     localfilter!(dst, A, B,
                  (a)     -> (zero(T), 0),
@@ -39,7 +39,7 @@ function localmean!(::Val{:anonymous},
                     dst::AbstractArray{<:Any,N},
                     A::AbstractArray{<:Any,N},
                     B::Kernel{Bool,N}) where {N}
-    check_indices(dst, A)
+    check_axes(dst, A)
     T = type_of_sum(eltype(A))
     localfilter!(dst, A, B,
                  (a)     -> (zero(T), 0),
@@ -51,7 +51,7 @@ function localmean!(::Val{:anonymous},
                     dst::AbstractArray{<:Any,N},
                     A::AbstractArray{<:Any,N},
                     B::Kernel{<:Any,N}) where {N}
-    check_indices(dst, A)
+    check_axes(dst, A)
     T = type_of_sum(promote_type(eltype(A), eltype(B)))
     localfilter!(dst, A, B,
                  (a)     -> (zero(T), zero(T)),
@@ -74,7 +74,7 @@ function convolve!(::Val{:anonymous},
                    dst::AbstractArray{<:Any,N},
                    A::AbstractArray{<:Any,N},
                    B::RectangularBox{N}) where {N}
-    check_indices(dst, A)
+    check_axes(dst, A)
     T = type_of_sum(eltype(A))
     localfilter!(dst, A, B,
                  (a)     -> zero(T),
@@ -86,7 +86,7 @@ function convolve!(::Val{:anonymous},
                    dst::AbstractArray{<:Any,N},
                    A::AbstractArray{<:Any,N},
                    B::Kernel{Bool,N}) where {N}
-    check_indices(dst, A)
+    check_axes(dst, A)
     T = type_of_sum(eltype(A))
     localfilter!(dst, A, B,
                  (a)     -> zero(T),
@@ -98,7 +98,7 @@ function convolve!(::Val{:anonymous},
                    dst::AbstractArray{<:Any,N},
                    A::AbstractArray{<:Any,N},
                    B::Kernel{<:Any,N}) where {N}
-    check_indices(dst, A)
+    check_axes(dst, A)
     T = type_of_sum(promote_type(eltype(A), eltype(B)))
     localfilter!(dst, A, B,
                  (a)     -> zero(T),

@@ -25,6 +25,9 @@ const LocalAxes{N} = NTuple{N,LocalAxis}
 
 const Axes{N} = NTuple{N,AbstractUnitRange{Int}}
 
+# Type of the result of `axes(A)`.
+const ArrayAxes{N} = NTuple{N,AbstractUnitRange{<:Integer}}
+
 """
     LocalFilters.CartesianUnitRange{N}
 

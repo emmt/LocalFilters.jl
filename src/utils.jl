@@ -28,7 +28,7 @@ Base.IndexStyle(::Type{<:Indices{S}}) where {S} = S()
 @inline (::Indices{IndexLinear})(A::AbstractVector) = to_axis(Base.axes1(A))
 @inline (::Indices{IndexCartesian})(A::AbstractArray) = CartesianIndices(A)
 @inline function (I::Indices)(A::AbstractArray, B::AbstractArray...)
-    have_same_axes(A, B...)
+    check_axes(A, B...)
     return I(A)
 end
 
@@ -40,32 +40,34 @@ to_axis(rng::AbstractRange{<:Integer}) =
         "invalid non-unit step ($(step(rng))) array axis"))
 
 """
-    LocalFilters.have_same_axes(A...)
+    LocalFilters.check_axes([I,] A...)
 
-throws an exception if not all arrays `A...` have the same axes.
+throws an exception if not all arrays `A...` have the same axes, or all have axes `I` if
+specified.
 
 """
-@inline have_same_axes(A::AbstractArray, B::AbstractArray...) =
-    have_same_axes(Bool, A, B...) ? nothing : throw(DimensionMismatch(
+@inline check_axes(A::AbstractArray...) =
+    check_axes(Bool, A...) ? nothing : throw(DimensionMismatch(
         "arrays must have the same axes"))
+@inline check_axes(I::ArrayAxes, A::AbstractArray...) =
+    check_axes(Bool, I, A...) ? nothing : throw(DimensionMismatch(
+        "arrays must have the given axes"))
 
 """
-    LocalFilters.have_same_axes(Bool, A...) -> bool
+    LocalFilters.check_axes(Bool, [I,] A...)
 
-yields whether all arrays `A...` have the same axes.
+yields whether all arrays `A...` have the same axes, or all have axes `I` if specified.
 
 """
-have_same_axes(::Type{Bool}, A::AbstractArray) = true
-have_same_axes(::Type{Bool}, A::AbstractArray, B::AbstractArray...) = false
-@inline function have_same_axes(::Type{Bool}, A::AbstractArray{<:Any,N},
-                                B::AbstractArray{<:Any,N}...) where {N}
-    return _have_same_axes(axes(A), B...)
-end
+check_axes(::Type{Bool}, A::AbstractArray...) = false
+check_axes(::Type{Bool}, A::AbstractArray) = true
+@inline check_axes(::Type{Bool}, A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N}...) where {N} =
+    check_axes(Bool, axes(A), B...)
 
-@inline _have_same_axes(I::Axes) = true
-@inline _have_same_axes(I::Axes, A::AbstractArray) = axes(A) == I
-@inline _have_same_axes(I::Axes, A::AbstractArray, B::AbstractArray...) =
-     _have_same_axes(I, A) && _have_same_axes(I, B...)
+@inline check_axes(::Type{Bool}, I::ArrayAxes,    A::AbstractArray...) = false
+@inline check_axes(::Type{Bool}, I::ArrayAxes{N}, A::AbstractArray{<:Any,N}) where {N} = axes(A) == I
+@inline check_axes(::Type{Bool}, I::ArrayAxes{N}, A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N}...) where {N} =
+    axes(A) == I && check_axes(Bool, B...)
 
 """
     kernel([Dims{N},] args...)

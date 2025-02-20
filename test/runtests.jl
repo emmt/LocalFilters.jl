@@ -10,7 +10,7 @@ using LocalFilters
 using LocalFilters:
     FilterOrdering, ForwardFilterOrdering, ReverseFilterOrdering,
     Box, Indices, kernel_range, kernel, ball, limits,
-    is_morpho_math_box, have_same_axes, localindices,
+    is_morpho_math_box, check_axes, localindices,
     ranges, centered, replicate
 
 # A bit of type-piracy for more readable error messages.
@@ -169,10 +169,10 @@ ball7x7 = Bool[0 0 1 1 1 0 0;
             @test I(B) === eachindex(IndexStyle(I), B)
         end
 
-        @test nothing === have_same_axes(ball3x3)
-        @test nothing === have_same_axes(ball3x3, similar(ball3x3))
-        @test nothing === have_same_axes(ones(Int8, size(ball3x3)), ball3x3, similar(ball3x3))
-        @test_throws Exception have_same_axes(ball3x3, ball7x7)
+        @test nothing === check_axes(ball3x3)
+        @test nothing === check_axes(ball3x3, similar(ball3x3))
+        @test nothing === check_axes(ones(Int8, size(ball3x3)), ball3x3, similar(ball3x3))
+        @test_throws Exception check_axes(ball3x3, ball7x7)
 
         # kernel_range
         @test_throws ArgumentError kernel_range(-1)
