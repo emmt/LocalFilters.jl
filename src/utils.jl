@@ -382,6 +382,14 @@ is_morpho_math_box(B::AbstractArray{<:AbstractFloat}) = all(iszero, B)
 is_morpho_math_box(::CartesianIndices) =
     error("Cartesian range must be converted to a kernel")
 
+# Yield a an hyper-rectangular box for mathematical morphology operations with the same
+# axes or indices as its argument(s).
+box(A::Box) = A
+box(A::AbstractArray) = box(axes(A))
+box(R::CartesianIndices) = box(R.indices)
+box(I::eltype(ArrayAxes)...) = box(I)
+box(I::ArrayAxes) = FastUniformArray(true, I)
+
 """
     strel(T, A)
 

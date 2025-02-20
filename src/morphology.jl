@@ -148,7 +148,7 @@ for (f, op) in ((:erode, :min), (:dilate, :max))
                      slow::Bool = false) where {N}
             if !slow && is_morpho_math_box(B)
                 # Use fast separable filter.
-                $fast_f!(dst, A, ord, morpho_math_box(B))
+                $fast_f!(dst, A, ord, box(B))
             else
                 # Use slow filter.
                 $slow_f!(dst, A, ord, B)
