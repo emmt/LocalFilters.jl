@@ -169,6 +169,31 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
             @test I(B) === eachindex(IndexStyle(I), B)
         end
 
+        # unit_range
+        @test (@inferred unit_range(-1, 8)) === -1:8
+        @test (@inferred unit_range(Int16(-3), Int16(-1))) === -3:-1
+        @test (@inferred unit_range(0:3)) === 0:3
+        @test (@inferred unit_range(0x1:0x4)) === 1:4
+        @test (@inferred unit_range(Base.OneTo(9))) === Base.OneTo(9)
+        @test (@inferred unit_range(Base.OneTo{Int8}(6))) === Base.OneTo(6)
+        @test (@inferred unit_range(-2:1:7)) === -2:7
+        @test (@inferred unit_range(7:-1:-2)) === -2:7
+        @test (@inferred unit_range(0x2:0x1:0x20)) === 2:32
+        @test_throws ArgumentError unit_range(0x2:0x2:0x20)
+        @test (@inferred unit_range(CartesianIndices((-1:6, 0x0:0xa)))) === CartesianIndices((-1:6, 0:10))
+        @test (@inferred unit_range(CartesianIndices((Base.OneTo(7), Int16(3):Int16(3))))) === CartesianIndices((Base.OneTo(7), 3:3))
+        if VERSION ≥ v"1.6"
+            # Ranges can have a step in CartesianIndices
+            @test_throws ArgumentError unit_range(CartesianIndices((1:2:6,)))
+            @test (@inferred unit_range(CartesianIndices((2:1:6,)))) === CartesianIndices((2:6,))
+            @test (@inferred unit_range(CartesianIndices((6:-1:2,)))) === CartesianIndices((2:6,))
+        end
+
+        # centered_offset
+        @test_throws ArgumentError centered_offset(-1)
+        @test centered_offset(Int16(5)) === -3
+        @test centered_offset(Int16(4)) === -3
+
         # kernel_range
         @test_throws ArgumentError kernel_range(-1)
         @test isempty(kernel_range(0))
