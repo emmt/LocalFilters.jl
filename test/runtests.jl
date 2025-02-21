@@ -1,6 +1,3 @@
-#isdefined(Main, :LocalFilters) || include("../src/LocalFilters.jl")
-#isdefined(Main, :NaiveLocalFilters) || include("NaiveLocalFilters.jl")
-
 module TestingLocalFilters
 
 #using Compat
@@ -129,143 +126,44 @@ f1(x) = 1 + x*x
 f2(x) = x > 0.5
 =#
 
-ball3x3 = centered(Bool[1 1 1;
-                        1 1 1;
-                        1 1 1]);
-
-ball5x5 = centered(Bool[0 1 1 1 0;
-                        1 1 1 1 1;
-                        1 1 1 1 1;
-                        1 1 1 1 1;
-                        0 1 1 1 0]);
-
-ball7x7 = centered(Bool[0 0 1 1 1 0 0;
-                        0 1 1 1 1 1 0;
-                        1 1 1 1 1 1 1;
-                        1 1 1 1 1 1 1;
-                        1 1 1 1 1 1 1;
-                        0 1 1 1 1 1 0;
-                        0 0 1 1 1 0 0]);
 
 @testset "LocalFilters" begin
 
-    @testset "Basics" begin
-        # Indices
-        let A = 1:4, B = [1,2,3], I = Indices(A, B)
+    @testset "Utilities" begin
+        @testset "Indices" begin
+            A = 1:4
+            B = [1,2,3]
+            I = @inferred Indices(A, B)
             @test IndexStyle(I) === IndexLinear()
             @test I === Indices(A)
             @test I === Indices(B)
             @test I(A) === eachindex(IndexStyle(I), A)
             @test I(B) === eachindex(IndexStyle(I), B)
-        end
-        let A = [1 2; 3 4; 5 6], B = [1 2 3; 4 5 6], I = Indices(A, B)
+            @test_throws DimensionMismatch I(A, B)
+            A = [1 2; 3 4; 5 6]
+            B = [1 2 3; 4 5 6]
+            I = @inferred Indices(A, B)
             @test IndexStyle(I) === IndexCartesian()
             @test I === Indices(A)
             @test I === Indices(B)
             @test I(A) === eachindex(IndexStyle(I), A)
             @test I(B) === eachindex(IndexStyle(I), B)
+            @test_throws DimensionMismatch I(A, B)
+            for S in (IndexLinear, IndexCartesian)
+                I = @inferred Indices{S}()
+                @test IndexStyle(I) === S()
+                @test I(A) === eachindex(S(), A)
+                @test I(B) === eachindex(S(), B)
+            end
         end
 
-        # unit_range
-        @test (@inferred unit_range(-1, 8)) === -1:8
-        @test (@inferred unit_range(Int16(-3), Int16(-1))) === -3:-1
-        @test (@inferred unit_range(0:3)) === 0:3
-        @test (@inferred unit_range(0x1:0x4)) === 1:4
-        @test (@inferred unit_range(Base.OneTo(9))) === Base.OneTo(9)
-        @test (@inferred unit_range(Base.OneTo{Int8}(6))) === Base.OneTo(6)
-        @test (@inferred unit_range(-2:1:7)) === -2:7
-        @test (@inferred unit_range(7:-1:-2)) === -2:7
-        @test (@inferred unit_range(0x2:0x1:0x20)) === 2:32
-        @test_throws ArgumentError unit_range(0x2:0x2:0x20)
-        @test (@inferred unit_range(CartesianIndices((-1:6, 0x0:0xa)))) === CartesianIndices((-1:6, 0:10))
-        @test (@inferred unit_range(CartesianIndices((Base.OneTo(7), Int16(3):Int16(3))))) === CartesianIndices((Base.OneTo(7), 3:3))
-        if VERSION ≥ v"1.6"
-            # Ranges can have a step in CartesianIndices
-            @test_throws ArgumentError unit_range(CartesianIndices((1:2:6,)))
-            @test (@inferred unit_range(CartesianIndices((2:1:6,)))) === CartesianIndices((2:6,))
-            @test (@inferred unit_range(CartesianIndices((6:-1:2,)))) === CartesianIndices((2:6,))
-        end
-
-        # centered_offset
-        @test_throws ArgumentError centered_offset(-1)
-        @test centered_offset(Int16(5)) === -3
-        @test centered_offset(Int16(4)) === -3
-
-        # kernel_range
-        @test_throws ArgumentError kernel_range(-1)
-        @test isempty(kernel_range(0))
-        @test (@inferred kernel_range(0)) === 0:-1
-        @test (@inferred kernel_range(1)) === 0:0
-        @test (@inferred kernel_range(4)) === -2:1
-        @test (@inferred kernel_range(5)) === -2:2
-        @test (@inferred kernel_range(-4:5)) === -4:5
-        @test (@inferred kernel_range(-4:1:5)) === -4:5
-        @test_throws ArgumentError kernel_range(-4:2:7)
-        @test (@inferred kernel_range(1,3)) === 1:3
-        @test (@inferred kernel_range(Int16(-3),Int8(5))) === -3:5
-        @test (@inferred kernel_range(Base.OneTo(7))) === Base.OneTo{Int}(7)
-        @test (@inferred kernel_range(Base.OneTo(Int16(7)))) === Base.OneTo{Int}(7)
-        @test (@inferred kernel_range(FORWARD_FILTER, -4:5)) === -4:5
-        @test (@inferred kernel_range(REVERSE_FILTER, -4:5)) === -5:4
-        @test (@inferred kernel_range(FORWARD_FILTER, -4:1:5)) === -4:5
-        @test (@inferred kernel_range(REVERSE_FILTER, -4:1:5)) === -5:4
-        @test (@inferred kernel_range(FORWARD_FILTER, 2, 8)) === 2:8
-        @test (@inferred kernel_range(REVERSE_FILTER, -1, 4)) === -4:1
-
-        # kernel
-        @test kernel() === FastUniformArray(true)
-        @test kernel(()) === FastUniformArray(true)
-        @test kernel(Dims{0}, ()) === FastUniformArray(true)
-        @test kernel(Dims{0}) === FastUniformArray(true)
-        @test kernel(Dims{2}, 6) === kernel(6, 6)
-        @test kernel(Dims{2}, 6) === box(-3:2,-3:2)
-        @test kernel(Dims{2}, 5, 6) === box(-2:2,-3:2)
-        @test kernel(5, 6) === box(-2:2,-3:2)
-        @test kernel(-2:4, 6) === box(-2:4,-3:2)
-        @test kernel(CartesianIndex(-2,1,0), CartesianIndex(4,9,5)) === box(-2:4, 1:9, 0:5)
-        @test kernel(-2:4, 1:9, 0:5) === box(-2:4, 1:9, 0:5)
-        for args in ((6, -1:3, 2:4),
-                     (CartesianIndex(-2,1,0), CartesianIndex(4,9,5)))
-            @test kernel(args...) === kernel(args)
-            @test kernel(Dims{3}, args...) ===
-                kernel(Dims{3}, args)
-        end
-        let R = CartesianIndices((6, -1:3, 2:4))
-            @test kernel(R) === box(R)
-            @test kernel(Dims{3}, R) === box(R)
-        end
-        if VERSION ≥ v"1.6"
-            # Ranges can have a step in CartesianIndices
-            @test_throws ArgumentError kernel(CartesianIndices((1:2:6,)))
-            @test kernel(CartesianIndices((1:1:6,))) === box(1:6)
-        end
-        @test_throws ArgumentError kernel(Dims{11})
-        @test_throws ArgumentError kernel(Dims{11}, :e)
-        @test_throws ArgumentError kernel(Dims{11}, :e, 1)
-        @test_throws ArgumentError kernel(Dims{11}, :e, 1, [1,3])
-
-        # ordering
-        let B = reshape(collect(1:20), (4,5)), R = box(CartesianIndices(B))
-            @test B[FORWARD_FILTER(CartesianIndex(2,3), CartesianIndex(3,5))] == B[1,2]
-            @test B[REVERSE_FILTER(CartesianIndex(2,3), CartesianIndex(-1,1))] == B[3,2]
-            @test R[FORWARD_FILTER(CartesianIndex(2,3), CartesianIndex(3,5))] == true
-            @test R[REVERSE_FILTER(CartesianIndex(2,3), CartesianIndex(-1,1))] == true
-        end
-
-        # centered
-        let B = reshape(collect(1:20), (4,5))
-            @test axes(centered(B)) == (-2:1, -2:2)
-            @test axes(centered(centered(B))) === axes(centered(B))
-            @test centered(centered(B)) === centered(B)
-        end
-
-        # limits
-        @test limits(Float32) === (-Float32(Inf), Float32(Inf))
-        @test limits(Int8) === (Int8(-128),Int8(127))
-
-        # check_axes
-        let dims = (4,5), A = reshape(collect(1:prod(dims)), dims),
-            B = ones(dims), C = rand(Float32, dims), D = centered(C), E = ones(dims..., 2)
+        @testset "check_axes" begin
+            dims = (4,5)
+            A = reshape(collect(1:prod(dims)), dims)
+            B = ones(dims)
+            C = rand(Float32, dims)
+            D = centered(C)
+            E = ones(dims..., 2)
             @test_throws DimensionMismatch check_axes(A, B, C, D)
             @test_throws DimensionMismatch check_axes(A, E)
             @test_throws DimensionMismatch check_axes(axes(A), B, C, D)
@@ -285,42 +183,156 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
             @test check_axes(Bool,axes(A),B,C,D) === false
         end
 
-        # FORWARD_FILTER/REVERSE_FILTER
-        @test reverse(FORWARD_FILTER) === REVERSE_FILTER
-        @test reverse(REVERSE_FILTER) === FORWARD_FILTER
-        @test (FORWARD_FILTER isa FilterOrdering) == true
-        @test (FORWARD_FILTER isa ForwardFilterOrdering) == true
-        @test (FORWARD_FILTER isa ReverseFilterOrdering) == false
-        @test (REVERSE_FILTER isa FilterOrdering) == true
-        @test (REVERSE_FILTER isa ForwardFilterOrdering) == false
-        @test (REVERSE_FILTER isa ReverseFilterOrdering) == true
-        let i = 3, j = 7
+        @testset "unit_range" begin
+            @test (@inferred unit_range(-1, 8)) === -1:8
+            @test (@inferred unit_range(Int16(-3), Int16(-1))) === -3:-1
+            @test (@inferred unit_range(0:3)) === 0:3
+            @test (@inferred unit_range(0x1:0x4)) === 1:4
+            @test (@inferred unit_range(Base.OneTo(9))) === Base.OneTo(9)
+            @test (@inferred unit_range(Base.OneTo{Int8}(6))) === Base.OneTo(6)
+            @test (@inferred unit_range(-2:1:7)) === -2:7
+            @test (@inferred unit_range(7:-1:-2)) === -2:7
+            @test (@inferred unit_range(0x2:0x1:0x20)) === 2:32
+            @test_throws ArgumentError unit_range(0x2:0x2:0x20)
+            @test (@inferred unit_range(CartesianIndices((-1:6, 0x0:0xa)))) === CartesianIndices((-1:6, 0:10))
+            @test (@inferred unit_range(CartesianIndices((Base.OneTo(7), Int16(3):Int16(3))))) === CartesianIndices((Base.OneTo(7), 3:3))
+            if VERSION ≥ v"1.6"
+                # Ranges can have a step in CartesianIndices
+                @test_throws ArgumentError unit_range(CartesianIndices((1:2:6,)))
+                @test (@inferred unit_range(CartesianIndices((2:1:6,)))) === CartesianIndices((2:6,))
+                @test (@inferred unit_range(CartesianIndices((6:-1:2,)))) === CartesianIndices((2:6,))
+            end
+        end
+
+        @testset "centered_offset" begin
+            @test_throws ArgumentError centered_offset(-1)
+            @test centered_offset(Int16(5)) === -3
+            @test centered_offset(Int16(4)) === -3
+        end
+
+        @testset "kernel_range" begin
+            @test_throws ArgumentError kernel_range(-1)
+            @test isempty(kernel_range(0))
+            @test (@inferred kernel_range(0)) === 0:-1
+            @test (@inferred kernel_range(1)) === 0:0
+            @test (@inferred kernel_range(4)) === -2:1
+            @test (@inferred kernel_range(5)) === -2:2
+            @test (@inferred kernel_range(-4:5)) === -4:5
+            @test (@inferred kernel_range(-4:1:5)) === -4:5
+            @test_throws ArgumentError kernel_range(-4:2:7)
+            @test (@inferred kernel_range(1,3)) === 1:3
+            @test (@inferred kernel_range(Int16(-3),Int8(5))) === -3:5
+            @test (@inferred kernel_range(Base.OneTo(7))) === Base.OneTo{Int}(7)
+            @test (@inferred kernel_range(Base.OneTo(Int16(7)))) === Base.OneTo{Int}(7)
+            @test (@inferred kernel_range(FORWARD_FILTER, -4:5)) === -4:5
+            @test (@inferred kernel_range(REVERSE_FILTER, -4:5)) === -5:4
+            @test (@inferred kernel_range(FORWARD_FILTER, -4:1:5)) === -4:5
+            @test (@inferred kernel_range(REVERSE_FILTER, -4:1:5)) === -5:4
+            @test (@inferred kernel_range(FORWARD_FILTER, 2, 8)) === 2:8
+            @test (@inferred kernel_range(REVERSE_FILTER, -1, 4)) === -4:1
+        end
+
+        @testset "kernel" begin
+            @test kernel() === FastUniformArray(true)
+            @test kernel(()) === FastUniformArray(true)
+            @test kernel(Dims{0}, ()) === FastUniformArray(true)
+            @test kernel(Dims{0}) === FastUniformArray(true)
+            @test kernel(Dims{2}, 6) === kernel(6, 6)
+            @test kernel(Dims{2}, 6) === box(-3:2,-3:2)
+            @test kernel(Dims{2}, 5, 6) === box(-2:2,-3:2)
+            @test kernel(5, 6) === box(-2:2,-3:2)
+            @test kernel(-2:4, 6) === box(-2:4,-3:2)
+            @test kernel(CartesianIndex(-2,1,0), CartesianIndex(4,9,5)) === box(-2:4, 1:9, 0:5)
+            @test kernel(-2:4, 1:9, 0:5) === box(-2:4, 1:9, 0:5)
+            for args in ((6, -1:3, 2:4),
+                         (CartesianIndex(-2,1,0), CartesianIndex(4,9,5)))
+                @test kernel(args...) === kernel(args)
+                @test kernel(Dims{3}, args...) ===
+                    kernel(Dims{3}, args)
+            end
+            R = CartesianIndices((6, -1:3, 2:4))
+            @test kernel(R) === box(R)
+            @test kernel(Dims{3}, R) === box(R)
+            if VERSION ≥ v"1.6"
+                # Ranges can have a step in CartesianIndices
+                @test_throws ArgumentError kernel(CartesianIndices((1:2:6,)))
+                @test kernel(CartesianIndices((1:1:6,))) === box(1:6)
+            end
+            @test_throws ArgumentError kernel(Dims{11})
+            @test_throws ArgumentError kernel(Dims{11}, :e)
+            @test_throws ArgumentError kernel(Dims{11}, :e, 1)
+            @test_throws ArgumentError kernel(Dims{11}, :e, 1, [1,3])
+        end
+
+        @testset "Ordering" begin
+            @test reverse(FORWARD_FILTER) === REVERSE_FILTER
+            @test reverse(REVERSE_FILTER) === FORWARD_FILTER
+            @test (FORWARD_FILTER isa FilterOrdering) == true
+            @test (FORWARD_FILTER isa ForwardFilterOrdering) == true
+            @test (FORWARD_FILTER isa ReverseFilterOrdering) == false
+            @test (REVERSE_FILTER isa FilterOrdering) == true
+            @test (REVERSE_FILTER isa ForwardFilterOrdering) == false
+            @test (REVERSE_FILTER isa ReverseFilterOrdering) == true
+            i, j = 3, 7
             @test FORWARD_FILTER(i, j) === j - i
             @test REVERSE_FILTER(i, j) === i - j
             @test FORWARD_FILTER(Int16(i), Int16(j)) === j - i
             @test REVERSE_FILTER(Int16(i), Int16(j)) === i - j
-        end
-        let i = CartesianIndex(3,4,5), j = CartesianIndex(-1,7,3)
+            i, j = CartesianIndex(3,4,5), CartesianIndex(-1,7,3)
             @test FORWARD_FILTER(i, j) === j - i
             @test REVERSE_FILTER(i, j) === i - j
+            B = reshape(collect(1:20), (4,5))
+            R = box(CartesianIndices(B))
+            @test B[FORWARD_FILTER(CartesianIndex(2,3), CartesianIndex(3,5))] == B[1,2]
+            @test B[REVERSE_FILTER(CartesianIndex(2,3), CartesianIndex(-1,1))] == B[3,2]
+            @test R[FORWARD_FILTER(CartesianIndex(2,3), CartesianIndex(3,5))] == true
+            @test R[REVERSE_FILTER(CartesianIndex(2,3), CartesianIndex(-1,1))] == true
+        end
+
+        @testset "centered" begin
+            B = reshape(collect(1:20), (4,5))
+            @test axes(centered(B)) == (-2:1, -2:2)
+            @test axes(centered(centered(B))) === axes(centered(B))
+            @test centered(centered(B)) === centered(B)
+        end
+
+        @testset "limits" begin
+            @test limits(Float32) === (-Float32(Inf), Float32(Inf))
+            @test limits(Int8) === (Int8(-128),Int8(127))
+        end
+
+        @testset "ball" begin
+            ball3x3 = centered(Bool[1 1 1;
+                                    1 1 1;
+                                    1 1 1]);
+            ball5x5 = centered(Bool[0 1 1 1 0;
+                                    1 1 1 1 1;
+                                    1 1 1 1 1;
+                                    1 1 1 1 1;
+                                    0 1 1 1 0]);
+            ball7x7 = centered(Bool[0 0 1 1 1 0 0;
+                                    0 1 1 1 1 1 0;
+                                    1 1 1 1 1 1 1;
+                                    1 1 1 1 1 1 1;
+                                    1 1 1 1 1 1 1;
+                                    0 1 1 1 1 1 0;
+                                    0 0 1 1 1 0 0]);
+            @test ball(Dims{2}, 1.5) == ball3x3
+            @test ball(Dims{2}, 2.5) == ball5x5
+            @test ball(Dims{2}, 3.5) == ball7x7
+            @test ball(Dims{3}, 3) == ball(Dims{3}, 3.0)
         end
 
         # FIXME: is_morpho_math_box
         # FIXME: strel
 
-        # ball
-        @test ball(Dims{2}, 1.5) == ball3x3
-        @test ball(Dims{2}, 2.5) == ball5x5
-        @test ball(Dims{2}, 3.5) == ball7x7
-        @test ball(Dims{3}, 3) == ball(Dims{3}, 3.0)
-    end
+    end # @testset "Utilities"
 
     @testset "Local mean" begin
-        let A = ones(Float64, 20)
-            @test localmean(A, 3) == A
-            @test localmean(A, FORWARD_FILTER, 3) == A
-            @test localmean(A, REVERSE_FILTER, 3) == A
-        end
+        A = ones(Float64, 20)
+        @test localmean(A, 3) == A
+        @test localmean(A, FORWARD_FILTER, 3) == A
+        @test localmean(A, REVERSE_FILTER, 3) == A
     end
 
     # See https://github.com/emmt/LocalFilters.jl/issues/6
@@ -358,210 +370,208 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
         wrk = similar(A);     # workspace
         B2 = similar(A);      # for in-place operation
         C = copy(A);          # to check that the source is left unchanged
-        @testset "Morpho-math operations" begin
-            @testset "$name" for (name, func, func!) in (("Erosion", erode, erode!),
-                                                         ("Dilation", dilate, dilate!))
-                # ... with a simple rectangular structuring element
-                B1 = @inferred func(A, R; slow=true);
-                @test C == A   # check that A is left unchanged
-                @test B2 === @inferred func!(B2, A, R; slow=true)
-                @test C == A   # check that A is left unchanged
-                @test B2 == B1 # check if in-place and out-of-place yield the same result
-                @test B1 == @inferred func(A, R; slow=false);
-                @test C == A   # check that A is left unchanged
-                @test B2 === @inferred func!(B2, A, R; slow=false)
-                @test C == A   # check that A is left unchanged
-                @test B2 == B1 # check if in-place and out-of-place yield the same result
-                # FIXME: @test B2 === @inferred func!(copyto!(B2, A), R)
-                # FIXME: @test B2 == B1 # check if in-place and out-of-place yield the same result
-                if T <: AbstractFloat
-                    if VERSION < v"1.8" # Inference broken here for old Julia versions
-                        F = strel(T, R) # flat structuring element like R
-                    else
-                        F = @inferred strel(T, R) # flat structuring element like R
-                    end
-                    @test B1 == @inferred func(A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test B2 === @inferred func!(B2, A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test B2 == B1 # check if in-place and out-of-place yield the same result
+        @testset "$name" for (name, func, func!) in (("Erosion", erode, erode!),
+                                                     ("Dilation", dilate, dilate!))
+            # ... with a simple rectangular structuring element
+            B1 = @inferred func(A, R; slow=true);
+            @test C == A   # check that A is left unchanged
+            @test B2 === @inferred func!(B2, A, R; slow=true)
+            @test C == A   # check that A is left unchanged
+            @test B2 == B1 # check if in-place and out-of-place yield the same result
+            @test B1 == @inferred func(A, R; slow=false);
+            @test C == A   # check that A is left unchanged
+            @test B2 === @inferred func!(B2, A, R; slow=false)
+            @test C == A   # check that A is left unchanged
+            @test B2 == B1 # check if in-place and out-of-place yield the same result
+            # FIXME: @test B2 === @inferred func!(copyto!(B2, A), R)
+            # FIXME: @test B2 == B1 # check if in-place and out-of-place yield the same result
+            if T <: AbstractFloat
+                if VERSION < v"1.8" # Inference broken here for old Julia versions
+                    F = strel(T, R) # flat structuring element like R
+                else
+                    F = @inferred strel(T, R) # flat structuring element like R
                 end
-                # ... with a shaped structuring element
-                B1 = @inferred func(A, S);
+                @test B1 == @inferred func(A, F)
                 @test C == A   # check that A is left unchanged
-                @test B2 === @inferred func!(B2, A, S)
+                @test B2 === @inferred func!(B2, A, F)
                 @test C == A   # check that A is left unchanged
                 @test B2 == B1 # check if in-place and out-of-place yield the same result
-                if T <: AbstractFloat
-                    if VERSION < v"1.8" # Inference broken here for old Julia versions
-                        F = strel(T, S) # flat structuring element like S
-                    else
-                        F = @inferred strel(T, S) # flat structuring element like S
-                    end
-                    @test B1 == @inferred func(A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test B2 === @inferred func!(B2, A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test B2 == B1 # check if in-place and out-of-place yield the same result
-                end
             end
-            @testset "Local min. and max." begin
-                B1 = similar(A)
-                # ... with a simple rectangular structuring element
-                A1, A2 = @inferred localextrema(A, R);
-                @test C == A   # check that A is left unchanged
-                @test A1 == erode(A, R)  # `erode` also yields local min.
-                @test A2 == dilate(A, R) # `dilate` also yields local max.
-                @test (B1, B2) === @inferred localextrema!(B1, B2, A, R)
-                @test C == A   # check that A is left unchanged
-                @test B1 == A1
-                @test B2 == A2
-                if T <: AbstractFloat
-                    if VERSION < v"1.8" # Inference broken here for old Julia versions
-                        F = strel(T, R) # flat structuring element like R
-                    else
-                        F = @inferred strel(T, R) # flat structuring element like R
-                    end
-                    @test (A1, A2) == @inferred localextrema(A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test (B1, B2) === @inferred localextrema!(B1, B2, A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test B1 == A1
-                    @test B2 == A2
+            # ... with a shaped structuring element
+            B1 = @inferred func(A, S);
+            @test C == A   # check that A is left unchanged
+            @test B2 === @inferred func!(B2, A, S)
+            @test C == A   # check that A is left unchanged
+            @test B2 == B1 # check if in-place and out-of-place yield the same result
+            if T <: AbstractFloat
+                if VERSION < v"1.8" # Inference broken here for old Julia versions
+                    F = strel(T, S) # flat structuring element like S
+                else
+                    F = @inferred strel(T, S) # flat structuring element like S
                 end
-                # ... with a shaped structuring element
-                A1, A2 = @inferred localextrema(A, S);
+                @test B1 == @inferred func(A, F)
                 @test C == A   # check that A is left unchanged
-                @test A1 == erode(A, S)  # `erode` also yields local min.
-                @test A2 == dilate(A, S) # `dilate` also yields local max.
-                @test (B1, B2) === @inferred localextrema!(B1, B2, A, S)
-                @test C == A   # check that A is left unchanged
-                @test B1 == A1
-                @test B2 == A2
-                if T <: AbstractFloat
-                    if VERSION < v"1.8" # Inference broken here for old Julia versions
-                        F = strel(T, S) # flat structuring element like S
-                    else
-                        F = @inferred strel(T, S) # flat structuring element like S
-                    end
-                    @test (A1, A2) == @inferred localextrema(A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test (B1, B2) === @inferred localextrema!(B1, B2, A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test B1 == A1
-                    @test B2 == A2
-                end
-            end
-            @testset "$name" for (name, func, func!) in (("Opening", opening, opening!),
-                                                         ("Closing", closing, closing!))
-                # ... with a simple rectangular structuring element
-                B1 = @inferred func(A, R; slow=true);
-                @test C == A   # check that A is left unchanged
-                if func === opening
-                    @test B1 == dilate(erode(A, R), R) # opening is erosion followed by dilation
-                elseif func === closing
-                    @test B1 == erode(dilate(A, R), R) # closing is dilation followed by erosion
-                end
-                @test B2 === @inferred func!(B2, wrk, A, R; slow=true)
+                @test B2 === @inferred func!(B2, A, F)
                 @test C == A   # check that A is left unchanged
                 @test B2 == B1 # check if in-place and out-of-place yield the same result
-                @test B1 == @inferred func(A, R; slow=false);
-                @test C == A   # check that A is left unchanged
-                @test B2 === @inferred func!(B2, wrk, A, R; slow=false)
-                @test C == A   # check that A is left unchanged
-                @test B2 == B1 # check if in-place and out-of-place yield the same result
-                if T <: AbstractFloat
-                    if VERSION < v"1.8" # Inference broken here for old Julia versions
-                        F = strel(T, R) # flat structuring element like R
-                    else
-                        F = @inferred strel(T, R) # flat structuring element like R
-                    end
-                    @test B1 == @inferred func(A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test B2 === @inferred func!(B2, wrk, A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test B2 == B1 # check if in-place and out-of-place yield the same result
-                end
-                # ... with a shaped structuring element
-                B1 = @inferred func(A, S);
-                @test C == A   # check that A is left unchanged
-                if func === opening
-                    @test B1 == dilate(erode(A, S), S) # opening is erosion followed by dilation
-                elseif func === closing
-                    @test B1 == erode(dilate(A, S), S) # closing is dilation followed by erosion
-                end
-                @test B2 === @inferred func!(B2, wrk, A, S)
-                @test C == A   # check that A is left unchanged
-                @test B2 == B1 # check if in-place and out-of-place yield the same result
-                if T <: AbstractFloat
-                    if VERSION < v"1.8" # Inference broken here for old Julia versions
-                        F = strel(T, S) # flat structuring element like S
-                    else
-                        F = @inferred strel(T, S) # flat structuring element like S
-                    end
-                    @test B1 == @inferred func(A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test B2 === @inferred func!(B2, wrk, A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test B2 == B1 # check if in-place and out-of-place yield the same result
-                end
-            end
-            @testset "$name" for (name, func, func!) in (("Top-hat", top_hat, top_hat!),
-                                                         ("Bottom-hat", bottom_hat, bottom_hat!))
-                # ... with a simple rectangular structuring element
-                B1 = @inferred func(A, R; slow=true);
-                @test C == A   # check that A is left unchanged
-                if func === top_hat
-                    @test B1 == A .- opening(A, R) # definition of top-hat
-                elseif func === bottom_hat
-                    @test B1 == closing(A, R) .- A # definition of bottom-hat
-                end
-                @test B2 === @inferred func!(B2, wrk, A, R; slow=true)
-                @test C == A   # check that A is left unchanged
-                @test B2 == B1 # check that in-place and out-of-place yield the same result
-                @test B1 == @inferred func(A, R; slow=false);
-                @test C == A   # check that A is left unchanged
-                @test B2 === @inferred func!(B2, wrk, A, R; slow=false)
-                @test C == A   # check that A is left unchanged
-                @test B2 == B1 # check that in-place and out-of-place yield the same result
-                if T <: AbstractFloat
-                    if VERSION < v"1.8" # Inference broken here for old Julia versions
-                        F = strel(T, R) # flat structuring element like R
-                    else
-                        F = @inferred strel(T, R) # flat structuring element like R
-                    end
-                    @test B1 == @inferred func(A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test B2 === @inferred func!(B2, wrk, A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test B2 == B1 # check if in-place and out-of-place yield the same result
-                end
-                # ... with a shaped structuring element
-                B1 = @inferred func(A, S);
-                @test C == A   # check that A is left unchanged
-                if func === top_hat
-                    @test B1 == A .- opening(A, S) # definition of top-hat
-                elseif func === bottom_hat
-                    @test B1 == closing(A, S) .- A # definition of bottom-hat
-                end
-                @test B2 === @inferred func!(B2, wrk, A, S)
-                @test C == A   # check that A is left unchanged
-                @test B2 == B1 # check if in-place and out-of-place yield the same result
-                if T <: AbstractFloat
-                    if VERSION < v"1.8" # Inference broken here for old Julia versions
-                        F = strel(T, S) # flat structuring element like S
-                    else
-                        F = @inferred strel(T, S) # flat structuring element like S
-                    end
-                    @test B1 == @inferred func(A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test B2 === @inferred func!(B2, wrk, A, F)
-                    @test C == A   # check that A is left unchanged
-                    @test B2 == B1 # check if in-place and out-of-place yield the same result
-                end
             end
         end
-    end
+        @testset "Local min. and max." begin
+            B1 = similar(A)
+            # ... with a simple rectangular structuring element
+            A1, A2 = @inferred localextrema(A, R);
+            @test C == A   # check that A is left unchanged
+            @test A1 == erode(A, R)  # `erode` also yields local min.
+            @test A2 == dilate(A, R) # `dilate` also yields local max.
+            @test (B1, B2) === @inferred localextrema!(B1, B2, A, R)
+            @test C == A   # check that A is left unchanged
+            @test B1 == A1
+            @test B2 == A2
+            if T <: AbstractFloat
+                if VERSION < v"1.8" # Inference broken here for old Julia versions
+                    F = strel(T, R) # flat structuring element like R
+                else
+                    F = @inferred strel(T, R) # flat structuring element like R
+                end
+                @test (A1, A2) == @inferred localextrema(A, F)
+                @test C == A   # check that A is left unchanged
+                @test (B1, B2) === @inferred localextrema!(B1, B2, A, F)
+                @test C == A   # check that A is left unchanged
+                @test B1 == A1
+                @test B2 == A2
+            end
+            # ... with a shaped structuring element
+            A1, A2 = @inferred localextrema(A, S);
+            @test C == A   # check that A is left unchanged
+            @test A1 == erode(A, S)  # `erode` also yields local min.
+            @test A2 == dilate(A, S) # `dilate` also yields local max.
+            @test (B1, B2) === @inferred localextrema!(B1, B2, A, S)
+            @test C == A   # check that A is left unchanged
+            @test B1 == A1
+            @test B2 == A2
+            if T <: AbstractFloat
+                if VERSION < v"1.8" # Inference broken here for old Julia versions
+                    F = strel(T, S) # flat structuring element like S
+                else
+                    F = @inferred strel(T, S) # flat structuring element like S
+                end
+                @test (A1, A2) == @inferred localextrema(A, F)
+                @test C == A   # check that A is left unchanged
+                @test (B1, B2) === @inferred localextrema!(B1, B2, A, F)
+                @test C == A   # check that A is left unchanged
+                @test B1 == A1
+                @test B2 == A2
+            end
+        end
+        @testset "$name" for (name, func, func!) in (("Opening", opening, opening!),
+                                                     ("Closing", closing, closing!))
+            # ... with a simple rectangular structuring element
+            B1 = @inferred func(A, R; slow=true);
+            @test C == A   # check that A is left unchanged
+            if func === opening
+                @test B1 == dilate(erode(A, R), R) # opening is erosion followed by dilation
+            elseif func === closing
+                @test B1 == erode(dilate(A, R), R) # closing is dilation followed by erosion
+            end
+            @test B2 === @inferred func!(B2, wrk, A, R; slow=true)
+            @test C == A   # check that A is left unchanged
+            @test B2 == B1 # check if in-place and out-of-place yield the same result
+            @test B1 == @inferred func(A, R; slow=false);
+            @test C == A   # check that A is left unchanged
+            @test B2 === @inferred func!(B2, wrk, A, R; slow=false)
+            @test C == A   # check that A is left unchanged
+            @test B2 == B1 # check if in-place and out-of-place yield the same result
+            if T <: AbstractFloat
+                if VERSION < v"1.8" # Inference broken here for old Julia versions
+                    F = strel(T, R) # flat structuring element like R
+                else
+                    F = @inferred strel(T, R) # flat structuring element like R
+                end
+                @test B1 == @inferred func(A, F)
+                @test C == A   # check that A is left unchanged
+                @test B2 === @inferred func!(B2, wrk, A, F)
+                @test C == A   # check that A is left unchanged
+                @test B2 == B1 # check if in-place and out-of-place yield the same result
+            end
+            # ... with a shaped structuring element
+            B1 = @inferred func(A, S);
+            @test C == A   # check that A is left unchanged
+            if func === opening
+                @test B1 == dilate(erode(A, S), S) # opening is erosion followed by dilation
+            elseif func === closing
+                @test B1 == erode(dilate(A, S), S) # closing is dilation followed by erosion
+            end
+            @test B2 === @inferred func!(B2, wrk, A, S)
+            @test C == A   # check that A is left unchanged
+            @test B2 == B1 # check if in-place and out-of-place yield the same result
+            if T <: AbstractFloat
+                if VERSION < v"1.8" # Inference broken here for old Julia versions
+                    F = strel(T, S) # flat structuring element like S
+                else
+                    F = @inferred strel(T, S) # flat structuring element like S
+                end
+                @test B1 == @inferred func(A, F)
+                @test C == A   # check that A is left unchanged
+                @test B2 === @inferred func!(B2, wrk, A, F)
+                @test C == A   # check that A is left unchanged
+                @test B2 == B1 # check if in-place and out-of-place yield the same result
+            end
+        end
+        @testset "$name" for (name, func, func!) in (("Top-hat", top_hat, top_hat!),
+                                                     ("Bottom-hat", bottom_hat, bottom_hat!))
+            # ... with a simple rectangular structuring element
+            B1 = @inferred func(A, R; slow=true);
+            @test C == A   # check that A is left unchanged
+            if func === top_hat
+                @test B1 == A .- opening(A, R) # definition of top-hat
+            elseif func === bottom_hat
+                @test B1 == closing(A, R) .- A # definition of bottom-hat
+            end
+            @test B2 === @inferred func!(B2, wrk, A, R; slow=true)
+            @test C == A   # check that A is left unchanged
+            @test B2 == B1 # check that in-place and out-of-place yield the same result
+            @test B1 == @inferred func(A, R; slow=false);
+            @test C == A   # check that A is left unchanged
+            @test B2 === @inferred func!(B2, wrk, A, R; slow=false)
+            @test C == A   # check that A is left unchanged
+            @test B2 == B1 # check that in-place and out-of-place yield the same result
+            if T <: AbstractFloat
+                if VERSION < v"1.8" # Inference broken here for old Julia versions
+                    F = strel(T, R) # flat structuring element like R
+                else
+                    F = @inferred strel(T, R) # flat structuring element like R
+                end
+                @test B1 == @inferred func(A, F)
+                @test C == A   # check that A is left unchanged
+                @test B2 === @inferred func!(B2, wrk, A, F)
+                @test C == A   # check that A is left unchanged
+                @test B2 == B1 # check if in-place and out-of-place yield the same result
+            end
+            # ... with a shaped structuring element
+            B1 = @inferred func(A, S);
+            @test C == A   # check that A is left unchanged
+            if func === top_hat
+                @test B1 == A .- opening(A, S) # definition of top-hat
+            elseif func === bottom_hat
+                @test B1 == closing(A, S) .- A # definition of bottom-hat
+            end
+            @test B2 === @inferred func!(B2, wrk, A, S)
+            @test C == A   # check that A is left unchanged
+            @test B2 == B1 # check if in-place and out-of-place yield the same result
+            if T <: AbstractFloat
+                if VERSION < v"1.8" # Inference broken here for old Julia versions
+                    F = strel(T, S) # flat structuring element like S
+                else
+                    F = @inferred strel(T, S) # flat structuring element like S
+                end
+                @test B1 == @inferred func(A, F)
+                @test C == A   # check that A is left unchanged
+                @test B2 === @inferred func!(B2, wrk, A, F)
+                @test C == A   # check that A is left unchanged
+                @test B2 == B1 # check if in-place and out-of-place yield the same result
+            end
+        end
+    end # @testset "Morphology"
 
 #=
     @testset "Neighborhoods" begin
@@ -696,7 +706,6 @@ ball7x7 = centered(Bool[0 0 1 1 1 0 0;
     end
 =#
 
-    # Bilateral filter.
     @testset "Bilateral filter" begin
         A = randn(Float64, 128, 100)
         σr = 1.2
