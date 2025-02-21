@@ -406,7 +406,6 @@ f2(x) = x > 0.5
             @test ball(Dims{3}, 3) == ball(Dims{3}, 3.0)
         end
 
-        # FIXME: strel
         @testset "is_morpho_math_box" begin
             @test  is_morpho_math_box(box(-1:2, 2:4))
             @test  is_morpho_math_box(ones(Bool, 3, 4))
@@ -421,6 +420,30 @@ f2(x) = x > 0.5
             @test_throws Exception is_morpho_math_box(R)
         end
 
+        @testset "strel" begin
+            T = Float32
+            A = box(-3:3)
+            B = FastUniformArray(zero(T), axes(A))
+            @test A === @inferred strel(Bool, A)
+            @test A === @inferred strel(Bool, CartesianIndices(A))
+            @test B === @inferred strel(T, CartesianIndices(A))
+            A = box(2, -1:2)
+            B = FastUniformArray(zero(T), axes(A))
+            @test A === @inferred strel(Bool, A)
+            @test A === @inferred strel(Bool, CartesianIndices(A))
+            @test B === @inferred strel(T, CartesianIndices(A))
+            A = centered(ones(Bool, 3, 4, 5))
+            S = box(axes(A))
+            B = FastUniformArray(zero(T), axes(A))
+            @test A === @inferred strel(Bool, A)
+            @test A ==  @inferred strel(Bool, CartesianIndices(A))
+            @test S === @inferred strel(Bool, CartesianIndices(A))
+            @test B === @inferred strel(T, CartesianIndices(A))
+            A = @inferred ball(Dims{3}, 3.5)
+            B = map(x -> x ? zero(T) : -T(Inf), A)
+            @test A === @inferred strel(Bool, A)
+            @test B ==  @inferred strel(T, A)
+        end
 
     end # @testset "Utilities"
 
