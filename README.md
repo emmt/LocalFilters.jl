@@ -32,7 +32,7 @@ Packages with overlapping functionalities:
   multidimensional arrays (not just *images*), also implement various boundary conditions;
 
 * [ImageMorphology](https://github.com/JuliaImages/ImageMorphology.jl) for fast
-  morphological operations with separable structuring elements;
+  morphological operations with separable structuring elements.
 
 
 ## Available filters
@@ -50,7 +50,7 @@ Packages with overlapping functionalities:
   most general linear filter.
 
 * `convolve(A,B)` performs a discrete convolution of `A` by the kernel `B`. This is the
-  same as a discrete correlation of `A` by the symmetrical of `B`.
+  same as a discrete correlation of `A` by `reverse_kernel(B)`.
 
 
 ### Mathematical morphology
@@ -82,8 +82,8 @@ morphology](https://en.wikipedia.org/wiki/Mathematical_morphology) operations:
 In mathematical morphology, the structuring element `B` defines the local neighborhood of
 each index in the source array. It can be a sliding hyper-rectangular Cartesian window or
 an array of Booleans to define a more complex neighborhood shape. If `B` is a single odd
-integer (as it is by default), the structuring element is assumed to be a sliding window
-of size `B` along every dimension of `A`.
+integer (as it is by default), the structuring element is assumed to be a centered sliding
+window of size `B` along every dimension of `A`.
 
 
 ### Other non-linear filters

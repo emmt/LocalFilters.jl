@@ -226,7 +226,7 @@ unit_range(start::Int, stop::Int) = start:stop
 function unit_range(rng::AbstractRange{<:Integer})
     step = Base.step(rng)
     isone(abs(step)) || throw(ArgumentError("invalid non-unit step range"))
-    start, stop = as(Int, first(rng)), as(Int, last(rng)) # convert to Int prior to negate
+    start, stop = as(Int, first(rng)), as(Int, last(rng)) # convert to Int prior to swap
     if step < zero(step)
         start, stop = stop, start
     end
@@ -243,16 +243,19 @@ function unit_range(R::CartesianIndices{N}) where {N}
 end
 
 """
-    reverse_kernel(A::AbstractArray) -> B
+    B = reverse_kernel(args...)
 
-yields a kernel `B` which is equivalent to `A` but with reversed ordering in the sense
-that `B[i] == A[-i]` holds for all indices `i` such that `-i` is a valid index in `A`. As
-a consequence, a correlation by `B` yields the same result as a convolution by `A` and
-conversely.
+yields a kernel `B` which is similar to `A = kernel(args...)` but with reversed ordering
+in the sense that `B[i] == A[-i]` holds for all indices `i` such that `-i` is a valid
+index in `A`. As a consequence, a correlation by `B` yields the same result as a
+convolution by `A` and conversely.
 
 See also [`LocalFilters.kernel`](@ref) and [`LocalFilters.strel`](@ref).
 
 """
+reverse_kernel(args...; kwds...) = reverse_kernel(kernel(args...; kwds...)::AbstractArray)
+reverse_kernel(::Type{Dims{N}}, A::AbstractArray{N}) where {N} = reverse_kernel(A)
+reverse_kernel(R::CartesianIndices) = box(map(reverse_kernel_axis, R.indices))
 reverse_kernel(A::AbstractArray) = OffsetArray(reverse(A), map(reverse_kernel_axis, axes(A)))
 reverse_kernel(A::OffsetArray) = OffsetArray(reverse(parent(A)), map(reverse_kernel_axis, axes(A)))
 for type in (:UniformArray, :FastUniformArray, :MutableUniformArray)
@@ -260,19 +263,12 @@ for type in (:UniformArray, :FastUniformArray, :MutableUniformArray)
         $type(StructuredArrays.value(A), map(reverse_kernel_axis, axes(A)))
 end
 
-function reverse_kernel_axis(r::AbstractUnitRange{<:Integer})
-    start, stop = as(Int, first(r)), as(Int, last(r))
-    return (-stop):(-start)
-end
-function reverse_kernel_axis(r::AbstractRange{<:Integer})
-    # Always yields a range with a nonnegative step.
-    start, step, stop = as(Int, first(r)), as(Int, Base.step(r)), as(Int, last(r))
-    if step ≥ zero(step)
-        return (-stop):step:(-start)
-    else
-        return (-start):(-step):(-stop)
-    end
-end
+reverse_kernel_axis(start::Integer, stop::Integer) =
+    unit_range(-as(Int, stop), -as(Int, start)) # convert to Int prior to negate
+reverse_kernel_axis(rng::AbstractUnitRange{<:Integer}) =
+    reverse_kernel_axis(first(rng), last(rng))
+reverse_kernel_axis(rng::AbstractRange{<:Integer}) =
+    reverse_kernel_axis(unit_range(rng))
 
 Base.reverse(::ForwardFilterOrdering) = REVERSE_FILTER
 Base.reverse(::ReverseFilterOrdering) = FORWARD_FILTER

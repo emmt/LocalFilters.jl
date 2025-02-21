@@ -33,8 +33,8 @@
   wider integer type to avoid overflows. This is similar to what is done by base reduction
   methods such as `sum` and `prod`.
 
-* Exported method `reverse_kernel` yields a reversed kernel such that correlation by
-  `reverse_kernel(B)` is identical to convolution by `B` and conversely.
+* Exported method `B = reverse_kernel(args...)` yields a reversed kernel such that
+  correlation by `B` is identical to convolution by `A = kernel(args...)` and conversely.
 
 * Constants for filter ordering follow more general naming rules: `FORWARD_FILTER` and
   `REVERSE_FILTER` instead of `ForwardFilter` and `ReverseFilter`.
