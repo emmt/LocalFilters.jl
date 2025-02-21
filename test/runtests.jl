@@ -406,8 +406,21 @@ f2(x) = x > 0.5
             @test ball(Dims{3}, 3) == ball(Dims{3}, 3.0)
         end
 
-        # FIXME: is_morpho_math_box
         # FIXME: strel
+        @testset "is_morpho_math_box" begin
+            @test  is_morpho_math_box(box(-1:2, 2:4))
+            @test  is_morpho_math_box(ones(Bool, 3, 4))
+            @test !is_morpho_math_box(ball(Dims{2}, 1.0))
+            @test  is_morpho_math_box(ball(Dims{2}, 1.5))
+            @test !is_morpho_math_box(ball(Dims{2}, 2.0))
+            A = Array{Float32}(undef, 2, 3, 4)
+            @test  is_morpho_math_box(fill!(A, 0))
+            @test !is_morpho_math_box(fill!(A, 1))
+            @test !is_morpho_math_box(fill!(A, -Inf))
+            R = CartesianIndices(A)
+            @test_throws Exception is_morpho_math_box(R)
+        end
+
 
     end # @testset "Utilities"
 

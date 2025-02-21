@@ -2,7 +2,8 @@
 
 - Implement other boundary conditions.
 
-- More possibilities for `strel`.
+- Consistency: more possibilities for `strel` (like building a kernel) and
+  `is_morpho_math_box` should yield `true` for any acceptable arguments for `box`.
 
 - Check doc. for math. morphology and bilateral filter.
 
