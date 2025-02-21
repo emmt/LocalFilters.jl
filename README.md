@@ -1,25 +1,25 @@
-# LocalFilters.jl
+# LocalFilters
 
-[![Doc. Dev][doc-dev-img]][doc-dev-url]
-[![Doc. Stable][doc-stable-img]][doc-stable-url]
-[![License][license-img]][license-url]
-[![Build Status][github-ci-img]][github-ci-url]
-[![Build Status][appveyor-img]][appveyor-url]
-[![Coverage][codecov-img]][codecov-url]
+[![Doc. Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://emmt.github.io/LocalFilters.jl/dev)
+[![Doc. Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://emmt.github.io/LocalFilters.jl/stable)
+[![License](http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](./LICENSE.md)
+[![Build Status](https://github.com/emmt/LocalFilters.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/emmt/LocalFilters.jl/actions/workflows/CI.yml?query=branch%3Amaster)
+[![Build Status](https://ci.appveyor.com/api/projects/status/github/emmt/LocalFilters.jl?branch=master)](https://ci.appveyor.com/project/emmt/LocalFilters-jl/branch/master)
+[![codecov](https://codecov.io/github/emmt/LocalFilters.jl/graph/badge.svg?token=aA8yUwB2En)](https://codecov.io/github/emmt/LocalFilters.jl)
 
 [Julia](http://julialang.org/) package `LocalFilters` implements multi-dimensional local
 filters such as discrete convolution or correlation, local mean, mathematical morphology,
 etc., and provides support to build custom local filters.
 
-The [Reference Manual](doc-dev-url) provides more exhaustive documentation. This page
-summarizes the principles and the features of `LocalFilters`. This document is structured
-as follows:
+The [Reference Manual](https://emmt.github.io/LocalFilters.jl/dev) provides more
+exhaustive documentation. This page summarizes the principles and the features of
+`LocalFilters`:
 
 * [Available filters](#available-filters) lists ready to use filters.
 
 * [Neighborhoods](#neighborhoods) describes the concept of *neighborhoods*, also known as
   *sliding windows* in image processing or *structuring element* in mathematical
-  morphology.
+  morphology. Neighborhoods are built by the `kernel` function.
 
 * [Build your own filters](#build-your-own-filters) explains how to implement custom local
   filters.
@@ -189,24 +189,3 @@ add https://github.com/emmt/LocalFilters.jl
 ```
 
 The `LocalFilters` package is pure Julia code and nothing has to be build.
-
-[doc-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
-[doc-stable-url]: https://emmt.github.io/LocalFilters.jl/stable
-
-[doc-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
-[doc-dev-url]: https://emmt.github.io/LocalFilters.jl/dev
-
-[license-url]: ./LICENSE.md
-[license-img]: http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
-
-[github-ci-img]: https://github.com/emmt/LocalFilters.jl/actions/workflows/CI.yml/badge.svg?branch=master
-[github-ci-url]: https://github.com/emmt/LocalFilters.jl/actions/workflows/CI.yml?query=branch%3Amaster
-
-[appveyor-img]: https://ci.appveyor.com/api/projects/status/github/emmt/LocalFilters.jl?branch=master
-[appveyor-url]: https://ci.appveyor.com/project/emmt/LocalFilters-jl/branch/master
-
-[codecov-img]: http://codecov.io/github/emmt/LocalFilters.jl/coverage.svg?branch=master
-[codecov-url]: http://codecov.io/github/emmt/LocalFilters.jl?branch=master
-
-[julia-url]: https://julialang.org/
-[julia-pkgs-url]: https://pkg.julialang.org/
