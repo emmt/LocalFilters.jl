@@ -7,11 +7,7 @@ tools.
 
 """
 macro public(args::Union{Symbol,Expr}...)
-    if VERSION ≥ v"1.11.0-DEV.469"
-        esc(Expr(:public, args...))
-    else
-        nothing
-    end
+    VERSION ≥ v"1.11.0-DEV.469" ? esc(Expr(:public, args...)) : nothing
 end
 
 if VERSION < v"1.7.0-beta1"

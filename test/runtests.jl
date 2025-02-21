@@ -9,7 +9,8 @@ using LocalFilters:
     Box, box, ball, Indices, kernel_range, kernel, limits,
     is_morpho_math_box, check_axes, localindices,
     ranges, centered, centered_offset, unit_range,
-    top_hat!, bottom_hat!
+    top_hat!, bottom_hat!,
+    Returns
 
 #=
 # Selector for reference methods.
@@ -130,6 +131,12 @@ f2(x) = x > 0.5
 @testset "LocalFilters" begin
 
     @testset "Utilities" begin
+
+        @testset "Returns" begin
+            @test (1,1,1) === @inferred ntuple(Returns(1), Val(3))
+            @test (0x1,0x1,0x1) === @inferred ntuple(Returns{UInt8}(1), Val(3))
+        end
+
         @testset "Indices" begin
             A = 1:4
             B = [1,2,3]
