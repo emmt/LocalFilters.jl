@@ -389,8 +389,8 @@ is_morpho_math_box(R::CartesianIndices) =
 box(A::Box) = A
 box(A::AbstractArray) = box(axes(A))
 box(R::CartesianIndices) = box(R.indices)
-box(I::eltype(ArrayAxes)...) = box(I)
-box(I::ArrayAxes) = FastUniformArray(true, I)
+box(I::Axis...) = box(I)
+box(I::Tuple{Vararg{Axis}}) = FastUniformArray(true, I)
 
 """
     strel(T, A)
