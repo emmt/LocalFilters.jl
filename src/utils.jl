@@ -386,13 +386,21 @@ is_morpho_math_box(A::AbstractArray{<:AbstractFloat}) = all(iszero, A)
 is_morpho_math_box(R::CartesianIndices) =
     error("Cartesian range must be converted to a kernel")
 
-# Yield a an hyper-rectangular box for mathematical morphology operations with the same
-# axes or indices as its argument(s).
+"""
+    box(args...) -> B::Box
+
+yields an hyper-rectangular box for mathematical morphology operations with the same axes
+or indices as its argument(s).
+
+See also [`LocalFilters.kernel`](@ref) and [`LocalFilters.strel`](@ref).
+
+""" box
+@public box
 box(A::Box) = A
 box(A::AbstractArray) = box(axes(A))
 box(R::CartesianIndices) = box(R.indices)
-box(I::Axis...) = box(I)
-box(I::Tuple{Vararg{Axis}}) = FastUniformArray(true, I)
+box(inds::Axis...) = box(inds)
+box(inds::NTuple{N,Axis}) where {N} = strel(Bool, inds)
 
 """
     strel(T, A)

@@ -38,17 +38,16 @@ const Window{N} = Union{Axis,NTuple{N,Axis},NTuple{2,CartesianIndex{N}},
                         CartesianIndices{N}}
 
 """
-    const LocalFilters.Box{N,I} = FastUniformArray{Bool,N,true,I}
+    const LocalFilters.Box{N} = FastUniformArray{Bool,N,true}
 
-is an alias to the type of `N`-dimensional arrays whose elements are all `true`. Parameter
-`I` is the type of the tuple storing the size or axes of the array. Instances of this kind
-are used to represent hyper-rectangular sliding windows in `LocalFilters`.
+is an alias to the type of `N`-dimensional arrays whose elements are all `true`. Instances
+of this kind are used to represent hyper-rectangular sliding windows in `LocalFilters`.
 
-Method [`LocalFilters.box`](@ref) can be used to build such an object with of this type
-.
+Method [`LocalFilters.box`](@ref) can be used to build an object of this type.
 
 """
-const Box{N,I} = FastUniformArray{Bool,N,true,I}
+const Box{N} = FastUniformArray{Bool,N,true}
+@public Box
 
 """
     LocalFilters.FilterOrdering
