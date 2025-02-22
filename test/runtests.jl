@@ -445,18 +445,18 @@ f2(x) = x > 0.5
 
         @testset "strel" begin
             T = Float32
-            A = box(-3:3)
+            A = @inferred box(-3:3)
             B = FastUniformArray(zero(T), axes(A))
             @test A === @inferred strel(Bool, A)
             @test A === @inferred strel(Bool, CartesianIndices(A))
             @test B === @inferred strel(T, CartesianIndices(A))
-            A = box(2, -1:2)
+            A = @inferred box(2, -1:2)
             B = FastUniformArray(zero(T), axes(A))
             @test A === @inferred strel(Bool, A)
             @test A === @inferred strel(Bool, CartesianIndices(A))
             @test B === @inferred strel(T, CartesianIndices(A))
-            A = centered(ones(Bool, 3, 4, 5))
-            S = box(axes(A))
+            A = @inferred centered(ones(Bool, 3, 4, 5))
+            S = @inferred box(axes(A))
             B = FastUniformArray(zero(T), axes(A))
             @test A === @inferred strel(Bool, A)
             @test A ==  @inferred strel(Bool, CartesianIndices(A))
@@ -528,11 +528,7 @@ f2(x) = x > 0.5
             # FIXME: @test B2 === @inferred func!(copyto!(B2, A), R)
             # FIXME: @test B2 == B1 # check if in-place and out-of-place yield the same result
             if T <: AbstractFloat
-                if VERSION < v"1.8" # Inference broken here for old Julia versions
-                    F = strel(T, R) # flat structuring element like R
-                else
-                    F = @inferred strel(T, R) # flat structuring element like R
-                end
+                F = @inferred strel(T, R) # flat structuring element like R
                 @test B1 == @inferred func(A, F)
                 @test C == A   # check that A is left unchanged
                 @test B2 === @inferred func!(B2, A, F)
@@ -546,11 +542,7 @@ f2(x) = x > 0.5
             @test C == A   # check that A is left unchanged
             @test B2 == B1 # check if in-place and out-of-place yield the same result
             if T <: AbstractFloat
-                if VERSION < v"1.8" # Inference broken here for old Julia versions
-                    F = strel(T, S) # flat structuring element like S
-                else
-                    F = @inferred strel(T, S) # flat structuring element like S
-                end
+                F = @inferred strel(T, S) # flat structuring element like S
                 @test B1 == @inferred func(A, F)
                 @test C == A   # check that A is left unchanged
                 @test B2 === @inferred func!(B2, A, F)
@@ -563,18 +555,14 @@ f2(x) = x > 0.5
             # ... with a simple rectangular structuring element
             A1, A2 = @inferred localextrema(A, R);
             @test C == A   # check that A is left unchanged
-            @test A1 == erode(A, R)  # `erode` also yields local min.
-            @test A2 == dilate(A, R) # `dilate` also yields local max.
+            @test A1 == @inferred erode(A, R)  # `erode` also yields local min.
+            @test A2 == @inferred dilate(A, R) # `dilate` also yields local max.
             @test (B1, B2) === @inferred localextrema!(B1, B2, A, R)
             @test C == A   # check that A is left unchanged
             @test B1 == A1
             @test B2 == A2
             if T <: AbstractFloat
-                if VERSION < v"1.8" # Inference broken here for old Julia versions
-                    F = strel(T, R) # flat structuring element like R
-                else
-                    F = @inferred strel(T, R) # flat structuring element like R
-                end
+                F = @inferred strel(T, R) # flat structuring element like R
                 @test (A1, A2) == @inferred localextrema(A, F)
                 @test C == A   # check that A is left unchanged
                 @test (B1, B2) === @inferred localextrema!(B1, B2, A, F)
@@ -585,18 +573,14 @@ f2(x) = x > 0.5
             # ... with a shaped structuring element
             A1, A2 = @inferred localextrema(A, S);
             @test C == A   # check that A is left unchanged
-            @test A1 == erode(A, S)  # `erode` also yields local min.
-            @test A2 == dilate(A, S) # `dilate` also yields local max.
+            @test A1 == @inferred erode(A, S)  # `erode` also yields local min.
+            @test A2 == @inferred dilate(A, S) # `dilate` also yields local max.
             @test (B1, B2) === @inferred localextrema!(B1, B2, A, S)
             @test C == A   # check that A is left unchanged
             @test B1 == A1
             @test B2 == A2
             if T <: AbstractFloat
-                if VERSION < v"1.8" # Inference broken here for old Julia versions
-                    F = strel(T, S) # flat structuring element like S
-                else
-                    F = @inferred strel(T, S) # flat structuring element like S
-                end
+                F = @inferred strel(T, S) # flat structuring element like S
                 @test (A1, A2) == @inferred localextrema(A, F)
                 @test C == A   # check that A is left unchanged
                 @test (B1, B2) === @inferred localextrema!(B1, B2, A, F)
@@ -611,9 +595,9 @@ f2(x) = x > 0.5
             B1 = @inferred func(A, R; slow=true);
             @test C == A   # check that A is left unchanged
             if func === opening
-                @test B1 == dilate(erode(A, R), R) # opening is erosion followed by dilation
+                @test B1 == @inferred dilate(erode(A, R), R) # opening is erosion followed by dilation
             elseif func === closing
-                @test B1 == erode(dilate(A, R), R) # closing is dilation followed by erosion
+                @test B1 == @inferred erode(dilate(A, R), R) # closing is dilation followed by erosion
             end
             @test B2 === @inferred func!(B2, wrk, A, R; slow=true)
             @test C == A   # check that A is left unchanged
@@ -624,11 +608,7 @@ f2(x) = x > 0.5
             @test C == A   # check that A is left unchanged
             @test B2 == B1 # check if in-place and out-of-place yield the same result
             if T <: AbstractFloat
-                if VERSION < v"1.8" # Inference broken here for old Julia versions
-                    F = strel(T, R) # flat structuring element like R
-                else
-                    F = @inferred strel(T, R) # flat structuring element like R
-                end
+                F = @inferred strel(T, R) # flat structuring element like R
                 @test B1 == @inferred func(A, F)
                 @test C == A   # check that A is left unchanged
                 @test B2 === @inferred func!(B2, wrk, A, F)
@@ -639,19 +619,15 @@ f2(x) = x > 0.5
             B1 = @inferred func(A, S);
             @test C == A   # check that A is left unchanged
             if func === opening
-                @test B1 == dilate(erode(A, S), S) # opening is erosion followed by dilation
+                @test B1 == @inferred dilate(erode(A, S), S) # opening is erosion followed by dilation
             elseif func === closing
-                @test B1 == erode(dilate(A, S), S) # closing is dilation followed by erosion
+                @test B1 == @inferred erode(dilate(A, S), S) # closing is dilation followed by erosion
             end
             @test B2 === @inferred func!(B2, wrk, A, S)
             @test C == A   # check that A is left unchanged
             @test B2 == B1 # check if in-place and out-of-place yield the same result
             if T <: AbstractFloat
-                if VERSION < v"1.8" # Inference broken here for old Julia versions
-                    F = strel(T, S) # flat structuring element like S
-                else
-                    F = @inferred strel(T, S) # flat structuring element like S
-                end
+                F = @inferred strel(T, S) # flat structuring element like S
                 @test B1 == @inferred func(A, F)
                 @test C == A   # check that A is left unchanged
                 @test B2 === @inferred func!(B2, wrk, A, F)
@@ -678,11 +654,7 @@ f2(x) = x > 0.5
             @test C == A   # check that A is left unchanged
             @test B2 == B1 # check that in-place and out-of-place yield the same result
             if T <: AbstractFloat
-                if VERSION < v"1.8" # Inference broken here for old Julia versions
-                    F = strel(T, R) # flat structuring element like R
-                else
-                    F = @inferred strel(T, R) # flat structuring element like R
-                end
+                F = @inferred strel(T, R) # flat structuring element like R
                 @test B1 == @inferred func(A, F)
                 @test C == A   # check that A is left unchanged
                 @test B2 === @inferred func!(B2, wrk, A, F)
@@ -701,11 +673,7 @@ f2(x) = x > 0.5
             @test C == A   # check that A is left unchanged
             @test B2 == B1 # check if in-place and out-of-place yield the same result
             if T <: AbstractFloat
-                if VERSION < v"1.8" # Inference broken here for old Julia versions
-                    F = strel(T, S) # flat structuring element like S
-                else
-                    F = @inferred strel(T, S) # flat structuring element like S
-                end
+                F = @inferred strel(T, S) # flat structuring element like S
                 @test B1 == @inferred func(A, F)
                 @test C == A   # check that A is left unchanged
                 @test B2 === @inferred func!(B2, wrk, A, F)
