@@ -325,7 +325,15 @@ f2(x) = x > 0.5
             @test B === @inferred reverse_kernel(Dims{3}, 6, 1:9, 0:5)
             R = CartesianIndices((6, -1:3, 2:4, -2:2))
             A = box(R)
-            B = box(-6:-6, -3:1, -4:-2, -2:2)
+            B = if length(R.indices[1]) == 1
+                # Prior to Julia 1.6, a Cartesian index range specified as a scalar `i` is
+                # assumed to correspond to the single index `i`.
+                box(-6:-6, -3:1, -4:-2, -2:2)
+            else
+                # Starting with Julia 1.6, a Cartesian index range specified as a scalar
+                # `n` is assumed to correspond to the range `1:n`,
+                box(-6:-1, -3:1, -4:-2, -2:2)
+            end
             @test B === @inferred reverse_kernel(A)
             @test A ==  @inferred reverse_kernel(B)
             @test B === @inferred reverse_kernel(R)
