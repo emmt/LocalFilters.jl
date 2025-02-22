@@ -345,6 +345,21 @@ f2(x) = x > 0.5
             @test_throws ArgumentError reverse_kernel(Dims{11}, :e)
             @test_throws ArgumentError reverse_kernel(Dims{11}, :e, 1)
             @test_throws ArgumentError reverse_kernel(Dims{11}, :e, 1, [1,3])
+            # Check that inference works on uniform arrays for `reverse_kernel`.
+            A = @inferred Box{3}(7,8,9)
+            B = @inferred FastUniformArray{Bool,3,true}(axes(A))
+            C = @inferred UniformArray(first(A), axes(A))
+            D = @inferred MutableUniformArray(first(A), axes(A))
+            @test B === A
+            @test C == A
+            @test D == A
+            Ar = @inferred reverse_kernel(A)
+            Br = @inferred reverse_kernel(B)
+            Cr = @inferred reverse_kernel(C)
+            Dr = @inferred reverse_kernel(D)
+            @test Br === Ar
+            @test Cr == Ar
+            @test Dr == Ar
         end
 
         @testset "Ordering" begin

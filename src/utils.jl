@@ -124,7 +124,6 @@ kernel(inds::Axis...) = kernel(inds)
 
 kernel(::Type{Dims{N}}, inds::NTuple{N,Axis}) where {N} = kernel(inds)
 kernel(inds::Tuple{Vararg{Axis}}) = kernel(map(kernel_range, inds))
-kernel(inds::Tuple{Vararg{AbstractUnitRange{Int}}}) = FastUniformArray(true, inds)
 
 kernel(::Type{Dims{N}}, R::CartesianIndices{N}) where {N} = kernel(R)
 kernel(R::CartesianIndices) = kernel(R.indices)
@@ -137,6 +136,7 @@ kernel(inds::NTuple{2,CartesianIndex{N}}) where {N} = kernel(inds...)
 
 kernel(::Type{Dims{N}}, start::CartesianIndex{N}, stop::CartesianIndex{N}) where {N} =
     kernel(start, stop)
+kernel(inds::Tuple{Vararg{AbstractUnitRange{Int}}}) = box(inds)
 kernel(start::CartesianIndex{N}, stop::CartesianIndex{N}) where {N} =
     kernel(map(kernel_range, Tuple(start), Tuple(stop)))
 
@@ -258,10 +258,12 @@ reverse_kernel(::Type{Dims{N}}, A::AbstractArray{N}) where {N} = reverse_kernel(
 reverse_kernel(R::CartesianIndices) = box(map(reverse_kernel_axis, R.indices))
 reverse_kernel(A::AbstractArray) = OffsetArray(reverse(A), map(reverse_kernel_axis, axes(A)))
 reverse_kernel(A::OffsetArray) = OffsetArray(reverse(parent(A)), map(reverse_kernel_axis, axes(A)))
-for type in (:UniformArray, :FastUniformArray, :MutableUniformArray)
+for type in (:UniformArray, :MutableUniformArray)
     @eval reverse_kernel(A::$type) =
         $type(StructuredArrays.value(A), map(reverse_kernel_axis, axes(A)))
 end
+reverse_kernel(A::FastUniformArray{T,N,V}) where {T,N,V} =
+    FastUniformArray{T,N,V}(map(reverse_kernel_axis, axes(A)))
 
 reverse_kernel_axis(start::Integer, stop::Integer) =
     unit_range(-as(Int, stop), -as(Int, start)) # convert to Int prior to negate

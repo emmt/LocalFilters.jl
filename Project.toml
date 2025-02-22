@@ -12,7 +12,7 @@ TypeUtils = "c3b1956e-8857-4d84-9b79-890df85b1e67"
 [compat]
 EasyRanges = "0.1.1"
 OffsetArrays = "1.12"
-StructuredArrays = "0.2.14"
+StructuredArrays = "0.2.21"
 TypeUtils = "1.4.2"
 julia = "1"
 
