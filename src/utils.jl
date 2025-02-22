@@ -409,13 +409,21 @@ elements.
 If `T` is a floating-point type, then the result is a so-called *flat* structuring element
 whose coefficients are `zero(T)` inside the shape defined by `A` and `-T(Inf)` elsewhere.
 
-See also [`LocalFilters.kernel`](@ref) and [`LocalFilters.ball`](@ref).
+See also [`LocalFilters.kernel`](@ref), [`LocalFilters.box`](@ref), and
+[`LocalFilters.ball`](@ref).
 
 """
 strel(::Type{Bool}, A::AbstractArray{Bool}) = A
-strel(::Type{Bool}, A::CartesianIndices) = FastUniformArray(true, ranges(A))
-strel(T::Type{<:AbstractFloat}, A::CartesianIndices) = FastUniformArray(zero(T), ranges(A))
-strel(::Type{T}, A::AbstractArray{Bool}) where {T<:AbstractFloat} = map(Base.Fix1(_flat, T), A)
+strel(::Type{T},    A::AbstractArray{Bool}) where {T<:AbstractFloat} =
+    map!(Base.Fix1(_flat, T), similar(A, T), A)
+
+strel(::Type{Bool}, inds::NTuple{N,Axis}) where {N} =
+    FastUniformArray{Bool,N,true}(inds)
+strel(::Type{T},    inds::NTuple{N,Axis}) where {T<:AbstractFloat,N} =
+    FastUniformArray{T,N,zero(T)}(inds)
+
+strel(::Type{T}, R::CartesianIndices) where {T<:Union{Bool,AbstractFloat}} = strel(T, R.indices)
+strel(::Type{T}, inds::Axis...) where {T<:Union{Bool,AbstractFloat}} = strel(T, inds)
 
 _flat(::Type{T}, flag::Bool) where {T<:AbstractFloat} = ifelse(flag, zero(T), -T(Inf))
 

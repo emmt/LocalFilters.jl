@@ -36,6 +36,9 @@
 * Exported method `B = reverse_kernel(args...)` yields a reversed kernel such that
   correlation by `B` is identical to convolution by `A = kernel(args...)` and conversely.
 
+* Building a structuring element with `B = strel(T, args...)` accepts `args...` like
+  `kernel`.
+
 * Constants for filter ordering follow more general naming rules: `FORWARD_FILTER` and
   `REVERSE_FILTER` instead of `ForwardFilter` and `ReverseFilter`.
 
