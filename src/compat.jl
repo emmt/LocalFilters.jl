@@ -33,3 +33,31 @@ if VERSION < v"1.7.0-beta1"
     (obj::Returns)(@nospecialize(args...); @nospecialize(kwds...)) = getfield(obj, :value)
     eval(:(export Returns))
 end
+
+if VERSION < v"1.6.0-beta1"
+    # `reverse` for all dimensions is not defined prior to Julia 1.6.
+    reverse(args...; kwds...) = Base.reverse(args...; kwds...)
+    reverse(A::AbstractVector; kwds...) = Base.reverse(A; kwds...)
+    function reverse(A::AbstractArray; dims = :)
+        if !(dims isa Colon)
+            return Base.reverse(A; dims=dims)
+        elseif A isa AbstractUniformArray
+            return Base.reverse(A)
+        else
+            B = Base.copymutable(A)
+            I = eachindex(B)
+            k = last(I) + first(I)
+            for i in I
+                j = k - i
+                j > i || break
+                @inbounds begin
+                    Bi = B[i]
+                    Bj = B[j]
+                    B[i] = Bj
+                    B[j] = Bi
+                end
+            end
+            return B
+        end
+    end
+end
