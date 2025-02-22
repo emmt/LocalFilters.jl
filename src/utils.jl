@@ -117,26 +117,22 @@ See also [`LocalFilters.strel`](@ref), [`LocalFilters.ball`](@ref),
 
 """
 kernel(::Type{Dims{N}}, arg::Axis) where {N} = kernel(Dims{N}, kernel_range(arg))
-kernel(::Type{Dims{N}}, rng::AbstractUnitRange{Int}) where {N} = kernel(ntuple(Returns(rng), Val(N)))
-
+kernel(::Type{Dims{N}}, rng::AbstractUnitRange{Int}) where {N} =
+    kernel(ntuple(Returns(rng), Val(N)))
 kernel(::Type{Dims{N}}, inds::Vararg{Axis,N}) where {N} = kernel(inds)
-kernel(inds::Axis...) = kernel(inds)
-
 kernel(::Type{Dims{N}}, inds::NTuple{N,Axis}) where {N} = kernel(inds)
-kernel(inds::Tuple{Vararg{Axis}}) = kernel(map(kernel_range, inds))
-
 kernel(::Type{Dims{N}}, R::CartesianIndices{N}) where {N} = kernel(R)
-kernel(R::CartesianIndices) = kernel(R.indices)
-
 kernel(::Type{Dims{N}}, A::AbstractArray{<:Any,N}) where {N} = kernel(A)
-kernel(A::AbstractArray) = A
-
 kernel(::Type{Dims{N}}, inds::NTuple{2,CartesianIndex{N}}) where {N} = kernel(inds)
-kernel(inds::NTuple{2,CartesianIndex{N}}) where {N} = kernel(inds...)
-
 kernel(::Type{Dims{N}}, start::CartesianIndex{N}, stop::CartesianIndex{N}) where {N} =
     kernel(start, stop)
+
+kernel(inds::Axis...) = kernel(inds)
+kernel(inds::Tuple{Vararg{Axis}}) = kernel(map(kernel_range, inds))
 kernel(inds::Tuple{Vararg{AbstractUnitRange{Int}}}) = box(inds)
+kernel(R::CartesianIndices) = kernel(R.indices)
+kernel(A::AbstractArray) = A
+kernel(inds::NTuple{2,CartesianIndex{N}}) where {N} = kernel(inds...)
 kernel(start::CartesianIndex{N}, stop::CartesianIndex{N}) where {N} =
     kernel(map(kernel_range, Tuple(start), Tuple(stop)))
 
