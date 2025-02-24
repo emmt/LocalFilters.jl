@@ -623,22 +623,31 @@ f2(x) = x > 0.5
         @test C ≈ B
     end
 
-    @testset "Morphology (T = $T)" for (T, dims) in ((UInt8, (12, 13)), (Float32, (4,5,6)))
-        A = rand(T, dims);    # source
+    @testset "Morphology (T = $T, $name)" for (T, dims) in ((UInt8, (12, 13)), (Float32, (4,5,6))),
+        (name, W) in (("box(Dims{N},5)", 5), ("box(Dims{N},-1:2)", -1:2),
+                      ("ball", 2.5), ("box(...)", (-2:2, -1:2, -1:1)))
+        A = rand(T, dims); # source
+        wrk = similar(A);  # workspace
+        B2 = similar(A);   # for in-place operation
+        C = copy(A);       # to check that the source is left unchanged
         N = ndims(A);
-        S = ball(Dims{N}, 2.5);   # shaped structuring element
-        R = box((-2:2, -1:2, -1:1)[1:N]); # simple hyper-rectangular box
-        wrk = similar(A);     # workspace
-        B2 = similar(A);      # for in-place operation
-        C = copy(A);          # to check that the source is left unchanged
+        R = if W isa AbstractFloat
+            @inferred ball(Dims{N}, W)
+        elseif W isa Tuple
+            W[1:N]
+        else
+            W
+        end
+        K = @inferred kernel(Dims{N}, R)
         @testset "$name" for (name, func, func!, filter!) in (("Erosion", erode, erode!, unsafe_erode_filter!),
                                                               ("Dilation", dilate, dilate!, unsafe_dilate_filter!))
-            # ... with a simple rectangular structuring element
             B1 = @inferred func(A, R; slow=true);
             @test C == A   # check that A is left unchanged
             @test B2 === @inferred func!(B2, A, R; slow=true)
             @test C == A   # check that A is left unchanged
             @test B2 == B1 # check if in-place and out-of-place yield the same result
+            @test B1 == @inferred localfilter(A, R, filter!)
+            @test C == A   # check that A is left unchanged
             @test B2 === @inferred localfilter!(zerofill!(B2), A, R, filter!)
             @test C == A   # check that A is left unchanged
             @test B2 == B1 # check result
@@ -650,40 +659,21 @@ f2(x) = x > 0.5
             # FIXME: @test B2 === @inferred func!(copyto!(B2, A), R)
             # FIXME: @test B2 == B1 # check if in-place and out-of-place yield the same result
             if T <: AbstractFloat
-                F = @inferred strel(T, R) # flat structuring element like R
-                @test B1 == @inferred func(A, F)
+                S = @inferred strel(T, K) # flat structuring element like K
+                @test B1 == @inferred func(A, S)
                 @test C == A   # check that A is left unchanged
-                @test B2 === @inferred func!(B2, A, F)
-                @test C == A   # check that A is left unchanged
-                @test B2 == B1 # check if in-place and out-of-place yield the same result
-                @test B2 === @inferred localfilter!(zerofill!(B2), A, F, filter!)
-                @test C == A   # check that A is left unchanged
-                @test B2 == B1 # check result
-            end
-            # ... with a shaped structuring element
-            B1 = @inferred func(A, S);
-            @test C == A   # check that A is left unchanged
-            @test B2 === @inferred func!(B2, A, S)
-            @test C == A   # check that A is left unchanged
-            @test B2 == B1 # check if in-place and out-of-place yield the same result
-            @test B2 === @inferred localfilter!(zerofill!(B2), A, S, filter!)
-            @test C == A   # check that A is left unchanged
-            @test B2 == B1 # check result
-            if T <: AbstractFloat
-                F = @inferred strel(T, S) # flat structuring element like S
-                @test B1 == @inferred func(A, F)
-                @test C == A   # check that A is left unchanged
-                @test B2 === @inferred func!(B2, A, F)
+                @test B2 === @inferred func!(B2, A, S)
                 @test C == A   # check that A is left unchanged
                 @test B2 == B1 # check if in-place and out-of-place yield the same result
-                @test B2 === @inferred localfilter!(zerofill!(B2), A, F, filter!)
+                @test B1 == @inferred localfilter(A, S, filter!)
+                @test C == A   # check that A is left unchanged
+                @test B2 === @inferred localfilter!(zerofill!(B2), A, S, filter!)
                 @test C == A   # check that A is left unchanged
                 @test B2 == B1 # check result
             end
         end
         @testset "Local min. and max." begin
             B1 = similar(A)
-            # ... with a simple rectangular structuring element
             A1, A2 = @inferred localextrema(A, R);
             @test C == A   # check that A is left unchanged
             @test A1 == @inferred erode(A, R)  # `erode` also yields local min.
@@ -693,28 +683,10 @@ f2(x) = x > 0.5
             @test B1 == A1
             @test B2 == A2
             if T <: AbstractFloat
-                F = @inferred strel(T, R) # flat structuring element like R
-                @test (A1, A2) == @inferred localextrema(A, F)
+                S = @inferred strel(T, K) # flat structuring element like K
+                @test (A1, A2) == @inferred localextrema(A, S)
                 @test C == A   # check that A is left unchanged
-                @test (B1, B2) === @inferred localextrema!(B1, B2, A, F)
-                @test C == A   # check that A is left unchanged
-                @test B1 == A1
-                @test B2 == A2
-            end
-            # ... with a shaped structuring element
-            A1, A2 = @inferred localextrema(A, S);
-            @test C == A   # check that A is left unchanged
-            @test A1 == @inferred erode(A, S)  # `erode` also yields local min.
-            @test A2 == @inferred dilate(A, S) # `dilate` also yields local max.
-            @test (B1, B2) === @inferred localextrema!(B1, B2, A, S)
-            @test C == A   # check that A is left unchanged
-            @test B1 == A1
-            @test B2 == A2
-            if T <: AbstractFloat
-                F = @inferred strel(T, S) # flat structuring element like S
-                @test (A1, A2) == @inferred localextrema(A, F)
-                @test C == A   # check that A is left unchanged
-                @test (B1, B2) === @inferred localextrema!(B1, B2, A, F)
+                @test (B1, B2) === @inferred localextrema!(B1, B2, A, S)
                 @test C == A   # check that A is left unchanged
                 @test B1 == A1
                 @test B2 == A2
@@ -722,7 +694,6 @@ f2(x) = x > 0.5
         end
         @testset "$name" for (name, func, func!) in (("Opening", opening, opening!),
                                                      ("Closing", closing, closing!))
-            # ... with a simple rectangular structuring element
             B1 = @inferred func(A, R; slow=true);
             @test C == A   # check that A is left unchanged
             if func === opening
@@ -739,36 +710,16 @@ f2(x) = x > 0.5
             @test C == A   # check that A is left unchanged
             @test B2 == B1 # check if in-place and out-of-place yield the same result
             if T <: AbstractFloat
-                F = @inferred strel(T, R) # flat structuring element like R
-                @test B1 == @inferred func(A, F)
+                S = @inferred strel(T, K) # flat structuring element like K
+                @test B1 == @inferred func(A, S)
                 @test C == A   # check that A is left unchanged
-                @test B2 === @inferred func!(B2, wrk, A, F)
-                @test C == A   # check that A is left unchanged
-                @test B2 == B1 # check if in-place and out-of-place yield the same result
-            end
-            # ... with a shaped structuring element
-            B1 = @inferred func(A, S);
-            @test C == A   # check that A is left unchanged
-            if func === opening
-                @test B1 == @inferred dilate(erode(A, S), S) # opening is erosion followed by dilation
-            elseif func === closing
-                @test B1 == @inferred erode(dilate(A, S), S) # closing is dilation followed by erosion
-            end
-            @test B2 === @inferred func!(B2, wrk, A, S)
-            @test C == A   # check that A is left unchanged
-            @test B2 == B1 # check if in-place and out-of-place yield the same result
-            if T <: AbstractFloat
-                F = @inferred strel(T, S) # flat structuring element like S
-                @test B1 == @inferred func(A, F)
-                @test C == A   # check that A is left unchanged
-                @test B2 === @inferred func!(B2, wrk, A, F)
+                @test B2 === @inferred func!(B2, wrk, A, S)
                 @test C == A   # check that A is left unchanged
                 @test B2 == B1 # check if in-place and out-of-place yield the same result
             end
         end
         @testset "$name" for (name, func, func!) in (("Top-hat", top_hat, top_hat!),
                                                      ("Bottom-hat", bottom_hat, bottom_hat!))
-            # ... with a simple rectangular structuring element
             B1 = @inferred func(A, R; slow=true);
             @test C == A   # check that A is left unchanged
             if func === top_hat
@@ -785,29 +736,10 @@ f2(x) = x > 0.5
             @test C == A   # check that A is left unchanged
             @test B2 == B1 # check that in-place and out-of-place yield the same result
             if T <: AbstractFloat
-                F = @inferred strel(T, R) # flat structuring element like R
-                @test B1 == @inferred func(A, F)
+                S = @inferred strel(T, K) # flat structuring element like K
+                @test B1 == @inferred func(A, S)
                 @test C == A   # check that A is left unchanged
-                @test B2 === @inferred func!(B2, wrk, A, F)
-                @test C == A   # check that A is left unchanged
-                @test B2 == B1 # check if in-place and out-of-place yield the same result
-            end
-            # ... with a shaped structuring element
-            B1 = @inferred func(A, S);
-            @test C == A   # check that A is left unchanged
-            if func === top_hat
-                @test B1 == A .- opening(A, S) # definition of top-hat
-            elseif func === bottom_hat
-                @test B1 == closing(A, S) .- A # definition of bottom-hat
-            end
-            @test B2 === @inferred func!(B2, wrk, A, S)
-            @test C == A   # check that A is left unchanged
-            @test B2 == B1 # check if in-place and out-of-place yield the same result
-            if T <: AbstractFloat
-                F = @inferred strel(T, S) # flat structuring element like S
-                @test B1 == @inferred func(A, F)
-                @test C == A   # check that A is left unchanged
-                @test B2 === @inferred func!(B2, wrk, A, F)
+                @test B2 === @inferred func!(B2, wrk, A, S)
                 @test C == A   # check that A is left unchanged
                 @test B2 == B1 # check if in-place and out-of-place yield the same result
             end
