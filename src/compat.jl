@@ -31,7 +31,6 @@ if VERSION < v"1.7.0-beta1"
         Returns(value::T) where {T} = new{T}(value)
     end
     (obj::Returns)(@nospecialize(args...); @nospecialize(kwds...)) = getfield(obj, :value)
-    eval(:(export Returns))
 end
 
 if VERSION < v"1.6.0-beta1"
