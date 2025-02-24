@@ -12,6 +12,48 @@ using LocalFilters:
     top_hat!, bottom_hat!,
     Returns, reverse, reverse!
 
+zerofill!(A::AbstractArray) = fill!(A, zero(eltype(A)))
+
+function unsafe_erode_filter!(dst::AbstractArray{<:Any,N},
+                              A::AbstractArray{<:Any,N},
+                              ord::FilterOrdering,
+                              B::AbstractArray{<:Any,N},
+                              i, J) where {N}
+    v = typemax(eltype(B) <: Bool ? eltype(A) : promote_type(eltype(A), eltype(B)))
+    @inbounds begin
+        if eltype(B) <: Bool
+            @simd for j in J
+                v = ifelse(B[ord(i,j)], min(v, A[j]), v)
+            end
+        else
+            @simd for j in J
+                v = min(v, A[j] - B[ord(i,j)])
+            end
+        end
+        dst[i] = v
+    end
+end
+
+function unsafe_dilate_filter!(dst::AbstractArray{<:Any,N},
+                               A::AbstractArray{<:Any,N},
+                               ord::FilterOrdering,
+                               B::AbstractArray{<:Any,N},
+                               i, J) where {N}
+    v = typemin(eltype(B) <: Bool ? eltype(A) : promote_type(eltype(A), eltype(B)))
+    @inbounds begin
+        if eltype(B) <: Bool
+            @simd for j in J
+                v = ifelse(B[ord(i,j)], max(v, A[j]), v)
+            end
+        else
+            @simd for j in J
+                v = max(v, A[j] + B[ord(i,j)])
+            end
+        end
+        dst[i] = v
+    end
+end
+
 #=
 # Selector for reference methods.
 const REF = Val(:Base)
@@ -589,14 +631,17 @@ f2(x) = x > 0.5
         wrk = similar(A);     # workspace
         B2 = similar(A);      # for in-place operation
         C = copy(A);          # to check that the source is left unchanged
-        @testset "$name" for (name, func, func!) in (("Erosion", erode, erode!),
-                                                     ("Dilation", dilate, dilate!))
+        @testset "$name" for (name, func, func!, filter!) in (("Erosion", erode, erode!, unsafe_erode_filter!),
+                                                              ("Dilation", dilate, dilate!, unsafe_dilate_filter!))
             # ... with a simple rectangular structuring element
             B1 = @inferred func(A, R; slow=true);
             @test C == A   # check that A is left unchanged
             @test B2 === @inferred func!(B2, A, R; slow=true)
             @test C == A   # check that A is left unchanged
             @test B2 == B1 # check if in-place and out-of-place yield the same result
+            @test B2 === @inferred localfilter!(zerofill!(B2), A, R, filter!)
+            @test C == A   # check that A is left unchanged
+            @test B2 == B1 # check result
             @test B1 == @inferred func(A, R; slow=false);
             @test C == A   # check that A is left unchanged
             @test B2 === @inferred func!(B2, A, R; slow=false)
@@ -611,6 +656,9 @@ f2(x) = x > 0.5
                 @test B2 === @inferred func!(B2, A, F)
                 @test C == A   # check that A is left unchanged
                 @test B2 == B1 # check if in-place and out-of-place yield the same result
+                @test B2 === @inferred localfilter!(zerofill!(B2), A, F, filter!)
+                @test C == A   # check that A is left unchanged
+                @test B2 == B1 # check result
             end
             # ... with a shaped structuring element
             B1 = @inferred func(A, S);
@@ -618,6 +666,9 @@ f2(x) = x > 0.5
             @test B2 === @inferred func!(B2, A, S)
             @test C == A   # check that A is left unchanged
             @test B2 == B1 # check if in-place and out-of-place yield the same result
+            @test B2 === @inferred localfilter!(zerofill!(B2), A, S, filter!)
+            @test C == A   # check that A is left unchanged
+            @test B2 == B1 # check result
             if T <: AbstractFloat
                 F = @inferred strel(T, S) # flat structuring element like S
                 @test B1 == @inferred func(A, F)
@@ -625,6 +676,9 @@ f2(x) = x > 0.5
                 @test B2 === @inferred func!(B2, A, F)
                 @test C == A   # check that A is left unchanged
                 @test B2 == B1 # check if in-place and out-of-place yield the same result
+                @test B2 === @inferred localfilter!(zerofill!(B2), A, F, filter!)
+                @test C == A   # check that A is left unchanged
+                @test B2 == B1 # check result
             end
         end
         @testset "Local min. and max." begin

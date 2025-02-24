@@ -120,12 +120,12 @@ end
 overwrites `dst` with the result of filtering the source `A` by the kernel specified by
 `B`, with ordering `ord`, and the function `filter!` which is called as:
 
-    filter!(dst, A, ord, B′, i, J)
+    filter!(dst, A, ord, ker, i, J)
 
 for every index `i` of `dst` and with `J` the subset of indices in the local neighborhood
 of `i` and:
 
-    B′ = kernel(Dims{N}, B)
+    ker = kernel(Dims{ndims(A)}, B)
 
 the array representing the filter kernel. The function `filter!` shall compute the result
 of the local filtering operation and store it in the destination `dst` at position `i`.
