@@ -34,29 +34,32 @@ if VERSION < v"1.7.0-beta1"
 end
 
 if VERSION < v"1.6.0-beta1"
-    # `reverse` for all dimensions is not defined prior to Julia 1.6.
+    # Prior to Julia 1.6, `reverse` for all dimensions is not defined and `reverse!` does
+    # not accept keywords. NOTE Helper functions `_reverse` and `_reverse!` are introduced
+    # for inference to work.
     reverse(args...; kwds...) = Base.reverse(args...; kwds...)
-    reverse(A::AbstractVector; kwds...) = Base.reverse(A; kwds...)
-    function reverse(A::AbstractArray; dims = :)
-        if !(dims isa Colon)
-            return Base.reverse(A; dims=dims)
-        elseif A isa AbstractUniformArray
-            return Base.reverse(A)
-        else
-            B = Base.copymutable(A)
-            I = eachindex(B)
-            k = last(I) + first(I)
-            for i in I
-                j = k - i
-                j > i || break
-                @inbounds begin
-                    Bi = B[i]
-                    Bj = B[j]
-                    B[i] = Bj
-                    B[j] = Bi
-                end
-            end
-            return B
+    reverse!(args...; kwds...) = Base.reverse!(args...; kwds...)
+    reverse(A::AbstractArray; dims = :) = _reverse(A, dims)
+    reverse!(A::AbstractArray; dims = :) = _reverse!(A, dims)
+    _reverse(A::AbstractVector, d::Integer) =
+        isone(d) ? Base.reverse(A) : throw(ArgumentError("invalid dimension $d ≠ 1"))
+    _reverse!(A::AbstractVector, d::Integer) =
+        isone(d) ? Base.reverse!(A) : throw(ArgumentError("invalid dimension $d ≠ 1"))
+    _reverse(A::AbstractArray, d) = Base.reverse(A; dims=d)
+    _reverse!(A::AbstractArray, d) = copyto!(A, Base.reverse(A; dims=d))
+    _reverse(A::AbstractVector, ::Colon) = Base.reverse(A)
+    _reverse!(A::AbstractVector, ::Colon) = Base.reverse!(A)
+    _reverse(A::AbstractArray, ::Colon) = _reverse!(Base.copymutable(A), :)
+    function _reverse!(A::AbstractArray, ::Colon)
+        I = eachindex(A)
+        k = last(I) + first(I)
+        @inbounds for i in I
+            (j = k - i) > i || break
+            Ai = A[i]
+            Aj = A[j]
+            A[i] = Aj
+            A[j] = Ai
         end
+        return A
     end
 end

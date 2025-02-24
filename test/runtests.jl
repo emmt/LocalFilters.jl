@@ -10,7 +10,7 @@ using LocalFilters:
     is_morpho_math_box, check_axes, localindices,
     ranges, centered, centered_offset, unit_range,
     top_hat!, bottom_hat!,
-    Returns
+    Returns, reverse, reverse!
 
 #=
 # Selector for reference methods.
@@ -135,6 +135,83 @@ f2(x) = x > 0.5
         @testset "Returns" begin
             @test (1,1,1) === @inferred ntuple(Returns(1), Val(3))
             @test (0x1,0x1,0x1) === @inferred ntuple(Returns{UInt8}(1), Val(3))
+        end
+
+        @testset "`reverse` and `reverse!` with `dims=$d`" for d in (Colon(), 1, 2)
+            if d isa Colon || d == 1
+                # Check for vectors.
+                A = 1:12
+                R = 12:-1:1
+                B = @inferred reverse(A; dims=d)
+                @test B == R
+                @test B isa AbstractRange{eltype(A)}
+                @test step(B) == -step(A)
+                @test last(B) == first(A)
+                @test first(B) == last(A)
+                C = Array{eltype(A)}(undef, size(A))
+                @test C === @inferred reverse!(copyto!(C, A); dims=d)
+                @test C == R
+                if d isa Colon
+                    @test R == @inferred reverse(A)
+                    @test C === @inferred reverse!(copyto!(C, A))
+                    @test C == R
+                end
+                A = -2:3:7
+                R = 7:-3:-2
+                B = @inferred reverse(A; dims=d)
+                @test B == R
+                @test B isa AbstractRange{eltype(A)}
+                @test step(B) == -step(A)
+                @test last(B) == first(A)
+                @test first(B) == last(A)
+                C = Array{eltype(A)}(undef, size(A))
+                @test C === @inferred reverse!(copyto!(C, A); dims=d)
+                @test C == R
+                if d isa Colon
+                    @test R == @inferred reverse(A)
+                    @test C === @inferred reverse!(copyto!(C, A))
+                    @test C == R
+                end
+            end
+            if d isa Colon || d ≤ 2
+                # Check for 2-dimensional arrays.
+                A = reshape(1:12, 3,4)
+                R = d isa Colon ? reshape(12:-1:1, size(A)) : Base.reverse(A; dims=d)
+                C = Array{eltype(A)}(undef, size(A))
+                @test R == @inferred reverse(A; dims=d)
+                @test C === @inferred reverse!(copyto!(C, A); dims=d)
+                @test C == R
+                if d isa Colon
+                    @test R == @inferred reverse(A)
+                    @test C === @inferred reverse!(copyto!(C, A))
+                    @test C == R
+                end
+                A = reshape(1:12, 4,3)
+                C = Array{eltype(A)}(undef, size(A))
+                R = d isa Colon ? reshape(12:-1:1, size(A)) : Base.reverse(A; dims=d)
+                @test R == @inferred reverse(A; dims=d)
+                @test C === @inferred reverse!(copyto!(C, A); dims=d)
+                @test C == R
+                if d isa Colon
+                    @test R == @inferred reverse(A)
+                    @test C === @inferred reverse!(copyto!(C, A))
+                    @test C == R
+                end
+            end
+            if d isa Colon || d ≤ 3
+                # Check for 3-dimensional arrays.
+                A = reshape(-4:5:111, 2,3,4)
+                R = d isa Colon ? reshape(111:-5:-4, size(A)) : Base.reverse(A; dims=d)
+                C = Array{eltype(A)}(undef, size(A))
+                @test R == @inferred reverse(A; dims=d)
+                @test C === @inferred reverse!(copyto!(C, A); dims=d)
+                @test C == R
+                if d isa Colon
+                    @test R == @inferred reverse(A)
+                    @test C === @inferred reverse!(copyto!(C, A))
+                    @test C == R
+                end
+            end
         end
 
         @testset "Indices" begin

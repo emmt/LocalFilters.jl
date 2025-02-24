@@ -23,7 +23,8 @@ using ..LocalFilters:
     BoundaryConditions,
     FlatBoundaries,
     Axis,
-    kernel_range
+    kernel_range,
+    reverse, reverse!
 
 import ..LocalFilters:
     dilate!,
