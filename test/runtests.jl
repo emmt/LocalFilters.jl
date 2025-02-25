@@ -836,85 +836,99 @@ f2(x) = x > 0.5
         C = copy(A)
         B1 = similar(A)
 
-        # Reference results.
-        B0f = @inferred ref_mean(A, FORWARD_FILTER, Kf)
-        @test C == A  # check that A is left unchanged
-        B0r = @inferred ref_mean(A, REVERSE_FILTER, Kf)
-        @test C == A  # check that A is left unchanged
+        @testset "... and \"$name\" kernel" for name in (:float, :ones, :box)
+            if name === :ones
+                # Use arrays of ones as kernels.
+                Kf = centered(ones(eltype(A), size(Kf)))
+                Kr = reverse_kernel(Kf)
+            elseif name === :box
+                # Will use simple boxes as kernels.
+                Kf = axes(Kf)
+                Kr = axes(Kr)
+            end
 
-        # Check reverse/forward consistency.
-        @test B0f == @inferred ref_mean(A, REVERSE_FILTER, Kr)
-        @test C == A  # check that A is left unchanged
-        @test B0r == @inferred ref_mean(A, FORWARD_FILTER, Kr)
-        @test C == A  # check that A is left unchanged
+            # Reference results.
+            B0f = @inferred ref_mean(A, FORWARD_FILTER, Kf)
+            @test C == A  # check that A is left unchanged
+            B0r = @inferred ref_mean(A, REVERSE_FILTER, Kf)
+            @test C == A  # check that A is left unchanged
 
-        # Test `localmean`.
-        @test B0f == @inferred localmean(A, Kf)
-        @test C == A # check that A is left unchanged
-        @test B0r == @inferred localmean(A, Kr)
-        @test C == A # check that A is left unchanged
-        @test B0f == @inferred localmean(A, FORWARD_FILTER, Kf)
-        @test C == A # check that A is left unchanged
-        @test B0r == @inferred localmean(A, FORWARD_FILTER, Kr)
-        @test C == A # check that A is left unchanged
-        @test B0r == @inferred localmean(A, REVERSE_FILTER, Kf)
-        @test C == A # check that A is left unchanged
-        @test B0f == @inferred localmean(A, REVERSE_FILTER, Kr)
-        @test C == A # check that A is left unchanged
+            # Check reverse/forward consistency.
+            @test B0f == @inferred ref_mean(A, REVERSE_FILTER, Kr)
+            @test C == A  # check that A is left unchanged
+            @test B0r == @inferred ref_mean(A, FORWARD_FILTER, Kr)
+            @test C == A  # check that A is left unchanged
 
-        # Test `localmean!`.
-        @test B1 === @inferred localmean!(zerofill!(B1), A, Kf)
-        @test C == A # check that A is left unchanged
-        @test B0f == B1
-        @test B1 === @inferred localmean!(zerofill!(B1), A, Kr)
-        @test C == A # check that A is left unchanged
-        @test B0r == B1
-        @test B1 === @inferred localmean!(zerofill!(B1), A, FORWARD_FILTER, Kf)
-        @test C == A # check that A is left unchanged
-        @test B0f == B1
-        @test B1 === @inferred localmean!(zerofill!(B1), A, FORWARD_FILTER, Kr)
-        @test C == A # check that A is left unchanged
-        @test B0r == B1
-        @test B1 === @inferred localmean!(zerofill!(B1), A, REVERSE_FILTER, Kf)
-        @test C == A # check that A is left unchanged
-        @test B0r == B1
-        @test B1 === @inferred localmean!(zerofill!(B1), A, REVERSE_FILTER, Kr)
-        @test C == A # check that A is left unchanged
-        @test B0f == B1
+            # Test `localmean`.
+            @test B0f == @inferred localmean(A, Kf)
+            @test C == A # check that A is left unchanged
+            @test B0r == @inferred localmean(A, Kr)
+            @test C == A # check that A is left unchanged
+            @test B0f == @inferred localmean(A, FORWARD_FILTER, Kf)
+            @test C == A # check that A is left unchanged
+            @test B0r == @inferred localmean(A, FORWARD_FILTER, Kr)
+            @test C == A # check that A is left unchanged
+            @test B0r == @inferred localmean(A, REVERSE_FILTER, Kf)
+            @test C == A # check that A is left unchanged
+            @test B0f == @inferred localmean(A, REVERSE_FILTER, Kr)
+            @test C == A # check that A is left unchanged
 
-        # Test `localfilter`.
-        @test B0f == @inferred localfilter(A, Kf, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        @test B0r == @inferred localfilter(A, Kr, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        @test B0f == @inferred localfilter(A, FORWARD_FILTER, Kf, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        @test B0r == @inferred localfilter(A, FORWARD_FILTER, Kr, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        @test B0r == @inferred localfilter(A, REVERSE_FILTER, Kf, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        @test B0f == @inferred localfilter(A, REVERSE_FILTER, Kr, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
+            # Test `localmean!`.
+            @test B1 === @inferred localmean!(zerofill!(B1), A, Kf)
+            @test C == A # check that A is left unchanged
+            @test B0f == B1
+            @test B1 === @inferred localmean!(zerofill!(B1), A, Kr)
+            @test C == A # check that A is left unchanged
+            @test B0r == B1
+            @test B1 === @inferred localmean!(zerofill!(B1), A, FORWARD_FILTER, Kf)
+            @test C == A # check that A is left unchanged
+            @test B0f == B1
+            @test B1 === @inferred localmean!(zerofill!(B1), A, FORWARD_FILTER, Kr)
+            @test C == A # check that A is left unchanged
+            @test B0r == B1
+            @test B1 === @inferred localmean!(zerofill!(B1), A, REVERSE_FILTER, Kf)
+            @test C == A # check that A is left unchanged
+            @test B0r == B1
+            @test B1 === @inferred localmean!(zerofill!(B1), A, REVERSE_FILTER, Kr)
+            @test C == A # check that A is left unchanged
+            @test B0f == B1
 
-        # Test `localfilter!`.
-        @test B1 === @inferred localfilter!(zerofill!(B1), A, Kf, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        @test B0f == B1
-        @test B1 === @inferred localfilter!(zerofill!(B1), A, Kr, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        @test B0r == B1
-        @test B1 === @inferred localfilter!(zerofill!(B1), A, FORWARD_FILTER, Kf, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        @test B0f == B1
-        @test B1 === @inferred localfilter!(zerofill!(B1), A, FORWARD_FILTER, Kr, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        @test B0r == B1
-        @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kf, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        @test B0r == B1
-        @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kr, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        @test B0f == B1
+            # Test `localfilter`.
+            @test B0f == @inferred localfilter(A, Kf, unsafe_mean_filter!)
+            @test C == A # check that A is left unchanged
+            @test B0r == @inferred localfilter(A, Kr, unsafe_mean_filter!)
+            @test C == A # check that A is left unchanged
+            @test B0f == @inferred localfilter(A, FORWARD_FILTER, Kf, unsafe_mean_filter!)
+            @test C == A # check that A is left unchanged
+            @test B0r == @inferred localfilter(A, FORWARD_FILTER, Kr, unsafe_mean_filter!)
+            @test C == A # check that A is left unchanged
+            @test B0r == @inferred localfilter(A, REVERSE_FILTER, Kf, unsafe_mean_filter!)
+            @test C == A # check that A is left unchanged
+            @test B0f == @inferred localfilter(A, REVERSE_FILTER, Kr, unsafe_mean_filter!)
+            @test C == A # check that A is left unchanged
+
+            # Test `localfilter!`.
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, Kf, unsafe_mean_filter!)
+            @test C == A # check that A is left unchanged
+            @test B0f == B1
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, Kr, unsafe_mean_filter!)
+            @test C == A # check that A is left unchanged
+            @test B0r == B1
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, FORWARD_FILTER, Kf, unsafe_mean_filter!)
+            @test C == A # check that A is left unchanged
+            @test B0f == B1
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, FORWARD_FILTER, Kr, unsafe_mean_filter!)
+            @test C == A # check that A is left unchanged
+            @test B0r == B1
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kf, unsafe_mean_filter!)
+            @test C == A # check that A is left unchanged
+            @test B0r == B1
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kr, unsafe_mean_filter!)
+            @test C == A # check that A is left unchanged
+            @test B0f == B1
+
+        end
+
     end
 
     # See https://github.com/emmt/LocalFilters.jl/issues/6
