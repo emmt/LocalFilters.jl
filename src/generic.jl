@@ -157,7 +157,7 @@ function localfilter!(dst::AbstractArray{<:Any,N},
                       B::Window{N},
                       filter!::Function) where {N}
     # Build kernel.
-    return localfilter!(dst, A, FORWARD_FILTER, kernel(Dims{N}, B), filter!)
+    return localfilter!(dst, A, ord, kernel(Dims{N}, B), filter!)
 end
 
 function localfilter!(dst::AbstractArray{<:Any,N},
