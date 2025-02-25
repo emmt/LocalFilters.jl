@@ -14,6 +14,62 @@ using LocalFilters:
 
 zerofill!(A::AbstractArray) = fill!(A, zero(eltype(A)))
 
+linear_filter_result(::Type{Bool}, ::Type{Bool}) = Int
+linear_filter_result(::Type{Bool}, ::Type{T}) where {T} = linear_filter_result(T)
+linear_filter_result(::Type{T}, ::Type{Bool}) where {T} = linear_filter_result(T)
+linear_filter_result(::Type{A}, ::Type{B}) where {A,B} =
+    linear_filter_result(typeof(zero(A)*zero(B)))
+linear_filter_result(::Type{T}) where {T<:Signed} = sizeof(T) < sizeof(Int) ? Int : T
+linear_filter_result(::Type{T}) where {T<:Unsigned} = sizeof(T) < sizeof(UInt) ? UInt : T
+linear_filter_result(::Type{T}) where {T} = T
+
+function unsafe_linear_filter!(dst::AbstractArray{<:Any,N},
+                               A::AbstractArray{<:Any,N},
+                               ord::FilterOrdering,
+                               B::AbstractArray{<:Any,N},
+                               i, J) where {N}
+    v = zero(linear_filter_result(eltype(A), eltype(B)))
+    @inbounds begin
+        if eltype(B) <: Bool
+            @simd for j in J
+                a, b = A[j], B[ord(i,j)]
+                v = ifelse(b, v + oftype(v, a), v)
+            end
+        else
+            @simd for j in J
+                a, b = A[j], B[ord(i,j)]
+                v += oftype(v, a*b)
+            end
+        end
+        dst[i] = v
+    end
+end
+
+function unsafe_mean_filter!(dst::AbstractArray{<:Any,N},
+                             A::AbstractArray{<:Any,N},
+                             ord::FilterOrdering,
+                             B::AbstractArray{<:Any,N},
+                             i, J) where {N}
+    num = zero(linear_filter_result(eltype(A), eltype(B)))
+    den = zero(linear_filter_result(eltype(B)))
+    @inbounds begin
+        if eltype(B) <: Bool
+            @simd for j in J
+                a, b = A[j], B[ord(i,j)]
+                num = ifelse(b, num + oftype(num, a), num)
+                den += oftype(den, b)
+            end
+        else
+            @simd for j in J
+                a, b = A[j], B[ord(i,j)]
+                num += oftype(num, a*b)
+                den += oftype(den, b)
+            end
+        end
+        dst[i] = iszero(den) ? zero(eltype(dst)) : convert(eltype(dst), num/den)
+    end
+end
+
 function unsafe_erode_filter!(dst::AbstractArray{<:Any,N},
                               A::AbstractArray{<:Any,N},
                               ord::FilterOrdering,
@@ -52,6 +108,81 @@ function unsafe_dilate_filter!(dst::AbstractArray{<:Any,N},
         end
         dst[i] = v
     end
+end
+
+init_linear(::Type{T}) where {T} = zero(T)
+update_linear(v, a, b::Bool) = ifelse(b, v + a, v)
+update_linear(v, a, b) = v + a*b
+const final_linear = identity
+
+init_mean(::Type{T}) where {T} = (zero(T), zero(T))
+update_mean(v, a, b::Bool) = ifelse(b, (v[1] + a, v[2] + one(v[2])), v)
+update_mean(v, a, b) = (v[1] + a*b, v[2] + b)
+final_mean(v) = (t = v[1]/v[2]; ifelse(iszero(v[2]), zero(t), t))
+
+init_erode(::Type{T}) where {T} = typemax(T)
+update_erode(v, a, b::Bool) = ifelse(b, min(v, a), v)
+update_erode(v, a, b) = min(v, a - b)
+const final_erode = identity
+
+init_dilate(::Type{T}) where {T} = typemin(T)
+update_dilate(v, a, b::Bool) = ifelse(b, max(v, a), v)
+update_dilate(v, a, b) = max(v, a + b)
+const final_dilate = identity
+
+const KernelAxis = Union{Integer,AbstractUnitRange{<:Integer}}
+
+for f in (:erode, :dilate, :linear)
+    @eval begin
+        function $(Symbol("ref_$(f)"))(A::AbstractArray{T,N},
+                                       B::Union{KernelAxis,
+                                                NTuple{N,KernelAxis},
+                                                AbstractArray{S,N}}) where {T,N,S<:Union{T,Bool}}
+            return $(Symbol("ref_$(f)"))(A, FORWARD_FILTER, B)
+        end
+        function $(Symbol("ref_$(f)"))(A::AbstractArray{T,N},
+                                       ord::FilterOrdering,
+                                       B::Union{KernelAxis,
+                                                NTuple{N,KernelAxis}}) where {T,N}
+            return $(Symbol("ref_$(f)"))(A, ord, kernel(Dims{N}, B))
+        end
+        function $(Symbol("ref_$(f)"))(A::AbstractArray{T,N},
+                                       ord::FilterOrdering,
+                                       B::AbstractArray{S,N}) where {T,N,S<:Union{T,Bool}}
+            return $(Symbol("ref_$(f)!"))(similar(A), A, ord, B)
+        end
+        function $(Symbol("ref_$(f)!"))(dst::AbstractArray{T,N},
+                                        A::AbstractArray{T,N},
+                                        ord::FilterOrdering,
+                                        B::AbstractArray{S,N}) where {T,N,S<:Union{T,Bool}}
+            return ref_filter!(dst, A, ord, B,
+                               $(Symbol("init_$(f)"))(T),
+                               $(Symbol("update_$(f)")),
+                               $(Symbol("final_$(f)")))
+        end
+    end
+end
+
+function ref_filter!(dst::AbstractArray{<:Any,N},
+                     A::AbstractArray{<:Any,N},
+                     ord::FilterOrdering,
+                     B::AbstractArray{<:Any,N},
+                     init, update::Function, final::Function = identity) where {N}
+    !(init isa Function) || axes(A) == axes(dst) || error(
+        "source and destination have different axes")
+    I = CartesianIndices(dst)
+    J = CartesianIndices(B)
+    @inbounds for i in I
+        v = init isa Function ? init(A[i]) : init
+        for j in J
+            k = ord isa ForwardFilterOrdering ? i + j : i - j
+            if k ∈ I
+                v = update(v, A[k], B[j])
+            end
+        end
+        dst[i] = final(v)
+    end
+    return dst
 end
 
 #=
@@ -591,9 +722,61 @@ f2(x) = x > 0.5
 
     @testset "Local mean" begin
         A = ones(Float64, 20)
-        @test localmean(A, 3) == A
-        @test localmean(A, FORWARD_FILTER, 3) == A
-        @test localmean(A, REVERSE_FILTER, 3) == A
+        C = copy(A)
+        @test A == @inferred localmean(A, 3)
+        @test C == A # check that A is left unchanged
+        @test A == @inferred localmean(A, FORWARD_FILTER, 3)
+        @test C == A # check that A is left unchanged
+        @test A == @inferred localmean(A, REVERSE_FILTER, 3)
+        @test C == A # check that A is left unchanged
+        @test A == @inferred localfilter(A, 3, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        @test A == @inferred localfilter(A, FORWARD_FILTER, 3, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        @test A == @inferred localfilter(A, REVERSE_FILTER, 3, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        A = rand(Float64, 8, 9, 10)
+        C = copy(A)
+        B = @inferred localmean(A, -2:3)
+        @test C == A # check that A is left unchanged
+        @test B ≈ @inferred localmean(A, FORWARD_FILTER, -2:3)
+        @test C == A # check that A is left unchanged
+        @test B ≈ @inferred localmean(A, REVERSE_FILTER, -3:2)
+        @test C == A # check that A is left unchanged
+        @test B ≈ @inferred localfilter(A, -2:3, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        @test B ≈ @inferred localfilter(A, FORWARD_FILTER, -2:3, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        @test B ≈ @inferred localfilter(A, REVERSE_FILTER, -3:2, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+    end
+
+    @testset "Linear filters" begin
+        T = Float64
+        A = rand(T, 14, 20)
+        C = copy(A)
+        R = @inferred centered(rand(T, 4, 5))
+        # correlate
+        B1 = @inferred correlate(A, R)
+        @test C == A # check that A is left unchanged
+        B2 = similar(B1)
+        @test B2 === @inferred correlate!(zerofill!(B2), A, R)
+        @test C == A # check that A is left unchanged
+        @test B2 == B1 # check result
+        B1 = @inferred localfilter(A, R, unsafe_linear_filter!)
+        @test C == A # check that A is left unchanged
+        @test B2 ≈ B1 # check result
+        @test B2 === @inferred localfilter!(zerofill!(B2), A, R, unsafe_linear_filter!)
+        @test C == A # check that A is left unchanged
+        @test B2 == B1 # check result
+        # convolve
+        B1 = @inferred convolve(A, R)
+        @test C == A # check that A is left unchanged
+        @test B2 === @inferred convolve!(zerofill!(B2), A, R)
+        @test C == A # check that A is left unchanged
+        @test B2 == B1 # check result
+        @test B1 == @inferred correlate(A, reverse_kernel(R))
+        @test B1 == @inferred localfilter(A, REVERSE_FILTER, R, unsafe_linear_filter!)
     end
 
     # See https://github.com/emmt/LocalFilters.jl/issues/6
@@ -628,6 +811,7 @@ f2(x) = x > 0.5
                       ("ball", 2.5), ("box(...)", (-2:2, -1:2, -1:1)))
         A = rand(T, dims); # source
         wrk = similar(A);  # workspace
+        B1 = similar(A);   # for in-place operation
         B2 = similar(A);   # for in-place operation
         C = copy(A);       # to check that the source is left unchanged
         N = ndims(A);
@@ -639,109 +823,109 @@ f2(x) = x > 0.5
             W
         end
         K = @inferred kernel(Dims{N}, R)
-        @testset "$name" for (name, func, func!, filter!) in (("Erosion", erode, erode!, unsafe_erode_filter!),
-                                                              ("Dilation", dilate, dilate!, unsafe_dilate_filter!))
-            B1 = @inferred func(A, R; slow=true);
+        @testset "$name" for (name, func, func!, ref_func, filter!) in (("Erosion", erode, erode!, ref_erode, unsafe_erode_filter!),
+                                                                        ("Dilation", dilate, dilate!, ref_dilate, unsafe_dilate_filter!))
+            B0 = ref_func(A, R)
+            @test B0 == @inferred func(A, R; slow=true);
             @test C == A   # check that A is left unchanged
-            @test B2 === @inferred func!(B2, A, R; slow=true)
+            @test B1 === @inferred func!(zerofill!(B1), A, R; slow=true)
             @test C == A   # check that A is left unchanged
-            @test B2 == B1 # check if in-place and out-of-place yield the same result
-            @test B1 == @inferred localfilter(A, R, filter!)
+            @test B0 == B1 # check if in-place and out-of-place yield the same result
+            @test B0 == @inferred localfilter(A, R, filter!)
             @test C == A   # check that A is left unchanged
-            @test B2 === @inferred localfilter!(zerofill!(B2), A, R, filter!)
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, R, filter!)
             @test C == A   # check that A is left unchanged
-            @test B2 == B1 # check result
-            @test B1 == @inferred func(A, R; slow=false);
+            @test B0 == B1 # check result
+            @test B0 == @inferred func(A, R; slow=false);
             @test C == A   # check that A is left unchanged
-            @test B2 === @inferred func!(B2, A, R; slow=false)
+            @test B1 === @inferred func!(zerofill!(B1), A, R; slow=false)
             @test C == A   # check that A is left unchanged
-            @test B2 == B1 # check if in-place and out-of-place yield the same result
+            @test B0 == B1 # check if in-place and out-of-place yield the same result
             # FIXME: @test B2 === @inferred func!(copyto!(B2, A), R)
-            # FIXME: @test B2 == B1 # check if in-place and out-of-place yield the same result
+            # FIXME: @test B2 == B0 # check if in-place and out-of-place yield the same result
             if T <: AbstractFloat
                 S = @inferred strel(T, K) # flat structuring element like K
-                @test B1 == @inferred func(A, S)
+                @test B0 == @inferred func(A, S)
                 @test C == A   # check that A is left unchanged
-                @test B2 === @inferred func!(B2, A, S)
+                @test B1 === @inferred func!(zerofill!(B1), A, S)
                 @test C == A   # check that A is left unchanged
-                @test B2 == B1 # check if in-place and out-of-place yield the same result
-                @test B1 == @inferred localfilter(A, S, filter!)
+                @test B0 == B1 # check if in-place and out-of-place yield the same result
+                @test B0 == @inferred localfilter(A, S, filter!)
                 @test C == A   # check that A is left unchanged
-                @test B2 === @inferred localfilter!(zerofill!(B2), A, S, filter!)
+                @test B1 === @inferred localfilter!(zerofill!(B1), A, S, filter!)
                 @test C == A   # check that A is left unchanged
-                @test B2 == B1 # check result
+                @test B0 == B1 # check result
             end
         end
         @testset "Local min. and max." begin
-            B1 = similar(A)
-            A1, A2 = @inferred localextrema(A, R);
+            B01 = @inferred erode(A, R)  # `erode` also yields local min.
+            B02 = @inferred dilate(A, R) # `dilate` also yields local max.
+            @test (B01, B02) == @inferred localextrema(A, R);
             @test C == A   # check that A is left unchanged
-            @test A1 == @inferred erode(A, R)  # `erode` also yields local min.
-            @test A2 == @inferred dilate(A, R) # `dilate` also yields local max.
-            @test (B1, B2) === @inferred localextrema!(B1, B2, A, R)
+            @test (B1, B2) === @inferred localextrema!(zerofill!(B1), zerofill!(B2), A, R)
             @test C == A   # check that A is left unchanged
-            @test B1 == A1
-            @test B2 == A2
+            @test B01 == B1
+            @test B02 == B2
             if T <: AbstractFloat
                 S = @inferred strel(T, K) # flat structuring element like K
-                @test (A1, A2) == @inferred localextrema(A, S)
+                @test (B01, B02) == @inferred localextrema(A, S)
                 @test C == A   # check that A is left unchanged
-                @test (B1, B2) === @inferred localextrema!(B1, B2, A, S)
+                @test (B1, B2) === @inferred localextrema!(zerofill!(B1), zerofill!(B2), A, S)
                 @test C == A   # check that A is left unchanged
-                @test B1 == A1
-                @test B2 == A2
+                @test B01 == B1
+                @test B02 == B2
             end
         end
         @testset "$name" for (name, func, func!) in (("Opening", opening, opening!),
                                                      ("Closing", closing, closing!))
-            B1 = @inferred func(A, R; slow=true);
-            @test C == A   # check that A is left unchanged
-            if func === opening
-                @test B1 == @inferred dilate(erode(A, R), R) # opening is erosion followed by dilation
-            elseif func === closing
-                @test B1 == @inferred erode(dilate(A, R), R) # closing is dilation followed by erosion
+            B0 = if func === opening
+                @inferred dilate(erode(A, R), R) # opening is erosion followed by dilation
+            else
+                @inferred erode(dilate(A, R), R) # closing is dilation followed by erosion
             end
-            @test B2 === @inferred func!(B2, wrk, A, R; slow=true)
+            @test B0 == @inferred func(A, R; slow=true);
             @test C == A   # check that A is left unchanged
-            @test B2 == B1 # check if in-place and out-of-place yield the same result
-            @test B1 == @inferred func(A, R; slow=false);
+            @test B1 === @inferred func!(zerofill!(B1), wrk, A, R; slow=true)
             @test C == A   # check that A is left unchanged
-            @test B2 === @inferred func!(B2, wrk, A, R; slow=false)
+            @test B0 == B1 # check if in-place and out-of-place yield the same result
+            @test B0 == @inferred func(A, R; slow=false);
             @test C == A   # check that A is left unchanged
-            @test B2 == B1 # check if in-place and out-of-place yield the same result
+            @test B1 === @inferred func!(zerofill!(B1), wrk, A, R; slow=false)
+            @test C == A   # check that A is left unchanged
+            @test B0 == B1 # check if in-place and out-of-place yield the same result
             if T <: AbstractFloat
                 S = @inferred strel(T, K) # flat structuring element like K
-                @test B1 == @inferred func(A, S)
+                @test B0 == @inferred func(A, S)
                 @test C == A   # check that A is left unchanged
-                @test B2 === @inferred func!(B2, wrk, A, S)
+                @test B1 === @inferred func!(zerofill!(B1), wrk, A, S)
                 @test C == A   # check that A is left unchanged
-                @test B2 == B1 # check if in-place and out-of-place yield the same result
+                @test B0 == B1 # check if in-place and out-of-place yield the same result
             end
         end
         @testset "$name" for (name, func, func!) in (("Top-hat", top_hat, top_hat!),
                                                      ("Bottom-hat", bottom_hat, bottom_hat!))
-            B1 = @inferred func(A, R; slow=true);
-            @test C == A   # check that A is left unchanged
-            if func === top_hat
-                @test B1 == A .- opening(A, R) # definition of top-hat
-            elseif func === bottom_hat
-                @test B1 == closing(A, R) .- A # definition of bottom-hat
+            B0 = if func === top_hat
+                A .- opening(A, R) # definition of top-hat
+            else
+                closing(A, R) .- A # definition of bottom-hat
             end
-            @test B2 === @inferred func!(B2, wrk, A, R; slow=true)
+            @test B0 == @inferred func(A, R; slow=true);
             @test C == A   # check that A is left unchanged
-            @test B2 == B1 # check that in-place and out-of-place yield the same result
-            @test B1 == @inferred func(A, R; slow=false);
+            @test B1 === @inferred func!(zerofill!(B1), wrk, A, R; slow=true)
             @test C == A   # check that A is left unchanged
-            @test B2 === @inferred func!(B2, wrk, A, R; slow=false)
+            @test B0 == B1 # check that in-place and out-of-place yield the same result
+            @test B0 == @inferred func(A, R; slow=false);
             @test C == A   # check that A is left unchanged
-            @test B2 == B1 # check that in-place and out-of-place yield the same result
+            @test B1 === @inferred func!(zerofill!(B1), wrk, A, R; slow=false)
+            @test C == A   # check that A is left unchanged
+            @test B0 == B1 # check that in-place and out-of-place yield the same result
             if T <: AbstractFloat
                 S = @inferred strel(T, K) # flat structuring element like K
-                @test B1 == @inferred func(A, S)
+                @test B0 == @inferred func(A, S)
                 @test C == A   # check that A is left unchanged
-                @test B2 === @inferred func!(B2, wrk, A, S)
+                @test B1 === @inferred func!(zerofill!(B1), wrk, A, S)
                 @test C == A   # check that A is left unchanged
-                @test B2 == B1 # check if in-place and out-of-place yield the same result
+                @test B0 == B1 # check if in-place and out-of-place yield the same result
             end
         end
     end # @testset "Morphology"
