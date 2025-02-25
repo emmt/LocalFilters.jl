@@ -121,10 +121,10 @@ Argument `dims` specifies along which dimension(s) of `A` the filter is to be ap
 can be a single integer, a tuple of integers, or a colon `:` to apply the operation to all
 dimensions. Dimensions are processed in the order given by `dims` (the same dimension may
 appear several times) and there must be a matching interval in `rngs` to specify the
-structuring element (except that if `rngs` is a single interval, it is used for every
+structuring element (except that, if `rngs` is a single interval, it is used for every
 dimension in `dims`). An interval is either an integer or an integer valued unit range in
 the form `kmin:kmax`. An interval specified as a single integer yields an approximately
-centered range og this length.
+centered range of this length.
 
 Assuming a mono-dimensional array `A`, the single filtering pass:
 
