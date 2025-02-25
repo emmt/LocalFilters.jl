@@ -647,9 +647,21 @@ f2(x) = x > 0.5
 
         @testset "centered" begin
             B = reshape(collect(1:20), (4,5))
-            @test axes(centered(B)) == (-2:1, -2:2)
-            @test axes(centered(centered(B))) === axes(centered(B))
-            @test centered(centered(B)) === centered(B)
+            C = @inferred centered(B)
+            @test eltype(C) === eltype(B)
+            @test ndims(C) === ndims(B)
+            @test size(C) === size(B)
+            @test axes(C) == (-2:1, -2:2)
+            @test collect(C) == collect(B)
+            @test C === @inferred centered(C) # `centered` is idempotent
+            B = UniformArray(true, 4,2:7,11)
+            C = @inferred centered(B)
+            @test eltype(C) === eltype(B)
+            @test ndims(C) === ndims(B)
+            @test size(C) === size(B)
+            @test axes(C) == (-2:1, -3:2, -5:5)
+            @test C isa AbstractUniformArray
+            @test first(C) === first(B)
         end
 
         @testset "limits" begin

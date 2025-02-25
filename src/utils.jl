@@ -356,7 +356,7 @@ centered(A::AbstractArray) = OffsetArray(A, map(centered_offset, size(A)))
 centered(A::OffsetArray) = centered(parent(A))
 for type in (:UniformArray, :FastUniformArray, :MutableUniformArray)
     @eval centered(A::$type) =
-        $type(StructuredArrays.value(A), map(kernel_range, axes(A)))
+        $type(StructuredArrays.value(A), map(kernel_range, size(A)))
 end
 
 """
