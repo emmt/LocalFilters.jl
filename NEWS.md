@@ -12,6 +12,9 @@
   from the value of the source array at the current destination index. This imposes that
   the source and destination arrays have the same axes. This fixes [issue#3](#3).
 
+* In `localfilter`, an optional first argument, `T`, may be specified to provide the
+  element type of the result.
+
 * Morphological methods have a `slow` keyword (`false` by default) to force not using the
   the van Herk-Gil-Werman algorithm.
 

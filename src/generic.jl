@@ -12,15 +12,22 @@
 #
 
 """
-    localfilter(A, args...; kwds...) -> dst
+    localfilter(T=eltype(A), A, [ord=FORWARD_FILTER,] B, initial, update, final=identity) -> dst
+    localfilter(T=eltype(A), A, [ord=FORWARD_FILTER,] B, filter!) -> dst
 
 out of place version of [`localfilter!`](@ref) which is equivalent to:
 
-    localfilter!(similar(A), A, args...; kwds...)
+    localfilter!(similar(A, T), A, ord, B, args...)
+
+If `T`, the element type of the result, is not provided, it is assumed to be the same as
+for `A` which may be inaccurate.
 
 """
-localfilter(A::AbstractArray, args...; kwds...) =
-    localfilter!(similar(A), A, args...; kwds...)
+localfilter(A::AbstractArray{<:Any,N}, args...; kwds...) where {T,N} =
+    localfilter(eltype(A), A, args...; kwds...)
+
+localfilter(::Type{T}, A::AbstractArray{<:Any,N}, args...; kwds...) where {T,N} =
+    localfilter!(similar(A, T), A, args...; kwds...)
 
 """
     localfilter!(dst, A, [ord = FORWARD_FILTER,] B, initial,
