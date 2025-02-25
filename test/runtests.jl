@@ -1,7 +1,7 @@
 module TestingLocalFilters
 
 #using Compat
-using Test
+using Test, Random
 using OffsetArrays, StructuredArrays
 using LocalFilters
 using LocalFilters:
@@ -132,7 +132,7 @@ const final_dilate = identity
 
 const KernelAxis = Union{Integer,AbstractUnitRange{<:Integer}}
 
-for f in (:erode, :dilate, :linear)
+for f in (:erode, :dilate, :linear, :mean)
     @eval begin
         function $(Symbol("ref_$(f)"))(A::AbstractArray{T,N},
                                        B::Union{KernelAxis,
@@ -754,63 +754,168 @@ f2(x) = x > 0.5
 
     end # @testset "Utilities"
 
-    @testset "Local mean" begin
-        A = ones(Float64, 20)
+    rng = MersenneTwister(31415)
+    @testset "Linear filters (dims = $dims)" for dims in ((25,), (13,20), (17,12,8))
+        # Pseudo-image, copy, and workspace for in-place operations.
+        # NOTE Use random integers in a small range for exact results.
+        A = rand(rng, -3:20, dims)
         C = copy(A)
-        @test A == @inferred localmean(A, 3)
-        @test C == A # check that A is left unchanged
-        @test A == @inferred localmean(A, FORWARD_FILTER, 3)
-        @test C == A # check that A is left unchanged
-        @test A == @inferred localmean(A, REVERSE_FILTER, 3)
-        @test C == A # check that A is left unchanged
-        @test A == @inferred localfilter(A, 3, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        @test A == @inferred localfilter(A, FORWARD_FILTER, 3, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        @test A == @inferred localfilter(A, REVERSE_FILTER, 3, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        A = rand(Float64, 8, 9, 10)
-        C = copy(A)
-        B = @inferred localmean(A, -2:3)
-        @test C == A # check that A is left unchanged
-        @test B ≈ @inferred localmean(A, FORWARD_FILTER, -2:3)
-        @test C == A # check that A is left unchanged
-        @test B ≈ @inferred localmean(A, REVERSE_FILTER, -3:2)
-        @test C == A # check that A is left unchanged
-        @test B ≈ @inferred localfilter(A, -2:3, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        @test B ≈ @inferred localfilter(A, FORWARD_FILTER, -2:3, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-        @test B ≈ @inferred localfilter(A, REVERSE_FILTER, -3:2, unsafe_mean_filter!)
-        @test C == A # check that A is left unchanged
-    end
+        B1 = similar(A)
 
-    @testset "Linear filters" begin
-        T = Float64
-        A = rand(T, 14, 20)
+        # Forward and reverse kernels (same remark as above).
+        Kf = @inferred centered(rand(rng, -1:8, map(x -> round(Int, x/3), dims)))
+        Kr = @inferred reverse_kernel(Kf)
+
+        # Reference results.
+        B0f = @inferred ref_linear(A, FORWARD_FILTER, Kf)
+        @test C == A  # check that A is left unchanged
+        B0r = @inferred ref_linear(A, REVERSE_FILTER, Kf)
+        @test C == A  # check that A is left unchanged
+
+        # Check reverse/forward consistency.
+        @test B0f == @inferred ref_linear(A, REVERSE_FILTER, Kr)
+        @test C == A  # check that A is left unchanged
+        @test B0r == @inferred ref_linear(A, FORWARD_FILTER, Kr)
+        @test C == A  # check that A is left unchanged
+
+        # Test `correlate`.
+        @test B0f == @inferred correlate(A, Kf)
+        @test C == A  # check that A is left unchanged
+        @test B0r == @inferred correlate(A, Kr)
+        @test C == A  # check that A is left unchanged
+
+        # Test `correlate!`.
+        @test B1 === @inferred correlate!(zerofill!(B1), A, Kf)
+        @test C == A   # check that A is left unchanged
+        @test B0f == B1 # check result
+        @test B1 === @inferred correlate!(zerofill!(B1), A, Kr)
+        @test C == A   # check that A is left unchanged
+        @test B0r == B1 # check result
+
+        # Test `convolve`.
+        @test B0r == @inferred convolve(A, Kf)
+        @test C == A  # check that A is left unchanged
+        @test B0f == @inferred convolve(A, Kr)
+        @test C == A  # check that A is left unchanged
+
+        # Test `convolve!`.
+        @test B1 === @inferred convolve!(zerofill!(B1), A, Kf)
+        @test C == A   # check that A is left unchanged
+        @test B0r == B1 # check result
+        @test B1 === @inferred convolve!(zerofill!(B1), A, Kr)
+        @test C == A   # check that A is left unchanged
+        @test B0f == B1 # check result
+
+        # Test `localfilter`.
+        @test B0f == @inferred localfilter(A, Kf, unsafe_linear_filter!)
+        @test C == A   # check that A is left unchanged
+        @test B0r == @inferred localfilter(A, Kr, unsafe_linear_filter!)
+        @test C == A   # check that A is left unchanged
+        @test B0r == @inferred localfilter(A, REVERSE_FILTER, Kf, unsafe_linear_filter!)
+        @test C == A   # check that A is left unchanged
+        @test B0f == @inferred localfilter(A, REVERSE_FILTER, Kr, unsafe_linear_filter!)
+        @test C == A   # check that A is left unchanged
+
+        # Test `localfilter!`.
+        @test B1 === @inferred localfilter!(zerofill!(B1), A, Kf, unsafe_linear_filter!)
+        @test C == A   # check that A is left unchanged
+        @test B0f == B1 # check result
+        @test B1 === @inferred localfilter!(zerofill!(B1), A, Kr, unsafe_linear_filter!)
+        @test C == A   # check that A is left unchanged
+        @test B0r == B1 # check result
+        @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kf, unsafe_linear_filter!)
+        @test C == A   # check that A is left unchanged
+        @test B0r == B1 # check result
+        @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kr, unsafe_linear_filter!)
+        @test C == A   # check that A is left unchanged
+        @test B0f == B1 # check result
+
+        # Make sure kernels have no negative values and convert to floating-point.
+        Kf = Float64.(Kf .- minimum(Kf))
+        Kr = Float64.(Kr .- minimum(Kr))
+        A = Float64.(A)
         C = copy(A)
-        R = @inferred centered(rand(T, 4, 5))
-        # correlate
-        B1 = @inferred correlate(A, R)
+        B1 = similar(A)
+
+        # Reference results.
+        B0f = @inferred ref_mean(A, FORWARD_FILTER, Kf)
+        @test C == A  # check that A is left unchanged
+        B0r = @inferred ref_mean(A, REVERSE_FILTER, Kf)
+        @test C == A  # check that A is left unchanged
+
+        # Check reverse/forward consistency.
+        @test B0f == @inferred ref_mean(A, REVERSE_FILTER, Kr)
+        @test C == A  # check that A is left unchanged
+        @test B0r == @inferred ref_mean(A, FORWARD_FILTER, Kr)
+        @test C == A  # check that A is left unchanged
+
+        # Test `localmean`.
+        @test B0f == @inferred localmean(A, Kf)
         @test C == A # check that A is left unchanged
-        B2 = similar(B1)
-        @test B2 === @inferred correlate!(zerofill!(B2), A, R)
+        @test B0r == @inferred localmean(A, Kr)
         @test C == A # check that A is left unchanged
-        @test B2 == B1 # check result
-        B1 = @inferred localfilter(A, R, unsafe_linear_filter!)
+        @test B0f == @inferred localmean(A, FORWARD_FILTER, Kf)
         @test C == A # check that A is left unchanged
-        @test B2 ≈ B1 # check result
-        @test B2 === @inferred localfilter!(zerofill!(B2), A, R, unsafe_linear_filter!)
+        @test B0r == @inferred localmean(A, FORWARD_FILTER, Kr)
         @test C == A # check that A is left unchanged
-        @test B2 == B1 # check result
-        # convolve
-        B1 = @inferred convolve(A, R)
+        @test B0r == @inferred localmean(A, REVERSE_FILTER, Kf)
         @test C == A # check that A is left unchanged
-        @test B2 === @inferred convolve!(zerofill!(B2), A, R)
+        @test B0f == @inferred localmean(A, REVERSE_FILTER, Kr)
         @test C == A # check that A is left unchanged
-        @test B2 == B1 # check result
-        @test B1 == @inferred correlate(A, reverse_kernel(R))
-        @test B1 == @inferred localfilter(A, REVERSE_FILTER, R, unsafe_linear_filter!)
+
+        # Test `localmean!`.
+        @test B1 === @inferred localmean!(zerofill!(B1), A, Kf)
+        @test C == A # check that A is left unchanged
+        @test B0f == B1
+        @test B1 === @inferred localmean!(zerofill!(B1), A, Kr)
+        @test C == A # check that A is left unchanged
+        @test B0r == B1
+        @test B1 === @inferred localmean!(zerofill!(B1), A, FORWARD_FILTER, Kf)
+        @test C == A # check that A is left unchanged
+        @test B0f == B1
+        @test B1 === @inferred localmean!(zerofill!(B1), A, FORWARD_FILTER, Kr)
+        @test C == A # check that A is left unchanged
+        @test B0r == B1
+        @test B1 === @inferred localmean!(zerofill!(B1), A, REVERSE_FILTER, Kf)
+        @test C == A # check that A is left unchanged
+        @test B0r == B1
+        @test B1 === @inferred localmean!(zerofill!(B1), A, REVERSE_FILTER, Kr)
+        @test C == A # check that A is left unchanged
+        @test B0f == B1
+
+        # Test `localfilter`.
+        @test B0f == @inferred localfilter(A, Kf, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        @test B0r == @inferred localfilter(A, Kr, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        @test B0f == @inferred localfilter(A, FORWARD_FILTER, Kf, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        @test B0r == @inferred localfilter(A, FORWARD_FILTER, Kr, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        @test B0r == @inferred localfilter(A, REVERSE_FILTER, Kf, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        @test B0f == @inferred localfilter(A, REVERSE_FILTER, Kr, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+
+        # Test `localfilter!`.
+        @test B1 === @inferred localfilter!(zerofill!(B1), A, Kf, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        @test B0f == B1
+        @test B1 === @inferred localfilter!(zerofill!(B1), A, Kr, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        @test B0r == B1
+        @test B1 === @inferred localfilter!(zerofill!(B1), A, FORWARD_FILTER, Kf, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        @test B0f == B1
+        @test B1 === @inferred localfilter!(zerofill!(B1), A, FORWARD_FILTER, Kr, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        @test B0r == B1
+        @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kf, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        @test B0r == B1
+        @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kr, unsafe_mean_filter!)
+        @test C == A # check that A is left unchanged
+        @test B0f == B1
     end
 
     # See https://github.com/emmt/LocalFilters.jl/issues/6
