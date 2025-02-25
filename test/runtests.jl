@@ -1,6 +1,5 @@
 module TestingLocalFilters
 
-#using Compat
 using Test, Random
 using OffsetArrays, StructuredArrays
 using LocalFilters
