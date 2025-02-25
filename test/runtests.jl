@@ -1,6 +1,6 @@
 module TestingLocalFilters
 
-using Test, Random
+using Test, Random, TypeUtils
 using OffsetArrays, StructuredArrays
 using LocalFilters
 using LocalFilters:
@@ -13,21 +13,50 @@ using LocalFilters:
 
 zerofill!(A::AbstractArray) = fill!(A, zero(eltype(A)))
 
-linear_filter_result(::Type{Bool}, ::Type{Bool}) = Int
-linear_filter_result(::Type{Bool}, ::Type{T}) where {T} = linear_filter_result(T)
-linear_filter_result(::Type{T}, ::Type{Bool}) where {T} = linear_filter_result(T)
-linear_filter_result(::Type{A}, ::Type{B}) where {A,B} =
-    linear_filter_result(typeof(zero(A)*zero(B)))
-linear_filter_result(::Type{T}) where {T<:Signed} = sizeof(T) < sizeof(Int) ? Int : T
-linear_filter_result(::Type{T}) where {T<:Unsigned} = sizeof(T) < sizeof(UInt) ? UInt : T
-linear_filter_result(::Type{T}) where {T} = T
+# `sum_init(T)` yields the initial value of the sum of elements of type `T`.
+# The reasoning is that the sum of `n` identical values `x` is given by `n*x` (with
+# `n` an `Int`).
+sum_init(::Type{T}) where {T} = zero(T)*one(Int)
 
-function unsafe_linear_filter!(dst::AbstractArray{<:Any,N},
-                               A::AbstractArray{<:Any,N},
-                               ord::FilterOrdering,
-                               B::AbstractArray{<:Any,N},
-                               i, J) where {N}
-    v = zero(linear_filter_result(eltype(A), eltype(B)))
+# `sumprod_init(A,B)` yields the initial value of the sum of products of elements of type
+# `A` and `B`.
+sumprod_init(::Type{A}, ::Type{B}) where {A,B} = (zero(A)*zero(B))*one(Int)
+sumprod_update(v, a, b::Bool) = ifelse(b, v + a, v)
+sumprod_update(v, a, b) = v + a*b
+const sumprod_final = identity
+sumprod_eltype(::Type{A}, ::Type{B}) where {A,B} = typeof(sumprod_init(A, B))
+
+mean_init(::Type{A}, ::Type{B}) where {A,B} = (sumprod_init(A, B), sum_init(B))
+mean_update(v, a, b::Bool) = ifelse(b, (v[1] + a, v[2] + one(v[2])), v)
+mean_update(v, a, b) = (v[1] + a*b, v[2] + b)
+mean_final(v) = (t = v[1]/v[2]; ifelse(iszero(v[2]), zero(t), t))
+
+# The (local) mean is computed as (Σⱼ A[i±j]*B[j])/(Σⱼ B[j]) so the
+# type of the result is that of `A` converted to floating-point.
+mean_eltype(::Type{A}, ::Type{B}) where {A,B} = float(A)
+
+erode_init(::Type{A}, ::Type{B}) where {A,B} = typemax(morphology_eltype(A, B))
+erode_update(v, a, b::Bool) = ifelse(b, min(v, a), v)
+erode_update(v, a, b) = min(v, a - b)
+const erode_final = identity
+
+dilate_init(::Type{A}, ::Type{B}) where {A,B} = typemin(morphology_eltype(A, B))
+dilate_update(v, a, b::Bool) = ifelse(b, max(v, a), v)
+dilate_update(v, a, b) = max(v, a + b)
+const dilate_final = identity
+
+# The result of a morphological operation for a source value `A` and a structuring element
+# value `B` is of the type of `A` if `B` is Boolean and of the type of `A ± B` otherwise.
+morphology_eltype(::Type{A}, ::Type{Bool}) where {A} = A
+morphology_eltype(::Type{A}, ::Type{B}) where {A<:AbstractFloat,B<:AbstractFloat} =
+    promote_type(A, B) # FIXME For small integers `±` may overflow...
+
+function unsafe_sumprod_filter!(dst::AbstractArray{<:Any,N},
+                                A::AbstractArray{<:Any,N},
+                                ord::FilterOrdering,
+                                B::AbstractArray{<:Any,N},
+                                i, J) where {N}
+    v = sumprod_init(eltype(A), eltype(B))
     @inbounds begin
         if eltype(B) <: Bool
             @simd for j in J
@@ -49,8 +78,7 @@ function unsafe_mean_filter!(dst::AbstractArray{<:Any,N},
                              ord::FilterOrdering,
                              B::AbstractArray{<:Any,N},
                              i, J) where {N}
-    num = zero(linear_filter_result(eltype(A), eltype(B)))
-    den = zero(linear_filter_result(eltype(B)))
+    num, den = mean_init(eltype(A), eltype(B))
     @inbounds begin
         if eltype(B) <: Bool
             @simd for j in J
@@ -74,7 +102,7 @@ function unsafe_erode_filter!(dst::AbstractArray{<:Any,N},
                               ord::FilterOrdering,
                               B::AbstractArray{<:Any,N},
                               i, J) where {N}
-    v = typemax(eltype(B) <: Bool ? eltype(A) : promote_type(eltype(A), eltype(B)))
+    v = erode_init(eltype(A), eltype(B))
     @inbounds begin
         if eltype(B) <: Bool
             @simd for j in J
@@ -94,7 +122,7 @@ function unsafe_dilate_filter!(dst::AbstractArray{<:Any,N},
                                ord::FilterOrdering,
                                B::AbstractArray{<:Any,N},
                                i, J) where {N}
-    v = typemin(eltype(B) <: Bool ? eltype(A) : promote_type(eltype(A), eltype(B)))
+    v = dilate_init(eltype(A), eltype(B))
     @inbounds begin
         if eltype(B) <: Bool
             @simd for j in J
@@ -109,60 +137,44 @@ function unsafe_dilate_filter!(dst::AbstractArray{<:Any,N},
     end
 end
 
-init_linear(::Type{T}) where {T} = zero(T)
-update_linear(v, a, b::Bool) = ifelse(b, v + a, v)
-update_linear(v, a, b) = v + a*b
-const final_linear = identity
-
-init_mean(::Type{T}) where {T} = (zero(T), zero(T))
-update_mean(v, a, b::Bool) = ifelse(b, (v[1] + a, v[2] + one(v[2])), v)
-update_mean(v, a, b) = (v[1] + a*b, v[2] + b)
-final_mean(v) = (t = v[1]/v[2]; ifelse(iszero(v[2]), zero(t), t))
-
-init_erode(::Type{T}) where {T} = typemax(T)
-update_erode(v, a, b::Bool) = ifelse(b, min(v, a), v)
-update_erode(v, a, b) = min(v, a - b)
-const final_erode = identity
-
-init_dilate(::Type{T}) where {T} = typemin(T)
-update_dilate(v, a, b::Bool) = ifelse(b, max(v, a), v)
-update_dilate(v, a, b) = max(v, a + b)
-const final_dilate = identity
-
 const KernelAxis = Union{Integer,AbstractUnitRange{<:Integer}}
 
-for f in (:erode, :dilate, :linear, :mean)
+for f in (:erode, :dilate, :sumprod, :mean)
+    t = f === :sumprod ? :sumprod_eltype :
+        f === :mean   ? :mean_eltype :
+        :morphology_eltype
     @eval begin
-        function $(Symbol("ref_$(f)"))(A::AbstractArray{T,N},
+        function $(Symbol("$(f)_ref"))(A::AbstractArray{<:Any,N},
                                        B::Union{KernelAxis,
                                                 NTuple{N,KernelAxis},
-                                                AbstractArray{S,N}}) where {T,N,S<:Union{T,Bool}}
-            return $(Symbol("ref_$(f)"))(A, FORWARD_FILTER, B)
+                                                AbstractArray{<:Any,N}}) where {N}
+            return $(Symbol("$(f)_ref"))(A, FORWARD_FILTER, B)
         end
-        function $(Symbol("ref_$(f)"))(A::AbstractArray{T,N},
+        function $(Symbol("$(f)_ref"))(A::AbstractArray{<:Any,N},
                                        ord::FilterOrdering,
                                        B::Union{KernelAxis,
-                                                NTuple{N,KernelAxis}}) where {T,N}
-            return $(Symbol("ref_$(f)"))(A, ord, kernel(Dims{N}, B))
+                                                NTuple{N,KernelAxis}}) where {N}
+            return $(Symbol("$(f)_ref"))(A, ord, kernel(Dims{N}, B))
         end
-        function $(Symbol("ref_$(f)"))(A::AbstractArray{T,N},
+        function $(Symbol("$(f)_ref"))(A::AbstractArray{<:Any,N},
                                        ord::FilterOrdering,
-                                       B::AbstractArray{S,N}) where {T,N,S<:Union{T,Bool}}
-            return $(Symbol("ref_$(f)!"))(similar(A), A, ord, B)
+                                       B::AbstractArray{<:Any,N}) where {N}
+            T = $t(eltype(A), eltype(B))
+            return $(Symbol("$(f)_ref!"))(similar(A, T), A, ord, B)
         end
-        function $(Symbol("ref_$(f)!"))(dst::AbstractArray{T,N},
-                                        A::AbstractArray{T,N},
+        function $(Symbol("$(f)_ref!"))(dst::AbstractArray{<:Any,N},
+                                        A::AbstractArray{<:Any,N},
                                         ord::FilterOrdering,
-                                        B::AbstractArray{S,N}) where {T,N,S<:Union{T,Bool}}
-            return ref_filter!(dst, A, ord, B,
-                               $(Symbol("init_$(f)"))(T),
-                               $(Symbol("update_$(f)")),
-                               $(Symbol("final_$(f)")))
+                                        B::AbstractArray{<:Any,N}) where {N}
+            return filter_ref!(dst, A, ord, B,
+                               $(Symbol("$(f)_init"))(eltype(A), eltype(B)),
+                               $(Symbol("$(f)_update")),
+                               $(Symbol("$(f)_final")))
         end
     end
 end
 
-function ref_filter!(dst::AbstractArray{<:Any,N},
+function filter_ref!(dst::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
                      ord::FilterOrdering,
                      B::AbstractArray{<:Any,N},
@@ -755,109 +767,125 @@ f2(x) = x > 0.5
 
     rng = MersenneTwister(31415)
     @testset "Linear filters (dims = $dims)" for dims in ((25,), (13,20), (17,12,8))
-        # Pseudo-image, copy, and workspace for in-place operations.
+        # Pseudo-image, forward and reverse kernels.
         # NOTE Use random integers in a small range for exact results.
-        A = rand(rng, -3:20, dims)
-        C = copy(A)
-        B1 = similar(A)
+        Aint = rand(rng, -3:20, dims)
+        Kint = @inferred centered(rand(rng, -1:8, map(x -> round(Int, x/3), dims)))
 
-        # Forward and reverse kernels (same remark as above).
-        Kf = @inferred centered(rand(rng, -1:8, map(x -> round(Int, x/3), dims)))
-        Kr = @inferred reverse_kernel(Kf)
-
-        # Reference results.
-        B0f = @inferred ref_linear(A, FORWARD_FILTER, Kf)
-        @test C == A  # check that A is left unchanged
-        B0r = @inferred ref_linear(A, REVERSE_FILTER, Kf)
-        @test C == A  # check that A is left unchanged
-
-        # Check reverse/forward consistency.
-        @test B0f == @inferred ref_linear(A, REVERSE_FILTER, Kr)
-        @test C == A  # check that A is left unchanged
-        @test B0r == @inferred ref_linear(A, FORWARD_FILTER, Kr)
-        @test C == A  # check that A is left unchanged
-
-        # Test `correlate`.
-        @test B0f == @inferred correlate(A, Kf)
-        @test C == A  # check that A is left unchanged
-        @test B0r == @inferred correlate(A, Kr)
-        @test C == A  # check that A is left unchanged
-
-        # Test `correlate!`.
-        @test B1 === @inferred correlate!(zerofill!(B1), A, Kf)
-        @test C == A   # check that A is left unchanged
-        @test B0f == B1 # check result
-        @test B1 === @inferred correlate!(zerofill!(B1), A, Kr)
-        @test C == A   # check that A is left unchanged
-        @test B0r == B1 # check result
-
-        # Test `convolve`.
-        @test B0r == @inferred convolve(A, Kf)
-        @test C == A  # check that A is left unchanged
-        @test B0f == @inferred convolve(A, Kr)
-        @test C == A  # check that A is left unchanged
-
-        # Test `convolve!`.
-        @test B1 === @inferred convolve!(zerofill!(B1), A, Kf)
-        @test C == A   # check that A is left unchanged
-        @test B0r == B1 # check result
-        @test B1 === @inferred convolve!(zerofill!(B1), A, Kr)
-        @test C == A   # check that A is left unchanged
-        @test B0f == B1 # check result
-
-        # Test `localfilter`.
-        @test B0f == @inferred localfilter(A, Kf, unsafe_linear_filter!)
-        @test C == A   # check that A is left unchanged
-        @test B0r == @inferred localfilter(A, Kr, unsafe_linear_filter!)
-        @test C == A   # check that A is left unchanged
-        @test B0r == @inferred localfilter(A, REVERSE_FILTER, Kf, unsafe_linear_filter!)
-        @test C == A   # check that A is left unchanged
-        @test B0f == @inferred localfilter(A, REVERSE_FILTER, Kr, unsafe_linear_filter!)
-        @test C == A   # check that A is left unchanged
-
-        # Test `localfilter!`.
-        @test B1 === @inferred localfilter!(zerofill!(B1), A, Kf, unsafe_linear_filter!)
-        @test C == A   # check that A is left unchanged
-        @test B0f == B1 # check result
-        @test B1 === @inferred localfilter!(zerofill!(B1), A, Kr, unsafe_linear_filter!)
-        @test C == A   # check that A is left unchanged
-        @test B0r == B1 # check result
-        @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kf, unsafe_linear_filter!)
-        @test C == A   # check that A is left unchanged
-        @test B0r == B1 # check result
-        @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kr, unsafe_linear_filter!)
-        @test C == A   # check that A is left unchanged
-        @test B0f == B1 # check result
-
-        # Make sure kernels have no negative values and convert to floating-point.
-        Kf = Float64.(Kf .- minimum(Kf))
-        Kr = Float64.(Kr .- minimum(Kr))
-        A = Float64.(A)
-        C = copy(A)
-        B1 = similar(A)
-
-        @testset "... and \"$name\" kernel" for name in (:float, :ones, :box)
-            if name === :ones
+        @testset "... and \"$name\" kernel" for name in (:integer, :float, :ones, :box)
+            # Convert source and build kernels.
+            if name === :integer
+                A = Aint
+                Kf = Kint
+                Kr = reverse_kernel(Kf)
+            elseif name === :float
+                # Convert to floating-point and make sure kernels have no negative values.
+                T = Float64
+                A = T.(Aint)
+                Kf = T.(Kint .- minimum(Kint))
+                Kr = reverse_kernel(Kf)
+            elseif name === :ones
                 # Use arrays of ones as kernels.
-                Kf = centered(ones(eltype(A), size(Kf)))
+                T = Float64
+                A = T.(Aint)
+                Kf = centered(ones(T, size(Kint)))
                 Kr = reverse_kernel(Kf)
             elseif name === :box
                 # Will use simple boxes as kernels.
-                Kf = axes(Kf)
-                Kr = axes(Kr)
+                T = Float64
+                A = T.(Aint)
+                Kf = axes(Kint)
+                Kr = axes(reverse_kernel(Kint))
             end
 
+            # Copy of source for checking that it is left untouched.
+            C = copy(A)
+
             # Reference results.
-            B0f = @inferred ref_mean(A, FORWARD_FILTER, Kf)
+            B0f = @inferred sumprod_ref(A, FORWARD_FILTER, Kf)
             @test C == A  # check that A is left unchanged
-            B0r = @inferred ref_mean(A, REVERSE_FILTER, Kf)
+            B0r = @inferred sumprod_ref(A, REVERSE_FILTER, Kf)
             @test C == A  # check that A is left unchanged
 
             # Check reverse/forward consistency.
-            @test B0f == @inferred ref_mean(A, REVERSE_FILTER, Kr)
+            @test typeof(B0f) === typeof(B0r)
+            @test B0f == @inferred sumprod_ref(A, REVERSE_FILTER, Kr)
             @test C == A  # check that A is left unchanged
-            @test B0r == @inferred ref_mean(A, FORWARD_FILTER, Kr)
+            @test B0r == @inferred sumprod_ref(A, FORWARD_FILTER, Kr)
             @test C == A  # check that A is left unchanged
+
+            # Workspace for in-place operations.
+            B1 = similar(B0f)
+            T = eltype(B0f)
+
+            # Test `correlate`.
+            @test B0f == @inferred correlate(A, Kf)
+            @test C == A  # check that A is left unchanged
+            @test B0r == @inferred correlate(A, Kr)
+            @test C == A  # check that A is left unchanged
+
+            # Test `correlate!`.
+            @test B1 === @inferred correlate!(zerofill!(B1), A, Kf)
+            @test C == A   # check that A is left unchanged
+            @test B0f == B1 # check result
+            @test B1 === @inferred correlate!(zerofill!(B1), A, Kr)
+            @test C == A   # check that A is left unchanged
+            @test B0r == B1 # check result
+
+            # Test `convolve`.
+            @test B0r == @inferred convolve(A, Kf)
+            @test C == A  # check that A is left unchanged
+            @test B0f == @inferred convolve(A, Kr)
+            @test C == A  # check that A is left unchanged
+
+            # Test `convolve!`.
+            @test B1 === @inferred convolve!(zerofill!(B1), A, Kf)
+            @test C == A   # check that A is left unchanged
+            @test B0r == B1 # check result
+            @test B1 === @inferred convolve!(zerofill!(B1), A, Kr)
+            @test C == A   # check that A is left unchanged
+            @test B0f == B1 # check result
+
+            # Test `localfilter`.
+            @test B0f == @inferred localfilter(T, A, Kf, unsafe_sumprod_filter!)
+            @test C == A   # check that A is left unchanged
+            @test B0r == @inferred localfilter(T, A, Kr, unsafe_sumprod_filter!)
+            @test C == A   # check that A is left unchanged
+            @test B0r == @inferred localfilter(T, A, REVERSE_FILTER, Kf, unsafe_sumprod_filter!)
+            @test C == A   # check that A is left unchanged
+            @test B0f == @inferred localfilter(T, A, REVERSE_FILTER, Kr, unsafe_sumprod_filter!)
+            @test C == A   # check that A is left unchanged
+
+            # Test `localfilter!`.
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, Kf, unsafe_sumprod_filter!)
+            @test C == A   # check that A is left unchanged
+            @test B0f == B1 # check result
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, Kr, unsafe_sumprod_filter!)
+            @test C == A   # check that A is left unchanged
+            @test B0r == B1 # check result
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kf, unsafe_sumprod_filter!)
+            @test C == A   # check that A is left unchanged
+            @test B0r == B1 # check result
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kr, unsafe_sumprod_filter!)
+            @test C == A   # check that A is left unchanged
+            @test B0f == B1 # check result
+
+            # Reference results.
+            B0f = @inferred mean_ref(A, FORWARD_FILTER, Kf)
+            @test C == A  # check that A is left unchanged
+            B0r = @inferred mean_ref(A, REVERSE_FILTER, Kf)
+            @test C == A  # check that A is left unchanged
+
+            # Check reverse/forward consistency.
+            @test typeof(B0f) === typeof(B0r)
+            @test B0f == @inferred mean_ref(A, REVERSE_FILTER, Kr)
+            @test C == A  # check that A is left unchanged
+            @test B0r == @inferred mean_ref(A, FORWARD_FILTER, Kr)
+            @test C == A  # check that A is left unchanged
+
+            # Workspace for in-place operations.
+            B1 = similar(B0f)
+            T = eltype(B0f)
 
             # Test `localmean`.
             @test B0f == @inferred localmean(A, Kf)
@@ -894,17 +922,17 @@ f2(x) = x > 0.5
             @test B0f == B1
 
             # Test `localfilter`.
-            @test B0f == @inferred localfilter(A, Kf, unsafe_mean_filter!)
+            @test B0f == @inferred localfilter(T, A, Kf, unsafe_mean_filter!)
             @test C == A # check that A is left unchanged
-            @test B0r == @inferred localfilter(A, Kr, unsafe_mean_filter!)
+            @test B0r == @inferred localfilter(T, A, Kr, unsafe_mean_filter!)
             @test C == A # check that A is left unchanged
-            @test B0f == @inferred localfilter(A, FORWARD_FILTER, Kf, unsafe_mean_filter!)
+            @test B0f == @inferred localfilter(T, A, FORWARD_FILTER, Kf, unsafe_mean_filter!)
             @test C == A # check that A is left unchanged
-            @test B0r == @inferred localfilter(A, FORWARD_FILTER, Kr, unsafe_mean_filter!)
+            @test B0r == @inferred localfilter(T, A, FORWARD_FILTER, Kr, unsafe_mean_filter!)
             @test C == A # check that A is left unchanged
-            @test B0r == @inferred localfilter(A, REVERSE_FILTER, Kf, unsafe_mean_filter!)
+            @test B0r == @inferred localfilter(T, A, REVERSE_FILTER, Kf, unsafe_mean_filter!)
             @test C == A # check that A is left unchanged
-            @test B0f == @inferred localfilter(A, REVERSE_FILTER, Kr, unsafe_mean_filter!)
+            @test B0f == @inferred localfilter(T, A, REVERSE_FILTER, Kr, unsafe_mean_filter!)
             @test C == A # check that A is left unchanged
 
             # Test `localfilter!`.
@@ -975,8 +1003,8 @@ f2(x) = x > 0.5
             W
         end
         K = @inferred kernel(Dims{N}, R)
-        @testset "$name" for (name, func, func!, ref_func, filter!) in (("Erosion", erode, erode!, ref_erode, unsafe_erode_filter!),
-                                                                        ("Dilation", dilate, dilate!, ref_dilate, unsafe_dilate_filter!))
+        @testset "$name" for (name, func, func!, ref_func, filter!) in (("Erosion", erode, erode!, erode_ref, unsafe_erode_filter!),
+                                                                        ("Dilation", dilate, dilate!, dilate_ref, unsafe_dilate_filter!))
             B0 = ref_func(A, R)
             @test B0 == @inferred func(A, R; slow=true);
             @test C == A   # check that A is left unchanged

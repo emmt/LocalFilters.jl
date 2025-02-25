@@ -108,7 +108,7 @@ function localmean!(dst::AbstractArray{<:Any,N},
                     null = zero(eltype(dst))) where {N}
     null = as(eltype(dst), null)
     indices = Indices(dst, A, B)
-    T_num = typeof_sum_prod(eltype(A), eltype(B))
+    T_num = typeof_sumprod(eltype(A), eltype(B))
     T_den = typeof_sum(eltype(B))
     @inbounds for i in indices(dst)
         num = zero(T_num)
@@ -198,18 +198,18 @@ See also [`convolve`](@ref) and [`localfilter!`](@ref).
 """ convolve!
 
 # Provide destination.
-function local_sum_prod(A::AbstractArray{<:Any,N},
-                        ord::FilterOrdering,
-                        B::AbstractArray{<:Any,N}) where {N}
-    T = typeof_sum_prod(eltype(A), eltype(B))
-    return local_sum_prod!(similar(A, T), A, ord, B)
+function sumprod(A::AbstractArray{<:Any,N},
+                 ord::FilterOrdering,
+                 B::AbstractArray{<:Any,N}) where {N}
+    T = typeof_sumprod(eltype(A), eltype(B))
+    return sumprod!(similar(A, T), A, ord, B)
 end
 
 # Local sum inside a simple sliding window.
-function local_sum_prod!(dst::AbstractArray{<:Any,N},
-                         A::AbstractArray{<:Any,N},
-                         ord::FilterOrdering,
-                         B::Box{N}) where {N}
+function sumprod!(dst::AbstractArray{<:Any,N},
+                  A::AbstractArray{<:Any,N},
+                  ord::FilterOrdering,
+                  B::Box{N}) where {N}
     indices = Indices(dst, A, B)
     T = typeof_sum(eltype(A))
     @inbounds for i in indices(dst)
@@ -224,12 +224,12 @@ function local_sum_prod!(dst::AbstractArray{<:Any,N},
 end
 
 # Correlation/convolution or local sum with a shaped neighborhood.
-function local_sum_prod!(dst::AbstractArray{<:Any,N},
-                         A::AbstractArray{<:Any,N},
-                         ord::FilterOrdering,
-                         B::AbstractArray{<:Any,N}) where {N}
+function sumprod!(dst::AbstractArray{<:Any,N},
+                  A::AbstractArray{<:Any,N},
+                  ord::FilterOrdering,
+                  B::AbstractArray{<:Any,N}) where {N}
     indices = Indices(dst, A, B)
-    T = typeof_sum_prod(eltype(A), eltype(B))
+    T = typeof_sumprod(eltype(A), eltype(B))
     @inbounds for i in indices(dst)
         J = localindices(indices(A), ord, indices(B), i)
         v = zero(T)
@@ -247,36 +247,35 @@ for (f, ord) in ((:correlate, :FORWARD_FILTER),
     @eval begin
         function $f(A::AbstractArray{<:Any,N},
                     B::Union{Window{N},AbstractArray{<:Any,N}}) where {N}
-            return local_sum_prod(A, $ord, kernel(Dims{N}, B))
+            return sumprod(A, $ord, kernel(Dims{N}, B))
         end
         function $f!(dst::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
                      B::Union{Window{N},AbstractArray{<:Any,N}}) where {N}
-            return local_sum_prod!(dst, A, $ord, kernel(Dims{N}, B))
+            return sumprod!(dst, A, $ord, kernel(Dims{N}, B))
         end
     end
 end
 
+# `sum_init(T)` yields the initial value of the sum of elements of type `T`.
+# The reasoning is that the sum of `n` identical values `x` is given by `n*x` (with
+# `n` an `Int`).
+sum_init(::Type{T}) where {T} = zero(T)*one(Int)
+
+# `sumprod_init(A, B)` yields the initial value of the sum of products of elements of type
+# `A` and `B`.
+sumprod_init(::Type{A}, ::Type{B}) where {A,B} = _mul(zero(A), zero(B))*one(Int)
+
 # Yield the type of the sum of terms of a given type.
-function typeof_sum(::Type{A}) where {A}
-    x = oneunit(A)
-    return typeof(_add(x, x))
-end
+@inline typeof_sum(::Type{T}) where {T} = typeof(sum_init(T))
 
 # Yield the type of the sum of the product of terms of given types.
-function typeof_sum_prod(::Type{A}, ::Type{B}) where {A,B}
-    x = _mul(oneunit(A), oneunit(B))
-    return typeof(_add(x, x))
-end
+@inline typeof_sumprod(::Type{A}, ::Type{B}) where {A,B} = typeof(sumprod_init(A, B))
 
-# Yield the type of a local, possibly weighted, mean.
-function typeof_mean(::Type{A} #= data type =#,
-                     ::Type{B} #= weight type =#) where {A,B}
-    a = oneunit(A)
-    b = oneunit(B)
-    c = _mul(a, b)
-    return typeof(_div(_add(c, c), _add(b, b)))
-end
+# Yield the type of a local, possibly weighted, mean. `A` is the type of the data, `B` is
+# the type of the weights.
+@inline typeof_mean(::Type{A}, ::Type{B}) where {A,B} =
+    typeof(_div(oneunit(typeof_sumprod(A, B)), oneunit(typeof_sum(B))))
 
 # See `base/reduce.jl`.
 const SmallSigned = Union{filter(T -> sizeof(T) < sizeof(Int),
@@ -298,8 +297,8 @@ for (f, op) in ((:_add, :(+)), (:_mul, :(*)))
 end
 
 # Compared to the base implementation in `bool.jl`, the following definition of the
-# multiplication by a Boolean yields a significantly faster (~50%) `local_sum_prod!` for
-# big neighborhoods because `copysign` is avoided.
+# multiplication by a Boolean yields a significantly faster (~50%) `sumprod!` for big
+# neighborhoods because `copysign` is avoided.
 _mul(x::Real, y::Bool) = _mul(y, x)
 _mul(x::Any,  y::Bool) = _mul(y, x)
 _mul(x::Bool, y::Bool) = Int(x & y)
