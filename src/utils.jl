@@ -116,9 +116,8 @@ See also [`LocalFilters.strel`](@ref), [`LocalFilters.ball`](@ref),
 [`LocalFilters.cartesian_limits`](@ref).
 
 """
-kernel(::Type{Dims{N}}, arg::Axis) where {N} = kernel(Dims{N}, kernel_range(arg))
-kernel(::Type{Dims{N}}, rng::AbstractUnitRange{Int}) where {N} =
-    kernel(ntuple(Returns(rng), Val(N)))
+kernel(::Type{Dims{N}}, arg::Axis) where {N} =
+    kernel(ntuple(Returns(kernel_range(arg)), Val(N)))
 kernel(::Type{Dims{N}}, inds::Vararg{Axis,N}) where {N} = kernel(inds)
 kernel(::Type{Dims{N}}, inds::NTuple{N,Axis}) where {N} = kernel(inds)
 kernel(::Type{Dims{N}}, R::CartesianIndices{N}) where {N} = kernel(R)
