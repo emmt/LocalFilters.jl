@@ -141,8 +141,7 @@ const KernelAxis = Union{Integer,AbstractUnitRange{<:Integer}}
 
 for f in (:erode, :dilate, :sumprod, :mean)
     t = f === :sumprod ? :sumprod_eltype :
-        f === :mean   ? :mean_eltype :
-        :morphology_eltype
+        f === :mean    ? :mean_eltype : :morphology_eltype
     @eval begin
         function $(Symbol("$(f)_ref"))(A::AbstractArray{<:Any,N},
                                        B::Union{KernelAxis,
@@ -196,39 +195,9 @@ function filter_ref!(dst::AbstractArray{<:Any,N},
     return dst
 end
 
-#=
-# Selector for reference methods.
-const REF = Val(:Base)
-
 const ATOL = 0.0
 const GTOL = 4*eps(Float64)
 
-compare(a::AbstractArray, b::AbstractArray) = maximum(abs(a - b))
-samevalues(a::AbstractArray, b::AbstractArray) = minimum(a .== b)
-identical(a::RectangularBox{N}, b::RectangularBox{N}) where {N} =
-    (first_cartesian_index(a) === first_cartesian_index(b) &&
-     last_cartesian_index(a) === last_cartesian_index(b))
-identical(a::Kernel{Ta,N}, b::Kernel{Tb,N}) where {Ta,Tb,N} =
-    nearlysame(a, b; atol=0, gtol=0)
-identical(a::Neighborhood, b::Neighborhood) = false
-
-function nearlysame(a::Kernel{Ta,N}, b::Kernel{Tb,N};
-                    atol=ATOL, gtol=GTOL) where {Ta,Tb,N}
-    first_cartesian_index(a) == first_cartesian_index(b) || return false
-    last_cartesian_index(a) == last_cartesian_index(b) || return false
-    if atol == 0 && gtol == 0
-        for i in neighborhood(a)
-            a[i] == b[i] || return false
-        end
-    else
-        for i in neighborhood(a)
-            ai, bi = a[i], b[i]
-            abs(ai - bi) ≤ atol + gtol*max(abs(ai), abs(bi)) || return false
-        end
-    end
-    return true
-end
-=#
 function similarvalues(A::AbstractArray{Ta,N}, B::AbstractArray{Tb,N};
                        atol=ATOL, gtol=GTOL) where {Ta,Tb,N}
     @assert axes(A) == axes(B)
@@ -1126,103 +1095,6 @@ f2(x) = x > 0.5
             end
         end
     end # @testset "Morphology"
-
-#=
-    @testset "Neighborhoods" begin
-        for (dims, rngs) in (((3,), (-1:1,)),
-                             ((3, 4, 5), (-1:1, -2:1, -2:2)))
-            N = length(dims)
-            box = neighborhood(dims)
-            fse = strel(Bool, box) # flat structuring element
-            Imin, Imax = first(box), last(box)
-            A = rand(dims...)
-            msk = rand(Bool, dims)
-            ker = centered(A)
-
-            # Kernel constructors.
-            @test Kernel(ker) === ker
-            @test_deprecated Kernel(eltype(A), ker) === ker
-            @test identical(Kernel(box), Kernel(ones(Bool, dims)))
-            @test identical(Kernel{Bool}(box), Kernel(ones(Bool, dims)))
-            @test Kernel(A, first_cartesian_index(ker)) === ker
-            @test Kernel(A, rngs) === ker
-            @test Kernel(A, rngs...) === ker
-            @test Kernel(A, CartesianIndices(ker)) === ker
-            off = first_cartesian_index(A) - first_cartesian_index(ker)
-            @test identical(Kernel{eltype(A)}(i -> f1(A[off + i]),
-                                              CartesianIndices(ker)),
-                            Kernel(map(f1, A)))
-            @test identical(Kernel(i -> f1(A[off + i]),
-                                   CartesianIndices(ker)), Kernel(map(f1, A)))
-            @test identical(Kernel{Bool}(i -> f2(A[off + i]),
-                                         CartesianIndices(ker)),
-                            Kernel(map(f2, A)))
-            @test identical(Kernel(i -> f2(A[off + i]),
-                                   CartesianIndices(ker)), Kernel(map(f2, A)))
-            @test identical(convert(Kernel, box), fse)
-            @test identical(Kernel((0,-Inf), msk), strel(Float64, Kernel(msk)))
-            @test identical(strel(Bool, box), Kernel(box))
-            @test convert(Kernel, fse) === fse
-            @test convert(Kernel, ker) === ker
-
-            @test nearlysame(Float32(ker), ker; atol=0, gtol=eps(Float32))
-            @test nearlysame(Float32(ker), Float64(ker);
-                             atol=0, gtol=eps(Float32))
-            @test checkindexing!(ker)
-
-            # Other basic methods.
-            @test length(box) === length(CartesianIndices(rngs))
-            @test size(box) === size(CartesianIndices(rngs))
-            @test size(box) === ntuple(d -> size(box, d), N)
-            @test axes(box) === ntuple(d -> axes(box, d), N)
-            @test length(ker) === length(A)
-            @test size(ker) === size(A)
-            @test size(ker) === ntuple(d -> size(ker, d), N)
-            @test axes(ker) === ntuple(d -> axes(ker, d), N)
-            @test is_morpho_math_box(fse) == true
-            @test is_morpho_math_box(box) == true
-            boolker = neighborhood(ones(Bool,dims))
-            @test is_morpho_math_box(boolker) == true
-            boolker[zero(CartesianIndex{N})] = false
-            @test is_morpho_math_box(boolker) == false
-            #@test is_morpho_math_box(Empty{N}()) == false
-
-            # Test reverse().
-            revbox = reverse(box)
-            revker = reverse(ker)
-            @test first_cartesian_index(revbox) === -last_cartesian_index(box)
-            @test last_cartesian_index(revbox) === -first_cartesian_index(box)
-            @test first_cartesian_index(revker) === -last_cartesian_index(ker)
-            @test last_cartesian_index(revker) === -first_cartesian_index(ker)
-            @test samevalues(coefs(revker), reversealldims(coefs(ker)))
-        end
-    end
-    for (arrdims, boxdims) in (((341,),    (3,)),
-                               ((62,81),   (5,3)),
-                               ((23,28,27),(3,7,5)))
-        rank = length(arrdims)
-        @testset "$(rank)D test" begin
-            a = rand(arrdims...)
-            box = RectangularBox(boxdims)
-            mask = Kernel(box)
-            fse = strel(eltype(a), mask) # flat structuring element
-            kern = Kernel((1.0, 0.0), mask) # kernel for convolution
-            @testset "localmean" begin
-                result = localmean(REF, a, box)
-                @test similarvalues(localmean(a, box), result)
-                @test similarvalues(localmean(a, mask), result)
-                @test similarvalues(localmean(a, kern), result)
-            end
-            @testset "convolve" begin
-                result = convolve(REF, a, kern)
-                @test similarvalues(convolve(a, box), result)
-                @test similarvalues(convolve(a, mask), result)
-                @test similarvalues(convolve(a, kern), result)
-            end
-        end
-    end
-
-=#
 
     @testset "van Herk / Gil & Werman algorithm" begin
         A = rand(Float32, 40)
