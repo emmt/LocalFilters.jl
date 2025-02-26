@@ -23,7 +23,7 @@ If `T`, the element type of the result, is not provided, it is assumed to be the
 for `A` which may be inaccurate.
 
 """
-localfilter(A::AbstractArray{<:Any,N}, args...; kwds...) where {T,N} =
+localfilter(A::AbstractArray{<:Any,N}, args...; kwds...) where {N} =
     localfilter(eltype(A), A, args...; kwds...)
 
 localfilter(::Type{T}, A::AbstractArray{<:Any,N}, args...; kwds...) where {T,N} =
