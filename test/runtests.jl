@@ -1205,43 +1205,86 @@ f2(x) = x > 0.5
         end
     end
 
-    # Test van Herk / Gil & Werman algorithm.
+=#
+
     @testset "van Herk / Gil & Werman algorithm" begin
-        # Test shifts.
-        A = rand(30)
-        B = Array{eltype(A),ndims(A)}(undef, size(A))
+        A = rand(Float32, 40)
+        Aref = copy(A)
+        Bref = similar(A)
         n = length(A)
-        for k in (2, 0, -3)
+        @testset "... shift by $k" for k in (2, 0, -3)
             for i in 1:n
-                j = clamp(i - k, 1, n)
-                B[i] = A[j]
+                j = clamp(i + k, 1, n)
+                Bref[i] = A[j]
             end
-            @test samevalues(B, localfilter(A,1,min,k:k))
-            C = copy(A)
-            @test samevalues(B, localfilter!(C,1,min,k:k))
+            B = @inferred localfilter(A, 1, min, k:k)
+            @test A == Aref # check that A is left unchanged
+            @test B == Bref # check result
+            @test B === @inferred localfilter!(copyto!(B, A), 1, min, k:k)
+            @test B == Bref # check result
         end
-        A = rand(12,13)
-        B = Array{eltype(A),ndims(A)}(undef, size(A))
-        C = Array{eltype(A),ndims(A)}(undef, size(A))
+        A = rand(Float64, 12, 13)
+        Aref = copy(A)
+        Bref = similar(A)
         n1, n2 = size(A)
-        for k1 in (2, 0, -3),
-            k2 in (1, 0, -2)
+        @testset "... shift by ($k1, $k2)" for k1 in (2, 0, -3), k2 in (1, 0, -2)
             for i2 in 1:n2
-                j2 = clamp(i2 - k2, 1, n2)
+                j2 = clamp(i2 + k2, 1, n2)
                 for i1 in 1:n1
-                    j1 = clamp(i1 - k1, 1, n1)
-                    B[i1,i2] = A[j1,j2]
+                    j1 = clamp(i1 + k1, 1, n1)
+                    Bref[i1,i2] = A[j1,j2]
                 end
             end
-            @test samevalues(B, localfilter(A,:,min,(k1:k1,k2:k2)))
-            @test samevalues(B, localfilter(A,[1,2],min,(k1:k1,k2:k2)))
-            @test samevalues(B, localfilter(A,(2,1),min,(k2:k2,k1:k1)))
-            @test samevalues(B, localfilter!(copyto!(C,A),:,min,(k1:k1,k2:k2)))
-            @test samevalues(B, localfilter!(copyto!(C,A),(1,2),min,(k1:k1,k2:k2)))
-            @test samevalues(B, localfilter!(copyto!(C,A),[2,1],min,(k2:k2,k1:k1)))
+            B = @inferred localfilter(A, :, min, (k1:k1, k2:k2))
+            @test A == Aref # check that A is left unchanged
+            @test B == Bref # check result
+            @test B === @inferred localfilter!(copyto!(B, A), :, min, (k1:k1, k2:k2))
+            @test B == Bref # check result
+            B = @inferred localfilter(A, [1,2], min, (k1:k1, k2:k2))
+            @test A == Aref # check that A is left unchanged
+            @test B == Bref # check result
+            @test B === @inferred localfilter!(copyto!(B, A), [1,2], min, (k1:k1, k2:k2))
+            @test B == Bref # check result
+            B = @inferred localfilter(A, (2,1), min, [k2:k2, k1:k1])
+            @test A == Aref # check that A is left unchanged
+            @test B == Bref # check result
+            @test B === @inferred localfilter!(copyto!(B, A), (2,1), min, (k2:k2, k1:k1))
+            @test B == Bref # check result
+            B = @inferred localfilter(A, [1,2], min, (k1:k1, k2:k2))
+            @test A == Aref # check that A is left unchanged
+            @test B == Bref # check result
+            B = @inferred localfilter(A, (2,1), min, [k2:k2, k1:k1])
+            @test A == Aref # check that A is left unchanged
+            @test B == Bref # check result
+            if iszero(k2)
+                B = @inferred localfilter(A, 1, min, k1:k1)
+                @test A == Aref # check that A is left unchanged
+                @test B == Bref # check result
+                B = @inferred localfilter(A, [1], min, (k1:k1,))
+                @test A == Aref # check that A is left unchanged
+                @test B == Bref # check result
+                B = @inferred localfilter(A, (1,), min, [k1:k1])
+                @test A == Aref # check that A is left unchanged
+                @test B == Bref # check result
+            end
+            if iszero(k1)
+                B = @inferred localfilter(A, 2, min, k2:k2)
+                @test A == Aref # check that A is left unchanged
+                @test B == Bref # check result
+                B = @inferred localfilter(A, [2], min, (k2:k2,))
+                @test A == Aref # check that A is left unchanged
+                @test B == Bref # check result
+                B = @inferred localfilter(A, (2,), min, [k2:k2])
+                @test A == Aref # check that A is left unchanged
+                @test B == Bref # check result
+            end
+            #@test samevalues(B, localfilter(A,[1,2],min,(k1:k1,k2:k2)))
+            #@test samevalues(B, localfilter(A,(2,1),min,(k2:k2,k1:k1)))
+            #@test samevalues(B, localfilter!(copyto!(C,A),:,min,(k1:k1,k2:k2)))
+            #@test samevalues(B, localfilter!(copyto!(C,A),(1,2),min,(k1:k1,k2:k2)))
+            #@test samevalues(B, localfilter!(copyto!(C,A),[2,1],min,(k2:k2,k1:k1)))
         end
     end
-=#
 
     @testset "Bilateral filter" begin
         A = randn(Float64, 128, 100)
