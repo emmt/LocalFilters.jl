@@ -63,3 +63,18 @@ if VERSION < v"1.6.0-beta1"
         return A
     end
 end
+
+if VERSION < v"1.11.0-alpha1"
+    # Wrappers to get rid of newly introduced keywords:
+    for type in (:BitSet, :Vector)
+        @eval sizehint!(x::$type, sz::Integer; shrink::Bool=true, first::Bool=false) =
+            Base.sizehint!(x, sz)
+    end
+    for type in (:Dict, :Set, :WeakKeyDict)
+        @eval sizehint!(x::$type, sz; shrink::Bool=true) = Base.sizehint!(x, sz)
+    end
+    # Fallback only called when `shrink` keyword explicitly specified:
+    sizehint!(x, sz; shrink::Bool) = Base.sizehint!(x, sz)
+    # Fallback for any other calls:
+    sizehint!(args...; kwds...) = Base.sizehint!(args...; kwds...)
+end
