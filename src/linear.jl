@@ -12,7 +12,7 @@
 #
 
 """
-    localmean(A, [ord=FORWARD_FILTER,] B=3; null=zero(eltype(A)))
+    localmean(A, B=3; null=zero(T), order=FORWARD_FILTER)
 
 yields the local mean of `A` in a neighborhood defined by `B`. The result is an array
 similar to `A`. If `B` is not specified, the neighborhood is a hyper-rectangular sliding
@@ -22,34 +22,24 @@ integer (as it is by default), the neighborhood is assumed to be a hyper-rectang
 sliding window of size `B` in every dimension.
 
 Keyword `null` may be used to specify the value of the result where the sum of the weights
-in a local neighborhood is zero.
+in a local neighborhood is zero. By default, `null = zero(T)` with `T` the element type of
+the result.
+
+Keyword `order` specifies the filter direction, `FORWARD_FILTER` by default.
 
 See also [`localmean!`](@ref) and [`localfilter!`](@ref).
 
 """
-function localmean(A::AbstractArray{<:Any,N},
-                   B::Union{Window{N},AbstractArray{<:Any,N}} = 3; kwds...) where {N}
-    # Provides default ordering.
-    return localmean(A, FORWARD_FILTER, B; kwds...)
-end
+localmean(A::AbstractArray{<:Any,N}, B::Window{N} = 3; kwds...) where {N} =
+    localmean(A, kernel(Dims{N}, B); kwds...)
 
-function localmean(A::AbstractArray{<:Any,N},
-                   ord::FilterOrdering,
-                   B::Window{N} = 3; kwds...) where {N}
-    # Make `B` into a kernel array.
-    return localmean(A, ord, kernel(Dims{N}, B); kwds...)
-end
-
-function localmean(A::AbstractArray{<:Any,N},
-                   ord::FilterOrdering,
-                   B::AbstractArray{<:Any,N}; kwds...) where {N}
-    # Provide the destination array.
+function localmean(A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N}; kwds...) where {N}
     T = typeof_mean(eltype(A), eltype(B))
-    return localmean!(similar(A, T), A, ord, B; kwds...)
+    return localmean!(similar(A, T), A, B; kwds...)
 end
 
 """
-    localmean!(dst, A, [ord=FORWARD_FILTER,] B=3; null=zero(eltype(dst))) -> dst
+    localmean!(dst, A, B=3; null=zero(eltype(dst)), order=FORWARD_FILTER) -> dst
 
 overwrites `dst` with the local mean of `A` in a neighborhood defined by `B` and returns
 `dst`.
@@ -57,35 +47,25 @@ overwrites `dst` with the local mean of `A` in a neighborhood defined by `B` and
 Keyword `null` may be used to specify the value of the result where the sum of the weights
 in the a neighborhood is zero.
 
+Keyword `order` specifies the filter direction, `FORWARD_FILTER` by default.
+
 See also [`localmean`](@ref) and [`localfilter!`](@ref).
 
 """
-function localmean!(dst::AbstractArray{<:Any,N},
-                    A::AbstractArray{<:Any,N},
-                    B::Union{Window{N},AbstractArray{<:Any,N}} = 3; kwds...) where {N}
-    # Provide default ordering.
-    return localmean!(dst, A, FORWARD_FILTER, B; kwds...)
-end
-
-function localmean!(dst::AbstractArray{<:Any,N},
-                    A::AbstractArray{<:Any,N},
-                    ord::FilterOrdering,
+function localmean!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N},
                     B::Window{N} = 3; kwds...) where {N}
-    # Make `B` into a kernel array.
-    return localmean!(dst, A, ord, kernel(Dims{N}, B); kwds...)
+    return localmean!(dst, A, kernel(Dims{N}, B); kwds...)
 end
 
 # Local mean inside a simple sliding window.
-function localmean!(dst::AbstractArray{<:Any,N},
-                    A::AbstractArray{<:Any,N},
-                    ord::FilterOrdering,
-                    B::Box{N};
-                    null = zero(eltype(dst))) where {N}
+function localmean!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N}, B::Box{N};
+                    null = zero(eltype(dst)),
+                    order::FilterOrdering = FORWARD_FILTER) where {N}
     null = nearest(eltype(dst), null)
     indices = Indices(dst, A, B)
     T_num = typeof_sum(eltype(A))
     @inbounds for i in indices(dst)
-        J = localindices(indices(A), ord, indices(B), i)
+        J = localindices(indices(A), order, indices(B), i)
         den = length(J)
         if den > 0
             num = zero(T_num)
@@ -103,9 +83,9 @@ end
 # Local mean with a shaped neighborhood or weighted local mean.
 function localmean!(dst::AbstractArray{<:Any,N},
                     A::AbstractArray{<:Any,N},
-                    ord::FilterOrdering,
                     B::AbstractArray{<:Any,N};
-                    null = zero(eltype(dst))) where {N}
+                    null = zero(eltype(dst)),
+                    order::FilterOrdering = FORWARD_FILTER) where {N}
     null = as(eltype(dst), null)
     indices = Indices(dst, A, B)
     T_num = typeof_sumprod(eltype(A), eltype(B))
@@ -113,9 +93,9 @@ function localmean!(dst::AbstractArray{<:Any,N},
     @inbounds for i in indices(dst)
         num = zero(T_num)
         den = zero(T_den)
-        J = localindices(indices(A), ord, indices(B), i)
+        J = localindices(indices(A), order, indices(B), i)
         @simd for j in J
-            wgt = B[ord(i,j)]
+            wgt = B[order(i,j)]
             num += _mul(A[j], wgt)
             den += wgt
         end
@@ -199,23 +179,19 @@ See also [`convolve`](@ref) and [`localfilter!`](@ref).
 
 # Provide destination.
 function sumprod(A::AbstractArray{<:Any,N},
-                 ord::FilterOrdering,
-                 B::AbstractArray{<:Any,N}) where {N}
+                 B::AbstractArray{<:Any,N}; kwds...) where {N}
     T = typeof_sumprod(eltype(A), eltype(B))
-    return sumprod!(similar(A, T), A, ord, B)
+    return sumprod!(similar(A, T), A, B; kwds...)
 end
 
 # Local sum inside a simple sliding window.
-function sumprod!(dst::AbstractArray{<:Any,N},
-                  A::AbstractArray{<:Any,N},
-                  ord::FilterOrdering,
-                  B::Box{N}) where {N}
+function sumprod!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N}, B::Box{N};
+                  order::FilterOrdering = FORWARD_FILTER) where {N}
     indices = Indices(dst, A, B)
     T = typeof_sum(eltype(A))
     @inbounds for i in indices(dst)
-        J = localindices(indices(A), ord, indices(B), i)
         v = zero(T)
-        @simd for j in J
+        @simd for j in localindices(indices(A), order, indices(B), i)
             v += A[j]
         end
         store!(dst, i, v)
@@ -224,35 +200,33 @@ function sumprod!(dst::AbstractArray{<:Any,N},
 end
 
 # Correlation/convolution or local sum with a shaped neighborhood.
-function sumprod!(dst::AbstractArray{<:Any,N},
-                  A::AbstractArray{<:Any,N},
-                  ord::FilterOrdering,
-                  B::AbstractArray{<:Any,N}) where {N}
+function sumprod!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N},
+                  B::AbstractArray{<:Any,N};
+                  order::FilterOrdering = FORWARD_FILTER) where {N}
     indices = Indices(dst, A, B)
     T = typeof_sumprod(eltype(A), eltype(B))
     @inbounds for i in indices(dst)
-        J = localindices(indices(A), ord, indices(B), i)
         v = zero(T)
-        @simd for j in J
-            v += _mul(A[j], B[ord(i,j)])
+        @simd for j in localindices(indices(A), order, indices(B), i)
+            v += _mul(A[j], B[order(i,j)])
         end
         store!(dst, i, v)
     end
     return dst
 end
 
-for (f, ord) in ((:correlate, :FORWARD_FILTER),
-                 (:convolve,  :REVERSE_FILTER))
+for (f, order) in ((:correlate, :FORWARD_FILTER),
+                   (:convolve,  :REVERSE_FILTER))
     f! = Symbol(f,"!")
     @eval begin
         function $f(A::AbstractArray{<:Any,N},
                     B::Union{Window{N},AbstractArray{<:Any,N}}) where {N}
-            return sumprod(A, $ord, kernel(Dims{N}, B))
+            return sumprod(A, kernel(Dims{N}, B); order = $order)
         end
         function $f!(dst::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
                      B::Union{Window{N},AbstractArray{<:Any,N}}) where {N}
-            return sumprod!(dst, A, $ord, kernel(Dims{N}, B))
+            return sumprod!(dst, A, kernel(Dims{N}, B); order = $order)
         end
     end
 end

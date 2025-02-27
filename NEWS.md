@@ -45,6 +45,9 @@
 * Constants for filter ordering follow more general naming rules: `FORWARD_FILTER` and
   `REVERSE_FILTER` instead of `ForwardFilter` and `ReverseFilter`.
 
+* Filter ordering is always specified by the keyword `order` and is `FORWARD_FILTER` by
+  default.
+
 ## Version 2.0.0
 
 Version 2 of `LocalFilters` better integrates in the Julia ecosystem as fewer custom types

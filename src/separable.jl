@@ -106,16 +106,12 @@ end
 end
 
 """
-    localfilter([T=eltype(A),] A, dims, op, [ord=FORWARD_FILTER,]
-                rngs[, wrk]) -> dst
+    localfilter([T=eltype(A),] A, dims, op, rngs; kwds...) -> dst
 
 yields the result of applying van Herk-Gil-Werman algorithm to filter array `A` along
 dimension(s) `dims` with (associative) binary operation `op` and contiguous structuring
-element(s) defined by the interval(s) `rngs`. Optional argument `wrk` is a workspace array
-with elements of type `T` which is automatically allocated if not provided; otherwise, it
-must be a vector with the same element type as `A` and it is resized as needed (by calling
-the `resize!` method). The optional argument `T` allows to specify another type of element
-than `eltype(A)` for the result.
+element(s) defined by the interval(s) `rngs`. The optional argument `T` allows to specify
+another type of element than `eltype(A)` for the result.
 
 Argument `dims` specifies along which dimension(s) of `A` the filter is to be applied, it
 can be a single integer, a tuple of integers, or a colon `:` to apply the operation to all
@@ -125,6 +121,11 @@ structuring element (except that, if `rngs` is a single interval, it is used for
 dimension in `dims`). An interval is either an integer or an integer valued unit range in
 the form `kmin:kmax`. An interval specified as a single integer yields an approximately
 centered range of this length.
+
+Keyword `order` specifies the filter direction, `FORWARD_FILTER` by default.
+
+Keyword `work` may be used to provide a workspace array of type `Vector{T}` which is
+automatically resized as needed.
 
 Assuming a mono-dimensional array `A`, the single filtering pass:
 
@@ -168,51 +169,40 @@ The *local average* of the two-dimensional array `A` on a centered moving window
 
 See [`localfilter!`](@ref) for an in-place version of the method.
 
-"""
-localfilter(A::AbstractArray, dims::Dimensions, op::Function, args...) =
-    localfilter(eltype(A), A, dims, op, args...)
-localfilter(::Type{T}, A::AbstractArray, dims::Dimensions, op::Function, args...) where {T} =
-    localfilter!(similar(A, T), A, dims, op, args...)
+""" localfilter
+#localfilter(A::AbstractArray, dims::Dimensions, op::Function, rngs::Ranges; kwds...) =
+#    localfilter(eltype(A), A, dims, op, rngs; kwds...)
+#localfilter(::Type{T}, A::AbstractArray, dims::Dimensions, op::Function, rngs::Ranges; kwds...) where {T} =
+#    localfilter!(similar(A, T), A, dims, op, rngs; kwds...)
 
 """
-    localfilter!([dst = A,] A, dims, op, [ord=FORWARD_FILTER,] rngs[, wrk])
+    localfilter!([dst = A,] A, dims, op, rngs ; kwds...)
 
 overwrites the contents of `dst` with the result of applying van Herk-Gil-Werman algorithm
 to filter array `A` along dimension(s) `dims` with (associative) binary operation `op` and
-contiguous structuring element(s) defined by the interval(s) `rngs` and using optional
-argument `wrk` as a workspace array. The destination `dst` must have the same indices as
-the source `A` (that is, `axes(dst) == axes(A)`). Operation may be done in-place and `dst`
-and `A` can be the same; this is the default behavior if `dst` is not specified.
+contiguous structuring element(s) defined by the interval(s) `rngs`. Except if a single
+dimension of interest is specified by `dims`, the destination `dst` must have the same
+indices as the source `A` (that is, `axes(dst) == axes(A)`). Operation may be done
+in-place and `dst` and `A` can be the same; this is the default behavior if `dst` is not
+specified.
 
-See [`localfilter`](@ref) for a full description of the method.
+See [`localfilter`](@ref) for a full description of the method and for accepted keywords.
 
 The in-place *morphological erosion* (local minimum) of the array `A` on a centered
 structuring element of width 7 in every dimension can be obtained by:
 
     localfilter!(A, :, min, -3:3)
 
-""" localfilter!
+"""
+localfilter!(A::AbstractArray, dims::Dimensions, op::Function, rngs::Ranges; kwds...) =
+   localfilter!(A, A, dims, op, rngs; kwds...)
 
-# Provide ordering.
-function localfilter!(A::AbstractArray, dims::Dimensions, op::Function, rngs::Ranges, args...)
-    return localfilter!(A, dims, op, FORWARD_FILTER, rngs, args...)
-end
-function localfilter!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N},
-                      dims::Dimensions, op::Function, rngs::Ranges, args...) where {N}
-    return localfilter!(dst, A, dims, op, FORWARD_FILTER, rngs, args...)
-end
-
-# In-place operation.
-function localfilter!(A::AbstractArray, dims::Dimensions, op::Function,
-                      ord::FilterOrdering, rngs::Ranges, args...)
-    return localfilter!(A, A, dims, op, ord, rngs, args...)
-end
-
-# Provide workspace.
-function localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dims::Dimensions,
-                      op::Function, ord::FilterOrdering, rngs::Ranges) where {T,N}
-    wrk = Array{T}(undef, workspace_length(A, dims, rngs))
-    return localfilter!(dst, A, dims, op, ord, rngs, wrk)
+function localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N},
+                      dims::Dimensions, op::Function, rngs::Ranges;
+                      work::Vector{T} = Vector{T}(undef, workspace_length(A, dims, rngs)),
+                      order::FilterOrdering = FORWARD_FILTER) where {T,N}
+    _localfilter!(dst, A, dims, op, order, rngs, work)
+    return dst
 end
 
 # Wrapper methods when destination, ordering, and workspace are specified.
@@ -222,100 +212,82 @@ end
 # dimension and the operation is performed in-place for the other chosen dimensions.
 #
 # Apply filter along all dimensions (`dims` is a colon).
-function localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, ::Colon,
-                      op::Function, ord::FilterOrdering, len::Integer,
-                      wrk::Vector{T}) where {T,N}
-    return localfilter!(dst, A, :, op, ord, kernel_range(len), wrk)
-end
-function localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, ::Colon,
-                      op::Function, ord::FilterOrdering, rng::AbstractRange{<:Integer},
-                      wrk::Vector{T}) where {T,N}
-    if N ≥ 1
-        rng = kernel_range(ord, rng) # optimization: convert once
-        localfilter!(dst, A, 1, op, FORWARD_FILTER, rng, wrk)
-        for dim in 2:N
-            localfilter!(dst, dst, dim, op, FORWARD_FILTER, rng, wrk)
+function _localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, ::Colon,
+                       op::Function, ord::FilterOrdering, rngs::Ranges,
+                       wrk::Vector{T}) where {T,N}
+    if rngs isa Union{Integer,AbstractRange{<:Integer}}
+        rng = kernel_range(ord, rngs) # optimization: convert once
+        if N ≥ 1
+            _localfilter!(dst, A, 1, op, rng, wrk)
+            for dim in 2:N
+                _localfilter!(dst, dst, dim, op, rng, wrk)
+            end
+        end
+    else
+        length(rngs) == N || throw(DimensionMismatch(
+            "there must be as many intervals as dimensions"))
+        if N ≥ 1
+            _localfilter!(dst, A, 1, op, kernel_range(ord, first(rngs)), wrk)
+            for (dim, rng) in enumerate(rngs)
+                dim > 1 && _localfilter!(dst, dst, dim, op, kernel_range(ord, rng), wrk)
+            end
         end
     end
-    return dst
-end
-function localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, ::Colon,
-                      op::Function, ord::FilterOrdering, rngs::Ranges,
-                      wrk::Vector{T}) where {T,N}
-    length(rngs) == N || throw(DimensionMismatch(
-        "there must be as many intervals as dimensions"))
-    if N ≥ 1
-        localfilter!(dst, A, 1, op, ord, first(rngs), wrk)
-        for (dim, rng) in enumerate(rngs)
-            dim > 1 && localfilter!(dst, dst, dim, op, ord, rng, wrk)
-        end
-    end
-    return dst
 end
 #
 # Apply filter along a single given dimension (`dims` is an integer).
-function localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dim::Integer,
-                      op::Function, ord::FilterOrdering, len::Integer,
-                      wrk::Vector{T}) where {T,N}
-    return localfilter!(dst, A, dim, op, ord, kernel_range(len), wrk)
-end
-function localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dim::Integer,
-                      op::Function, ord::FilterOrdering, rng::AbstractRange{<:Integer},
-                      wrk::Vector{T}) where {T,N}
-    # NOTE This is the most basic version which is called by other versions.
-    1 ≤ dim ≤ N || throw(ArgumentError("out of bounds dimension"))
-    isempty(rng) && throw(ArgumentError("invalid filter size"))
-    unsafe_localfilter!(dst, A, Val{Int(dim)}(), op, kernel_range(ord, rng), wrk)
-    return dst
-end
-function localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dim::Integer,
-                      op::Function, ord::FilterOrdering, rngs::Ranges,
-                      wrk::Vector{T}) where {T,N}
-    length(rngs) == 1 || throw(DimensionMismatch(
-        "there must be as many intervals as dimensions"))
-    return localfilter!(dst, A, dim, op, ord, first(rngs), wrk)
+function _localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dim::Integer,
+                       op::Function, ord::FilterOrdering, rngs::Ranges,
+                       wrk::Vector{T}) where {T,N}
+    if rngs isa Union{Integer,AbstractRange{<:Integer}}
+        rng = kernel_range(ord, rngs)
+    else
+        length(rngs) == 1 || throw(DimensionMismatch(
+            "there must be as many intervals as dimensions to filter"))
+        rng = kernel_range(ord, first(rngs))
+    end
+    _localfilter!(dst, A, dim, op, rng, wrk)
 end
 #
 # Apply filter along multiple given dimensions (`dims` is a list of integers).
-function localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dims::Dimensions,
-                      op::Function, ord::FilterOrdering, len::Integer,
-                      wrk::Vector{T}) where {T,N}
-    return localfilter!(dst, A, dims, op, ord, kernel_range(len), wrk) # FIXME this one replaces all
-end
-function localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dims::Dimensions,
-                      op::Function, ord::FilterOrdering, rng::AbstractRange{<:Integer},
-                      wrk::Vector{T}) where {T,N}
+function _localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dims::Dimensions,
+                       op::Function, ord::FilterOrdering, rngs::Ranges,
+                       wrk::Vector{T}) where {T,N}
     i, j = firstindex(dims), lastindex(dims)
-    if i ≤ j
-        rng = kernel_range(ord, rng) # optimization: convert once
-        localfilter!(dst, A, @inbounds(dims[i]), op, FORWARD_FILTER, rng, wrk)
-        for k in i+1:j
-            localfilter!(dst, dst, @inbounds(dims[k]), op, FORWARD_FILTER, rng, wrk)
+    if rngs isa Union{Integer,AbstractRange{<:Integer}}
+        if i ≤ j
+            rng = kernel_range(ord, rngs) # optimization: convert once
+            _localfilter!(dst, A, @inbounds(dims[i]), op, rng, wrk)
+            for k in i+1:j
+                _localfilter!(dst, dst, @inbounds(dims[k]), op, rng, wrk)
+            end
+        end
+    else
+        length(dims) == length(rngs) || throw(DimensionMismatch(
+            "there must be as many intervals as dimensions to filter"))
+        if i ≤ j
+            off = firstindex(rngs) - i
+            _localfilter!(dst, A, @inbounds(dims[i]), op, kernel_range(ord, @inbounds(rngs[off+i])), wrk)
+            for k in i+1:j
+                _localfilter!(dst, dst, @inbounds(dims[k]), op, kernel_range(ord, @inbounds(rngs[off+k])), wrk)
+            end
         end
     end
-    return dst
 end
-function localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dims::Dimensions,
-                      op::Function, ord::FilterOrdering, rngs::Ranges,
-                      wrk::Vector{T}) where {T,N}
-    length(dims) == length(rngs) || throw(DimensionMismatch(
-        "list of dimensions and list of intervals must have the same length"))
-    i, j = firstindex(dims), lastindex(dims)
-    if i ≤ j
-        off = firstindex(rngs) - i
-        localfilter!(dst, A, @inbounds(dims[i]), op, ord, @inbounds(rngs[off+i]), wrk)
-        for k in i+1:j
-            localfilter!(dst, dst, @inbounds(dims[k]), op, ord, @inbounds(rngs[off+k]), wrk)
-        end
-    end
-    return dst
+
+# This is the most basic version which is called by other versions.
+function _localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dim::Integer,
+                       op::Function, rng::AbstractUnitRange{Int}, wrk::Vector{T}) where {T,N}
+    1 ≤ dim ≤ N || throw(ArgumentError("out of bounds dimension"))
+    isempty(rng) && throw(ArgumentError("invalid filter size"))
+    _localfilter!(dst, A, Val{Int(dim)}(), op, rng, wrk)
 end
 
 # This version is to break the type instability related to the variable dimension of
 # interest.
-function unsafe_localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N},
-                             ::Val{D} #= dimension of interest =#, op::Function,
-                             K::AbstractUnitRange{Int}, wrk::Vector{T}) where {T,N,D}
+function _localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N},
+                       ::Val{D} #= dimension of interest =#, op::Function,
+                       K::AbstractUnitRange{Int}, wrk::Vector{T}) where {T,N,D}
     src_inds = axes(A)
     dst_inds = axes(dst)
     for d in 1:D-1
@@ -338,18 +310,18 @@ function unsafe_localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N},
     I2 = CartesianIndices(dst_inds[D+1:N])
     if length(K) == 1
         # Perform a simple shift: `dst[j] = A[j+k]`.
-        unsafe_shiftarray!(dst, I1, I, I2, A, B, first(K))
+        _shiftarray!(dst, I1, I, I2, A, B, first(K))
     else
         # Apply van Herk-Gil-Werman algorithm.
-        unsafe_localfilter!(dst, I1, I, I2, A, B, op, K, wrk)
+        _localfilter!(dst, I1, I, I2, A, B, op, K, wrk)
     end
 end
 
-function unsafe_shiftarray!(dst::AbstractArray{<:Any,N},
-                            I1, I::AbstractUnitRange{Int}, I2,
-                            src::AbstractArray{<:Any,N},
-                            B::BoundaryConditions,
-                            k::Int) where {N}
+function _shiftarray!(dst::AbstractArray{<:Any,N},
+                      I1, I::AbstractUnitRange{Int}, I2,
+                      src::AbstractArray{<:Any,N},
+                      B::BoundaryConditions,
+                      k::Int) where {N}
     @inbounds for i2 ∈ I2, i1 ∈ I1
         # To allow for in-place operation without using any temporaries, we walk along the
         # dimension in the forward direction if the shift is nonnegative and in the
@@ -367,15 +339,15 @@ function unsafe_shiftarray!(dst::AbstractArray{<:Any,N},
     nothing
 end
 
-function unsafe_localfilter!(dst::AbstractArray{T,N},
-                             I1, # range of leading indices
-                             I::AbstractUnitRange{Int}, # index range in dst
-                             I2, # range of trailing indices
-                             src::AbstractArray{<:Any,N},
-                             B::BoundaryConditions, # boundary conditions in src
-                             op::Function,
-                             K::AbstractUnitRange{Int},
-                             R::Vector{T}) where {T,N}
+function _localfilter!(dst::AbstractArray{T,N},
+                       I1, # range of leading indices
+                       I::AbstractUnitRange{Int}, # index range in dst
+                       I2, # range of trailing indices
+                       src::AbstractArray{<:Any,N},
+                       B::BoundaryConditions, # boundary conditions in src
+                       op::Function,
+                       K::AbstractUnitRange{Int},
+                       R::Vector{T}) where {T,N}
     # The code assumes that the workspace R has 1-based indices, all other arrays may have
     # any indices.
     @assert firstindex(R) == 1

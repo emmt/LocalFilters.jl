@@ -144,40 +144,31 @@ for f in (:erode, :dilate, :sumprod, :mean)
         f === :mean    ? :mean_eltype : :morphology_eltype
     @eval begin
         function $(Symbol("$(f)_ref"))(A::AbstractArray{<:Any,N},
-                                       B::Union{KernelAxis,
-                                                NTuple{N,KernelAxis},
-                                                AbstractArray{<:Any,N}}) where {N}
-            return $(Symbol("$(f)_ref"))(A, FORWARD_FILTER, B)
+                                       B::Union{KernelAxis,NTuple{N,KernelAxis}};
+                                       kwds...) where {N}
+            return $(Symbol("$(f)_ref"))(A, kernel(Dims{N}, B); kwds...)
         end
         function $(Symbol("$(f)_ref"))(A::AbstractArray{<:Any,N},
-                                       ord::FilterOrdering,
-                                       B::Union{KernelAxis,
-                                                NTuple{N,KernelAxis}}) where {N}
-            return $(Symbol("$(f)_ref"))(A, ord, kernel(Dims{N}, B))
-        end
-        function $(Symbol("$(f)_ref"))(A::AbstractArray{<:Any,N},
-                                       ord::FilterOrdering,
-                                       B::AbstractArray{<:Any,N}) where {N}
+                                       B::AbstractArray{<:Any,N}; kwds...) where {N}
             T = $t(eltype(A), eltype(B))
-            return $(Symbol("$(f)_ref!"))(similar(A, T), A, ord, B)
+            return $(Symbol("$(f)_ref!"))(similar(A, T), A, B; kwds...)
         end
         function $(Symbol("$(f)_ref!"))(dst::AbstractArray{<:Any,N},
                                         A::AbstractArray{<:Any,N},
-                                        ord::FilterOrdering,
-                                        B::AbstractArray{<:Any,N}) where {N}
-            return filter_ref!(dst, A, ord, B,
+                                        B::AbstractArray{<:Any,N}; kwds...) where {N}
+            return filter_ref!(dst, A, B,
                                $(Symbol("$(f)_init"))(eltype(A), eltype(B)),
                                $(Symbol("$(f)_update")),
-                               $(Symbol("$(f)_final")))
+                               $(Symbol("$(f)_final")); kwds...)
         end
     end
 end
 
 function filter_ref!(dst::AbstractArray{<:Any,N},
                      A::AbstractArray{<:Any,N},
-                     ord::FilterOrdering,
                      B::AbstractArray{<:Any,N},
-                     init, update::Function, final::Function = identity) where {N}
+                     init, update::Function, final::Function = identity;
+                     order::FilterOrdering = FORWARD_FILTER) where {N}
     !(init isa Function) || axes(A) == axes(dst) || error(
         "source and destination have different axes")
     I = CartesianIndices(dst)
@@ -185,7 +176,7 @@ function filter_ref!(dst::AbstractArray{<:Any,N},
     @inbounds for i in I
         v = init isa Function ? init(A[i]) : init
         for j in J
-            k = ord isa ForwardFilterOrdering ? i + j : i - j
+            k = order isa ForwardFilterOrdering ? i + j : i - j
             if k ∈ I
                 v = update(v, A[k], B[j])
             end
@@ -788,16 +779,16 @@ f2(x) = x > 0.5
             C = copy(A)
 
             # Reference results.
-            B0f = @inferred sumprod_ref(A, FORWARD_FILTER, Kf)
+            B0f = @inferred sumprod_ref(A, Kf; order=FORWARD_FILTER)
             @test C == A  # check that A is left unchanged
-            B0r = @inferred sumprod_ref(A, REVERSE_FILTER, Kf)
+            B0r = @inferred sumprod_ref(A, Kf; order=REVERSE_FILTER)
             @test C == A  # check that A is left unchanged
 
             # Check reverse/forward consistency.
             @test typeof(B0f) === typeof(B0r)
-            @test B0f == @inferred sumprod_ref(A, REVERSE_FILTER, Kr)
+            @test B0f == @inferred sumprod_ref(A, Kr; order=REVERSE_FILTER)
             @test C == A  # check that A is left unchanged
-            @test B0r == @inferred sumprod_ref(A, FORWARD_FILTER, Kr)
+            @test B0r == @inferred sumprod_ref(A, Kr; order=FORWARD_FILTER)
             @test C == A  # check that A is left unchanged
 
             # Workspace for in-place operations.
@@ -837,9 +828,9 @@ f2(x) = x > 0.5
             @test C == A   # check that A is left unchanged
             @test B0r == @inferred localfilter(T, A, Kr, unsafe_sumprod_filter!)
             @test C == A   # check that A is left unchanged
-            @test B0r == @inferred localfilter(T, A, REVERSE_FILTER, Kf, unsafe_sumprod_filter!)
+            @test B0r == @inferred localfilter(T, A, Kf, unsafe_sumprod_filter!; order=REVERSE_FILTER)
             @test C == A   # check that A is left unchanged
-            @test B0f == @inferred localfilter(T, A, REVERSE_FILTER, Kr, unsafe_sumprod_filter!)
+            @test B0f == @inferred localfilter(T, A, Kr, unsafe_sumprod_filter!; order=REVERSE_FILTER)
             @test C == A   # check that A is left unchanged
 
             # Test `localfilter!`.
@@ -849,24 +840,24 @@ f2(x) = x > 0.5
             @test B1 === @inferred localfilter!(zerofill!(B1), A, Kr, unsafe_sumprod_filter!)
             @test C == A   # check that A is left unchanged
             @test B0r == B1 # check result
-            @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kf, unsafe_sumprod_filter!)
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, Kf, unsafe_sumprod_filter!; order=REVERSE_FILTER)
             @test C == A   # check that A is left unchanged
             @test B0r == B1 # check result
-            @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kr, unsafe_sumprod_filter!)
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, Kr, unsafe_sumprod_filter!; order=REVERSE_FILTER)
             @test C == A   # check that A is left unchanged
             @test B0f == B1 # check result
 
             # Reference results.
-            B0f = @inferred mean_ref(A, FORWARD_FILTER, Kf)
+            B0f = @inferred mean_ref(A, Kf; order=FORWARD_FILTER)
             @test C == A  # check that A is left unchanged
-            B0r = @inferred mean_ref(A, REVERSE_FILTER, Kf)
+            B0r = @inferred mean_ref(A, Kf; order=REVERSE_FILTER)
             @test C == A  # check that A is left unchanged
 
             # Check reverse/forward consistency.
             @test typeof(B0f) === typeof(B0r)
-            @test B0f == @inferred mean_ref(A, REVERSE_FILTER, Kr)
+            @test B0f == @inferred mean_ref(A, Kr; order=REVERSE_FILTER)
             @test C == A  # check that A is left unchanged
-            @test B0r == @inferred mean_ref(A, FORWARD_FILTER, Kr)
+            @test B0r == @inferred mean_ref(A, Kr; order=FORWARD_FILTER)
             @test C == A  # check that A is left unchanged
 
             # Workspace for in-place operations.
@@ -878,13 +869,13 @@ f2(x) = x > 0.5
             @test C == A # check that A is left unchanged
             @test B0r == @inferred localmean(A, Kr)
             @test C == A # check that A is left unchanged
-            @test B0f == @inferred localmean(A, FORWARD_FILTER, Kf)
+            @test B0f == @inferred localmean(A, Kf; order=FORWARD_FILTER)
             @test C == A # check that A is left unchanged
-            @test B0r == @inferred localmean(A, FORWARD_FILTER, Kr)
+            @test B0r == @inferred localmean(A, Kr; order=FORWARD_FILTER)
             @test C == A # check that A is left unchanged
-            @test B0r == @inferred localmean(A, REVERSE_FILTER, Kf)
+            @test B0r == @inferred localmean(A, Kf; order=REVERSE_FILTER)
             @test C == A # check that A is left unchanged
-            @test B0f == @inferred localmean(A, REVERSE_FILTER, Kr)
+            @test B0f == @inferred localmean(A, Kr; order=REVERSE_FILTER)
             @test C == A # check that A is left unchanged
 
             # Test `localmean!`.
@@ -894,16 +885,16 @@ f2(x) = x > 0.5
             @test B1 === @inferred localmean!(zerofill!(B1), A, Kr)
             @test C == A # check that A is left unchanged
             @test B0r == B1
-            @test B1 === @inferred localmean!(zerofill!(B1), A, FORWARD_FILTER, Kf)
+            @test B1 === @inferred localmean!(zerofill!(B1), A, Kf; order=FORWARD_FILTER)
             @test C == A # check that A is left unchanged
             @test B0f == B1
-            @test B1 === @inferred localmean!(zerofill!(B1), A, FORWARD_FILTER, Kr)
+            @test B1 === @inferred localmean!(zerofill!(B1), A, Kr; order=FORWARD_FILTER)
             @test C == A # check that A is left unchanged
             @test B0r == B1
-            @test B1 === @inferred localmean!(zerofill!(B1), A, REVERSE_FILTER, Kf)
+            @test B1 === @inferred localmean!(zerofill!(B1), A, Kf; order=REVERSE_FILTER)
             @test C == A # check that A is left unchanged
             @test B0r == B1
-            @test B1 === @inferred localmean!(zerofill!(B1), A, REVERSE_FILTER, Kr)
+            @test B1 === @inferred localmean!(zerofill!(B1), A, Kr; order=REVERSE_FILTER)
             @test C == A # check that A is left unchanged
             @test B0f == B1
 
@@ -912,13 +903,13 @@ f2(x) = x > 0.5
             @test C == A # check that A is left unchanged
             @test B0r == @inferred localfilter(T, A, Kr, unsafe_mean_filter!)
             @test C == A # check that A is left unchanged
-            @test B0f == @inferred localfilter(T, A, FORWARD_FILTER, Kf, unsafe_mean_filter!)
+            @test B0f == @inferred localfilter(T, A, Kf, unsafe_mean_filter!; order=FORWARD_FILTER)
             @test C == A # check that A is left unchanged
-            @test B0r == @inferred localfilter(T, A, FORWARD_FILTER, Kr, unsafe_mean_filter!)
+            @test B0r == @inferred localfilter(T, A, Kr, unsafe_mean_filter!; order=FORWARD_FILTER)
             @test C == A # check that A is left unchanged
-            @test B0r == @inferred localfilter(T, A, REVERSE_FILTER, Kf, unsafe_mean_filter!)
+            @test B0r == @inferred localfilter(T, A, Kf, unsafe_mean_filter!; order=REVERSE_FILTER)
             @test C == A # check that A is left unchanged
-            @test B0f == @inferred localfilter(T, A, REVERSE_FILTER, Kr, unsafe_mean_filter!)
+            @test B0f == @inferred localfilter(T, A, Kr, unsafe_mean_filter!; order=REVERSE_FILTER)
             @test C == A # check that A is left unchanged
 
             # Test `localfilter!`.
@@ -928,16 +919,16 @@ f2(x) = x > 0.5
             @test B1 === @inferred localfilter!(zerofill!(B1), A, Kr, unsafe_mean_filter!)
             @test C == A # check that A is left unchanged
             @test B0r == B1
-            @test B1 === @inferred localfilter!(zerofill!(B1), A, FORWARD_FILTER, Kf, unsafe_mean_filter!)
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, Kf, unsafe_mean_filter!; order=FORWARD_FILTER)
             @test C == A # check that A is left unchanged
             @test B0f == B1
-            @test B1 === @inferred localfilter!(zerofill!(B1), A, FORWARD_FILTER, Kr, unsafe_mean_filter!)
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, Kr, unsafe_mean_filter!; order=FORWARD_FILTER)
             @test C == A # check that A is left unchanged
             @test B0r == B1
-            @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kf, unsafe_mean_filter!)
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, Kf, unsafe_mean_filter!; order=REVERSE_FILTER)
             @test C == A # check that A is left unchanged
             @test B0r == B1
-            @test B1 === @inferred localfilter!(zerofill!(B1), A, REVERSE_FILTER, Kr, unsafe_mean_filter!)
+            @test B1 === @inferred localfilter!(zerofill!(B1), A, Kr, unsafe_mean_filter!; order=REVERSE_FILTER)
             @test C == A # check that A is left unchanged
             @test B0f == B1
 
