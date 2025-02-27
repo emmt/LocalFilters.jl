@@ -43,7 +43,8 @@ export
     strel,
 
     # Generic filters.
-    localfilter, localfilter!
+    localfilter, localfilter!,
+    localmap, localmap!
 
 using OffsetArrays, StructuredArrays, EasyRanges, TypeUtils
 using EasyRanges: ranges
@@ -58,6 +59,7 @@ function bilateralfilter! end
 include("types.jl")
 include("utils.jl")
 include("generic.jl")
+include("localmap.jl")
 include("linear.jl")
 include("morphology.jl")
 include("bilateral.jl")

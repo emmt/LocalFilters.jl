@@ -2,6 +2,9 @@
 
 - Implement other boundary conditions.
 
+- `localmap` can extract ROI as a vector or a `N`-dimensional sub-array with
+  indices relative to the sliding window.
+
 - Consistency: more possibilities for `strel` (like building a kernel) and
   `is_morpho_math_box` should yield `true` for any acceptable arguments for `box`.
 

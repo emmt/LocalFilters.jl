@@ -2,6 +2,10 @@
 
 ## Version 2.1.0
 
+* New methods `localmap(f, A, B)` and `localmap!(f, dst, A, B)` yield the result of
+  applying the function `f` to the values of `A` taken in a neighborhood defined by `B`
+  around each position in `A` for `localmap` or in `dst` for `localmap!`.
+
 * `LocalFilters.ball(DimS{N}, r)` now yields a *centered* `N`-dimensional ball where
   values are set according to whether the distance to the center is `≤ r`. Compared to the
   previous versions, add `1//2` to `r` to get a similar shape. The algorithm is faster and

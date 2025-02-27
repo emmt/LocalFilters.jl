@@ -1086,6 +1086,34 @@ f2(x) = x > 0.5
         end
     end # @testset "Morphology"
 
+    @testset "`localmap` and `localmap!` ($win, $func)" for win in (:box, :ball, :win),
+        func in (:min, :max)
+        T = Float32
+        dims = (30, 20)
+        A = rand(T, dims)
+        Aref = copy(A)
+        W = win === :box ? 3 :
+            win === :ball ? ball(Dims{ndims(A)}, 2.5) :
+            centered(rand(Bool, ntuple(Returns(6), ndims(A))))
+        f, f_ref = func === :minimum ? (minimum, erode) : (maximum, dilate)
+        Bref = @inferred f_ref(A, W)
+        B = @inferred localmap(f, A, W)
+        @test A == Aref # check that A is left unchanged
+        @test B == Bref # check result
+        @test B === @inferred localmap!(f, zerofill!(B), A, W)
+        @test A == Aref # check that A is left unchanged
+        @test B == Bref # check result
+        if win === :win
+            Bref = @inferred f_ref(A, W; order=REVERSE_FILTER)
+            B = @inferred localmap(f, A, W; order=REVERSE_FILTER)
+            @test A == Aref # check that A is left unchanged
+            @test B == Bref # check result
+            @test B === @inferred localmap!(f, zerofill!(B), A, W; order=REVERSE_FILTER)
+            @test A == Aref # check that A is left unchanged
+            @test B == Bref # check result
+        end
+    end
+
     @testset "van Herk / Gil & Werman algorithm" begin
         A = rand(Float32, 40)
         Aref = copy(A)
