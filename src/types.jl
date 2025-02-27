@@ -29,13 +29,28 @@ struct Indices{S<:IndexStyle} <: Function end
 """
     LocalFilters.Window{N}
 
-is the union of types of arguments suitable to define a simple `N`-dimensional
-hyper-rectangular sliding window and that can be converted into a kernel by the
-[`LocalFilters.kernel`](@ref) method.
+is the union of types for an argument `B` to be suitable to define a simple
+`N`-dimensional hyper-rectangular sliding window and that can be converted into a
+`Box{N}`, that is a `N`-dimensional uniformly true kernel array by [`kernel(Dims{N},
+B)`](@ref LocalFilters.kernel).
+
+
+ a kernel
+by the [`LocalFilters.kernel`](@ref) method.
 
 """
 const Window{N} = Union{Axis,NTuple{N,Axis},NTuple{2,CartesianIndex{N}},
                         CartesianIndices{N}}
+
+"""
+    LocalFilters.Kernel{N}
+
+is the union of types for an argument `B` to be suitable to define a `N`-dimensional
+kernel or filter that can be converted into a `N`-dimensional kernel array by
+[`kernel(Dims{N}, B)`](@ref LocalFilters.kernel).
+
+"""
+const Kernel{N} = Union{Window{N},AbstractArray{<:Any,N}}
 
 """
     const LocalFilters.Box{N} = FastUniformArray{Bool,N,true}

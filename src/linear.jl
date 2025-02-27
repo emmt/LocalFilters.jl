@@ -219,15 +219,10 @@ for (f, order) in ((:correlate, :FORWARD_FILTER),
                    (:convolve,  :REVERSE_FILTER))
     f! = Symbol(f,"!")
     @eval begin
-        function $f(A::AbstractArray{<:Any,N},
-                    B::Union{Window{N},AbstractArray{<:Any,N}}) where {N}
-            return sumprod(A, kernel(Dims{N}, B); order = $order)
-        end
-        function $f!(dst::AbstractArray{<:Any,N},
-                     A::AbstractArray{<:Any,N},
-                     B::Union{Window{N},AbstractArray{<:Any,N}}) where {N}
-            return sumprod!(dst, A, kernel(Dims{N}, B); order = $order)
-        end
+        $f(A::AbstractArray{<:Any,N}, B::Kernel{N}) where {N} =
+            sumprod(A, kernel(Dims{N}, B); order = $order)
+        $f!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N}, B::Kernel{N}) where {N} =
+            sumprod!(dst, A, kernel(Dims{N}, B); order = $order)
     end
 end
 

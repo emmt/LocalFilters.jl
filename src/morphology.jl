@@ -359,7 +359,7 @@ for f in (:closing, :opening)
     @eval begin
         # Provide destination and workspace.
         function $f(A::AbstractArray{<:Any,N},
-                    B::Union{Window{N},AbstractArray{<:Any,N}} = 3; kwds...) where {N}
+                    B::Kernel{N} = 3; kwds...) where {N}
             return $f!(similar(A), similar(A), A, B; kwds...)
         end
 
@@ -411,7 +411,7 @@ See also [`top_hat`](@ref) for more details.
 function top_hat!(dst::AbstractArray{<:Any,N},
                   wrk::AbstractArray{<:Any,N},
                   A::AbstractArray{<:Any,N},
-                  B::Union{Window{N},AbstractArray{<:Any,N}}; kwds...) where {N}
+                  B::Kernel{N}; kwds...) where {N}
     opening!(dst, wrk, A, B; kwds...)
     @inbounds for i in eachindex(dst, A)
         dst[i] = A[i] - dst[i]
@@ -453,10 +453,8 @@ different arrays. The destination `dst` is returned.
 See also [`bottom_hat`](@ref) for more details.
 
 """
-function bottom_hat!(dst::AbstractArray{<:Any,N},
-                     wrk::AbstractArray{<:Any,N},
-                     A::AbstractArray{<:Any,N},
-                     B::Union{Window{N},AbstractArray{<:Any,N}}; kwds...) where {N}
+function bottom_hat!(dst::AbstractArray{<:Any,N}, wrk::AbstractArray{<:Any,N},
+                     A::AbstractArray{<:Any,N}, B::Kernel{N} = 3; kwds...) where {N}
     closing!(dst, wrk, A, B; kwds...)
     @inbounds for i in eachindex(dst, A)
         dst[i] -= A[i]
@@ -471,13 +469,9 @@ for (f, pf!) in ((:top_hat,    :(closing!)),
     @eval begin
         # Provide destination and workspace. Out-of-place top/bottom hat filters require 2
         # allocations without a pre-filtering, 3 allocations with a pre-filtering.
-        function $f(A::AbstractArray{<:Any,N},
-                    B::Union{Window{N},AbstractArray{<:Any,N}} = 3; kwds...) where {N}
-            return $f!(similar(A), similar(A), A, B; kwds...)
-        end
-        function $f(A::AbstractArray{<:Any,N},
-                    B::Union{Window{N},AbstractArray{<:Any,N}},
-                    C::Union{Window{N},AbstractArray{<:Any,N}};
+        $f(A::AbstractArray{<:Any,N}, B::Kernel{N} = 3; kwds...) where {N} =
+            $f!(similar(A), similar(A), A, B; kwds...)
+        function $f(A::AbstractArray{<:Any,N}, B::Kernel{N}, C::Kernel{N};
                     order::Union{FilterOrdering,NTuple{2,FilterOrdering}} = FORWARD_FILTER,
                     kwds...) where {N}
             B_order = order isa FilterOrdering ? order : order[1]
