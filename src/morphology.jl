@@ -418,7 +418,6 @@ function top_hat!(dst::AbstractArray{<:Any,N},
     end
     return dst
 end
-@public top_hat!
 
 """
     bottom_hat(A, B=3[, C]; order=FORWARD_FILTER, slow=false) -> dst
@@ -461,7 +460,6 @@ function bottom_hat!(dst::AbstractArray{<:Any,N}, wrk::AbstractArray{<:Any,N},
     end
     return dst
 end
-@public bottom_hat!
 
 for (f, pf!) in ((:top_hat,    :(closing!)),
                  (:bottom_hat, :(opening!)))

@@ -8,7 +8,6 @@ using LocalFilters:
     Box, box, ball, Indices, kernel_range, kernel, limits,
     is_morpho_math_box, check_axes, localindices,
     ranges, centered, centered_offset, unit_range,
-    top_hat!, bottom_hat!,
     Returns, reverse, reverse!
 
 zerofill!(A::AbstractArray) = fill!(A, zero(eltype(A)))

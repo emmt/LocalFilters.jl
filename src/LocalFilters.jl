@@ -31,8 +31,8 @@ export
     localextrema, localextrema!,
     closing, closing!,
     opening, opening!,
-    bottom_hat,
-    top_hat,
+    bottom_hat, bottom_hat!,
+    top_hat, top_hat!,
 
     # Other non-linear filters.
     bilateralfilter, bilateralfilter!,
