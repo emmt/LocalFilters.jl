@@ -52,16 +52,10 @@ deal with the state variable `v`:
 - `final(v)` yields the result of the filter given the state variable `v` at the end of
   the loop on the neighborhood. If not specified, `final = identity` is assumed.
 
-The `localfilter!` method takes another optional argument `ord::FilterOrdering` to specify
-the *ordering* of the filter:
-
-```julia
-localfilter!(dst, A, ord, B, initial, update, final)
-```
-
-By default, `ord = FORWARD_FILTER` which is implemented by the above pseudo-code and which
-corresponds to a **correlation** for a shift-invariant linear filter. The other
-possibility is `ord = REVERSE_FILTER` which corresponds to a **convolution** for a
+The `localfilter!` method takes a keyword `order` to specify the *ordering* of the filter.
+By default, `order = FORWARD_FILTER` which is implemented by the above pseudo-code and
+which corresponds to a **correlation** for a shift-invariant linear filter. The other
+possibility is `order = REVERSE_FILTER` which corresponds to a **convolution** for a
 shift-invariant linear filter and which amounts to:
 
 ```julia
@@ -98,20 +92,20 @@ in this context.
 As another example, implementing a convolution of `A` by `B` writes:
 
 ```julia
-dst = localfilter!(similar(A), A, REVERSE_FILTER, B,
+dst = localfilter!(similar(A), A, B,
                    #= initial =# zero(eltype(A)),
-                   #= update  =# (v,a,b) -> v + a*b)
+                   #= update  =# (v,a,b) -> v + a*b; order = REVERSE_FILTER)
 ```
 
 while:
 
 ```julia
-dst = localfilter!(similar(A), A, FORWARD_FILTER, B,
+dst = localfilter!(similar(A), A, B,
                    #= initial =# zero(eltype(A)),
-                   #= update  =# (v,a,b) -> v + a*b)
+                   #= update  =# (v,a,b) -> v + a*b; order = FORWARD_FILTER)
 ```
 
-computes a correlation of `A` by `B`. The only difference is the `ord` argument which may
+computes a correlation of `A` by `B`. The only difference is the `order` keyword which may
 be omitted in the latter case as `FORWARD_FILTER` is the default. In the case of
 convolutions and correlations, `B` defines the neighborhood but also the weights, it is
 usually called a *kernel* in this context.
