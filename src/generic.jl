@@ -83,20 +83,14 @@ As another example, implementing a convolution by `B` writes:
 """ localfilter!
 
 # This version builds a kernel.
-function localfilter!(dst::AbstractArray{<:Any,N},
-                      A::AbstractArray{<:Any,N},
-                      B::Window{N},
-                      initial,
-                      update::Function,
+function localfilter!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N},
+                      B::Kernel{N}, initial, update::Function,
                       final::Function = identity; kwds...) where {N}
     return localfilter!(dst, A, kernel(Dims{N}, B), initial, update, final; kwds...)
 end
 
-@inline function localfilter!(dst::AbstractArray{<:Any,N},
-                              A::AbstractArray{<:Any,N},
-                              B::AbstractArray{<:Any,N},
-                              initial,
-                              update::Function,
+@inline function localfilter!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N},
+                              B::AbstractArray{<:Any,N}, initial, update::Function,
                               final::Function = identity;
                               order::FilterOrdering = FORWARD_FILTER) where {N}
     !(initial isa Function) || axes(dst) == axes(A) || throw(DimensionMismatch(
@@ -141,18 +135,14 @@ automatically yield either `B[j-i]` or `B[i-j]` depending on whether `order` is
 `FORWARD_FILTER` or `REVERSE_FILTER`.
 
 """
-function localfilter!(dst::AbstractArray{<:Any,N},
-                      A::AbstractArray{<:Any,N},
-                      B::Window{N},
-                      filter!::Function; kwds...) where {N}
+function localfilter!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N},
+                      B::Kernel{N}, filter!::Function; kwds...) where {N}
     # Build kernel.
     return localfilter!(dst, A, kernel(Dims{N}, B), filter!; kwds...)
 end
 
-function localfilter!(dst::AbstractArray{<:Any,N},
-                      A::AbstractArray{<:Any,N},
-                      B::AbstractArray{<:Any,N},
-                      filter!::Function;
+function localfilter!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N},
+                      B::AbstractArray{<:Any,N}, filter!::Function;
                       order::FilterOrdering = FORWARD_FILTER) where {N}
     indices = Indices(dst, A, B)
     @inbounds for i in indices(dst)

@@ -104,7 +104,7 @@ for (f, op) in ((:erode, :min), (:dilate, :max))
 
         # Build structuring element.
         function $f!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N},
-                     B::Window{N} = 3; kwds...) where {N}
+                     B::Kernel{N} = 3; kwds...) where {N}
             return $f!(dst, A, kernel(Dims{N}, B); kwds...)
         end
 
@@ -122,7 +122,7 @@ for (f, op) in ((:erode, :min), (:dilate, :max))
         end
 
         # Fast separable filter (in-place).
-        function $f!(A::AbstractArray{<:Any,N}, B::Window{N} = 3; kwds...) where {N}
+        function $f!(A::AbstractArray{<:Any,N}, B::Kernel{N} = 3; kwds...) where {N}
             _B = kernel(Dims{N}, B)
             is_morpho_math_box(_B) || throw(ArgumentError(
                 "for in-place operation kernel must be a simple box"))
@@ -239,7 +239,7 @@ See [`localextrema`](@ref) for an out-of-place version for more information.
 function localextrema!(Amin::AbstractArray{<:Any,N},
                        Amax::AbstractArray{<:Any,N},
                        A::AbstractArray{<:Any,N},
-                       B::Window{N} = 3; kwds...) where {N}
+                       B::Kernel{N} = 3; kwds...) where {N}
     return localextrema!(Amin, Amax, A, kernel(Dims{N}, B); kwds...)
 end
 
@@ -365,7 +365,7 @@ for f in (:closing, :opening)
 
         # Provide default structuring element and build kernel.
         function $f!(dst::AbstractArray{<:Any,N}, wrk::AbstractArray{<:Any,N},
-                     A::AbstractArray{<:Any,N}, B::Window{N} = 3; kwds...) where {N}
+                     A::AbstractArray{<:Any,N}, B::Kernel{N} = 3; kwds...) where {N}
             return $f!(dst, wrk, A, kernel(Dims{N}, B); kwds...)
         end
     end

@@ -27,10 +27,21 @@
 * The algorithm to infer the result type is now based on Julia's arithmetic rules and can
   cope with arguments that have units.
 
-* To represent hyper-rectangular neighborhoods, instances of non-exported
-  `LocalFilters.Box` have been replaced by fast uniform arrays with offset axes from the
-  [`StructuredArrays`](https://github.com/emmt/StructuredArrays.jl) package.
-  `LocalFilters.Box{N,I}` is now an alias to `FastUniformArray{Boll,N,true,I}`.
+* Non-exported *public* aliases `LocalFilters.Kernel{N}` and `LocalFilters.Window{N}`for
+  union of types suitable to define `N`-dimensional kernels or windows in `LocalFilters`.
+  A **kernel** is an array of weights implementing a local filter or an array of Booleans
+  representing a local neighborhood. A **window** is an array of Booleans representing a
+  local neighborhood. As an optimization, a **box** is an hyper-rectangular neighborhood
+  with axes aligned with the Cartesian axes. Thus, a window whose values are all true is
+  also a box and a kernel with Boolean values is also a window. The function
+  `kernel(Dims{N},B)` yields an `N`-dimensional array for any `B::LocalFilters.Kernel{N}`,
+  with Boolean values for any `B::LocalFilters.Window{N}`.
+
+* Non-exported *public* type `LocalFilters.Box{N}` is now an alias to an efficient type to
+  represent `N`-dimensional **boxes**, that is uniformly true windows or hyper-rectangular
+  neighborhoods. Currently, instances of this type are fast uniformly true arrays with
+  offset axes from the [`StructuredArrays`](https://github.com/emmt/StructuredArrays.jl)
+  package and `LocalFilters.Box{N}` is just `FastUniformArray{Bool,N,true}`.
 
 * In local filtering operations, small integers arguments are automatically promoted to a
   wider integer type to avoid overflows. This is similar to what is done by base reduction

@@ -63,15 +63,18 @@ FORWARD_FILTER
 REVERSE_FILTER
 ```
 
-## Neighborhoods and kernels
+## Neighborhoods, boxes, kernels, and windows
 
 ```@docs
 kernel
-reverse_kernel
+LocalFilters.Kernel
+LocalFilters.Window
 strel
 LocalFilters.ball
 LocalFilters.box
+LocalFilters.Box
 LocalFilters.centered
+reverse_kernel
 ```
 
 ## Utilities

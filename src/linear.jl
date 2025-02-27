@@ -30,7 +30,7 @@ Keyword `order` specifies the filter direction, `FORWARD_FILTER` by default.
 See also [`localmean!`](@ref) and [`localfilter!`](@ref).
 
 """
-localmean(A::AbstractArray{<:Any,N}, B::Window{N} = 3; kwds...) where {N} =
+localmean(A::AbstractArray{<:Any,N}, B::Kernel{N} = 3; kwds...) where {N} =
     localmean(A, kernel(Dims{N}, B); kwds...)
 
 function localmean(A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N}; kwds...) where {N}
@@ -53,7 +53,7 @@ See also [`localmean`](@ref) and [`localfilter!`](@ref).
 
 """
 function localmean!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N},
-                    B::Window{N} = 3; kwds...) where {N}
+                    B::Kernel{N} = 3; kwds...) where {N}
     return localmean!(dst, A, kernel(Dims{N}, B); kwds...)
 end
 

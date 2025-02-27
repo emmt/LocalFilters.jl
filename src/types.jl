@@ -27,42 +27,51 @@ const ArrayAxes{N} = NTuple{N,AbstractUnitRange{<:Integer}}
 struct Indices{S<:IndexStyle} <: Function end
 
 """
-    LocalFilters.Window{N}
-
-is the union of types for an argument `B` to be suitable to define a simple
-`N`-dimensional hyper-rectangular sliding window and that can be converted into a
-`Box{N}`, that is a `N`-dimensional uniformly true kernel array by [`kernel(Dims{N},
-B)`](@ref LocalFilters.kernel).
-
-
- a kernel
-by the [`LocalFilters.kernel`](@ref) method.
-
-"""
-const Window{N} = Union{Axis,NTuple{N,Axis},NTuple{2,CartesianIndex{N}},
-                        CartesianIndices{N}}
-
-"""
-    LocalFilters.Kernel{N}
-
-is the union of types for an argument `B` to be suitable to define a `N`-dimensional
-kernel or filter that can be converted into a `N`-dimensional kernel array by
-[`kernel(Dims{N}, B)`](@ref LocalFilters.kernel).
-
-"""
-const Kernel{N} = Union{Window{N},AbstractArray{<:Any,N}}
-
-"""
     const LocalFilters.Box{N} = FastUniformArray{Bool,N,true}
 
-is an alias to the type of `N`-dimensional arrays whose elements are all `true`. Instances
-of this kind are used to represent hyper-rectangular sliding windows in `LocalFilters`.
+is an alias to the type of uniformly `true` `N`-dimensional arrays. Instances of this kind
+are used to represent hyper-rectangular sliding windows in `LocalFilters`.
 
 Method [`LocalFilters.box`](@ref) can be used to build an object of this type.
 
 """
 const Box{N} = FastUniformArray{Bool,N,true}
 @public Box
+
+"""
+    LocalFilters.BoxLike{N}
+
+is the union of types of arguments suitable to define a simple `N`-dimensional *box*, that
+is an hyper-rectangular sliding window. Any argument `B` of this type can be converted
+into a `Box{N}` instance which is a `N`-dimensional uniformly true array by
+[`kernel(Dims{N}, B)`](@ref LocalFilters.kernel).
+
+"""
+const BoxLike{N} = Union{Axis,NTuple{N,Axis},NTuple{2,CartesianIndex{N}},
+                         CartesianIndices{N}}
+
+"""
+    LocalFilters.Kernel{N}
+
+is the union of types of arguments suitable to define a `N`-dimensional kernel or filter.
+Any argument `B` of this type can be converted into a `N`-dimensional kernel array by
+[`kernel(Dims{N}, B)`](@ref LocalFilters.kernel).
+
+"""
+const Kernel{N} = Union{BoxLike{N},AbstractArray{<:Any,N}}
+@public Kernel
+
+"""
+    LocalFilters.Window{N}
+
+is the union of types of arguments suitable to define a `N`-dimensional sliding *window*
+that is a `N`-dimensional array of Booleans indicating whether a position belongs to the
+window of not. Any argument `B` of this type can be converted into a `N`-dimensional
+array of Booleans by [`kernel(Dims{N}, B)`](@ref LocalFilters.kernel).
+
+"""
+const Window{N} = Union{BoxLike{N},AbstractArray{Bool,N}}
+@public Window
 
 """
     LocalFilters.FilterOrdering
