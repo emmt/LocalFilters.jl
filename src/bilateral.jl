@@ -63,7 +63,7 @@ Base.convert(::Type{T}, f::T) where {T<:GaussianWindow} = f
 Base.convert(::Type{GaussianWindow{T}}, f) where {T} = GaussianWindow{T}(f)
 
 """
-    bilateralfilter([T=float(eltype(A)),] A, F, [ord=FORWARD_FILTER,] G...=3)
+    bilateralfilter([T=float(eltype(A)),] A, F, G...=3; order = FORWARD_FILTER)
 
 yields the result of applying the bilateral filter on array `A`.
 
@@ -106,7 +106,7 @@ bilateralfilter(T::Type, A::AbstractArray, args...) =
     bilateralfilter!(similar(A, T), A, args...)
 
 """
-    bilateralfilter!(dst, A, F, [ord=FORWARD_FILTER,] G...) -> dst
+    bilateralfilter!(dst, A, F, G...; order = FORWARD_FILTER) -> dst
 
 overwrites `dst` with the result of applying the bilateral filter on array `A` and returns
 `dst`.
@@ -117,16 +117,10 @@ bilateral filter.
 
 """ bilateralfilter!
 
-# Provide ordering to use with the distance filter.
-function bilateralfilter!(dst::AbstractArray{<:Any,N},
-                          A::AbstractArray{<:Any,N}, F, G...) where {N}
-    return bilateralfilter!(dst, A, F, FORWARD_FILTER, G...)
-end
-
 # Provide the value and distance filters.
 function bilateralfilter!(dst::AbstractArray{<:Any,N},
                           A::AbstractArray{<:Any,N}, F,
-                          ord::FilterOrdering, G...) where {N}
+                          G...; kwds...) where {N}
     # Get the (unconverted) type returned by the value filter.
     Tf = typeof_value_filter_result(eltype(A), F)
 
@@ -140,7 +134,7 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
 
     # Call the main function with filters of suitable types.
     return bilateralfilter!(dst, A, value_filter(Tw, F),
-                            ord, distance_filter(Tw, Gp))
+                            distance_filter(Tw, Gp); kwds...)
 end
 
 # Yield the type returned by default by the value filter (at least single precision
@@ -217,18 +211,16 @@ function distance_filter!(wgt::AbstractArray{T,N},
 end
 
 # Distance filter is a simple sliding window.
-function bilateralfilter!(dst::AbstractArray{<:Any,N},
-                          A::AbstractArray{<:Any,N},
-                          F::AbstractTypeStableFunction{T},
-                          ord::FilterOrdering,
-                          G::Box{N}) where {T,N}
+function bilateralfilter!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N},
+                          F::AbstractTypeStableFunction{T}, G::Box{N};
+                          order::FilterOrdering = FORWARD_FILTER) where {T,N}
     indices = Indices(dst, A, G)
     B = FlatBoundaries(indices(A))
     @inbounds for i in indices(dst)
         Ai = A[B(i)]
         den = zero(T)
         num = zero(promote_type(T, eltype(A)))
-        @simd for j in localindices(indices(A), ord, indices(G), i)
+        @simd for j in localindices(indices(A), order, indices(G), i)
             Aj = A[j]
             w = F(Ai, Aj)
             den += w
@@ -244,19 +236,17 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
 end
 
 # Distance filter is an array of booleans.
-function bilateralfilter!(dst::AbstractArray{<:Any,N},
-                          A::AbstractArray{<:Any,N},
-                          F::AbstractTypeStableFunction{T},
-                          ord::FilterOrdering,
-                          G::AbstractArray{Bool,N}) where {T,N}
+function bilateralfilter!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N},
+                          F::AbstractTypeStableFunction{T}, G::AbstractArray{Bool,N};
+                          order::FilterOrdering = FORWARD_FILTER) where {T,N}
     indices = Indices(dst, A, G)
     B = FlatBoundaries(indices(A))
     @inbounds for i in indices(dst)
         Ai = A[B(i)]
         den = zero(T)
         num = zero(promote_type(T, eltype(A)))
-        for j in localindices(indices(A), ord, indices(G), i)
-            if G[ord(i,j)]
+        for j in localindices(indices(A), order, indices(G), i)
+            if G[order(i,j)]
                 Aj = A[j]
                 w = F(Ai, Aj)
                 den += w
@@ -273,20 +263,18 @@ function bilateralfilter!(dst::AbstractArray{<:Any,N},
 end
 
 # Distance filter is an array of weights.
-function bilateralfilter!(dst::AbstractArray{<:Any,N},
-                          A::AbstractArray{<:Any,N},
-                          F::AbstractTypeStableFunction{T},
-                          ord::FilterOrdering,
-                          G::AbstractArray{T,N}) where {T,N}
+function bilateralfilter!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N},
+                          F::AbstractTypeStableFunction{T}, G::AbstractArray{T,N};
+                          order::FilterOrdering = FORWARD_FILTER) where {T,N}
     indices = Indices(dst, A, G)
     B = FlatBoundaries(indices(A))
     @inbounds for i in indices(dst)
         Ai = A[B(i)]
         den = zero(T)
         num = zero(promote_type(T, eltype(A)))
-        @simd for j in localindices(indices(A), ord, indices(G), i)
+        @simd for j in localindices(indices(A), order, indices(G), i)
             Aj = A[j]
-            w = F(Ai, Aj)*G[ord(i,j)]
+            w = F(Ai, Aj)*G[order(i,j)]
             den += w
             num += w*Aj
         end
