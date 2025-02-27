@@ -70,6 +70,7 @@ kernel
 reverse_kernel
 strel
 LocalFilters.ball
+LocalFilters.box
 LocalFilters.centered
 ```
 

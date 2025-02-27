@@ -112,8 +112,7 @@ arguments. For example, when `args...` is a single integer length or range which
 interpreted as being the same for all dimensions.
 
 See also [`LocalFilters.strel`](@ref), [`LocalFilters.ball`](@ref),
-[`LocalFilters.kernel_range`](@ref), [`LocalFilters.reverse_kernel`](@ref), and
-[`LocalFilters.cartesian_limits`](@ref).
+[`LocalFilters.kernel_range`](@ref), and [`LocalFilters.reverse_kernel`](@ref).
 
 """
 kernel(::Type{Dims{N}}, arg::Axis) where {N} =
@@ -382,7 +381,7 @@ is_morpho_math_box(R::CartesianIndices) =
     error("Cartesian range must be converted to a kernel")
 
 """
-    box(args...) -> B::Box
+    LocalFilters.box(args...) -> B::Box
 
 yields an hyper-rectangular box for mathematical morphology operations with the same axes
 or indices as its argument(s).
