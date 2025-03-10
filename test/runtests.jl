@@ -185,92 +185,6 @@ function filter_ref!(dst::AbstractArray{<:Any,N},
     return dst
 end
 
-const ATOL = 0.0
-const GTOL = 4*eps(Float64)
-
-function similarvalues(A::AbstractArray{Ta,N}, B::AbstractArray{Tb,N};
-                       atol=ATOL, gtol=GTOL) where {Ta,Tb,N}
-    @assert axes(A) == axes(B)
-    T = float(promote_type(Ta, Tb))
-    local sd2::T = 0
-    local sa2::T = 0
-    local sb2::T = 0
-    @inbounds for i in eachindex(A, B)
-        a = T(A[i])
-        b = T(B[i])
-        sa2 += a*a
-        sb2 += b*b
-        sd2 += (a - b)^2
-    end
-    return sqrt(sd2) ≤ atol + gtol*sqrt(max(sa2, sb2))
-end
-#=
-function reversealldims(A::Array{T,N}) where {T,N}
-    B = Array{T,N}(undef, size(A))
-    len = length(A)
-    off = len + 1
-    @inbounds for i in 1:len
-        B[off - i] = A[i]
-    end
-    return B
-end
-
-function checkindexing!(ker::Kernel{T,1}) where {T}
-    Imin, Imax = limits(ker)
-    i1min, i1max = Imin[1], Imax[1]
-    tmp = zero(T)
-    for i1 in i1min:i1max
-        I = CartesianIndex(i1)
-        val = ker[I]
-        ker[i1] == val || return false
-        ker[i1] = tmp
-        ker[i1] == ker[I] == tmp || return false
-        ker[I] = val
-    end
-    return true
-end
-
-function checkindexing!(ker::Kernel{T,2}) where {T}
-    Imin, Imax = limits(ker)
-    i1min, i1max = Imin[1], Imax[1]
-    i2min, i2max = Imin[2], Imax[2]
-    tmp = zero(T)
-    for i2 in i2min:i2max,
-        i1 in i1min:i1max
-        I = CartesianIndex(i1,i2)
-        val = ker[I]
-        ker[i1,i2] == val || return false
-        ker[i1,i2] = tmp
-        ker[i1,i2] == ker[I] == tmp || return false
-        ker[I] = val
-    end
-    return true
-end
-
-function checkindexing!(ker::Kernel{T,3}) where {T}
-    Imin, Imax = limits(ker)
-    i1min, i1max = Imin[1], Imax[1]
-    i2min, i2max = Imin[2], Imax[2]
-    i3min, i3max = Imin[3], Imax[3]
-    tmp = zero(T)
-    for i3 in i3min:i3max,
-        i2 in i2min:i2max,
-        i1 in i1min:i1max
-        I = CartesianIndex(i1,i2,i3)
-        val = ker[I]
-        ker[i1,i2,i3] == val || return false
-        ker[i1,i2,i3] = tmp
-        ker[i1,i2,i3] == ker[I] == tmp || return false
-        ker[I] = val
-    end
-    return true
-end
-
-f1(x) = 1 + x*x
-f2(x) = x > 0.5
-=#
-
-
 @testset "LocalFilters" begin
 
     @testset "Utilities" begin
@@ -1198,19 +1112,19 @@ f2(x) = x > 0.5
         σr = 1.2
         σs = 2.5
         width = LocalFilters.BilateralFilter.default_width(σs)
+        ball = @inferred LocalFilters.ball(Dims{2}, width/2)
         @test isodd(width)
-        radius = (width - 1) ÷ 2
-        ball = @inferred LocalFilters.ball(Dims{2}, radius)
-        # FIXME: B4 = @inferred bilateralfilter(A, σr, σs, ball)
-        @test axes(ball) == ntuple(_ -> -radius:radius, ndims(ball))
+        radius = (width - 1)÷2
+        @test axes(ball) == ntuple(Returns(-radius:radius), ndims(ball))
+        B4 = @inferred bilateralfilter(A, σr, σs, ball)
         box = fill!(similar(ball), one(eltype(ball)))
         B0 = @inferred bilateralfilter(A, σr, σs)
-        # FIXME: B1 = @inferred bilateralfilter(A, σr, σs, box)
+        B1 = @inferred bilateralfilter(A, σr, σs, box)
+        @test maximum(abs.(B0 - B1)) ≤ 1e-12*maximum(abs.(B0))
         B2 = @inferred bilateralfilter(Float32, A, σr, σs, width)
-        # FIXME: B3 = @inferred bilateralfilter!(similar(Array{Float32}, axes(A)), A, σr, σs, box)
-        # FIXME: @test similarvalues(B1, B0; atol=0, gtol=8*eps(Float32))
-        @test similarvalues(B2, B0; atol=0, gtol=8*eps(Float32))
-        # FIXME: @test similarvalues(B3, B0; atol=0, gtol=4*eps(Float32))
+        @test maximum(abs.(B0 - B2)) ≤ 1e-6*maximum(abs.(B0))
+        B3 = @inferred bilateralfilter!(similar(Array{Float32}, axes(A)), A, σr, σs, box)
+        @test maximum(abs.(B0 - B3)) ≤ 1e-6*maximum(abs.(B0))
     end
 end
 
