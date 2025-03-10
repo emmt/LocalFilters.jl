@@ -7,23 +7,30 @@ neighborhood defined by `B`.
 Keyword `eltype` may be used to specify the the element type `T` of the result.
 By default, it is the same as that of `A`.
 
-The function `f` is never called with an empty vector of values. Keyword `null` may be
-used to specify the value of the result where the neighborhood is empty. By default, `null
-= zero(T)` with `T` the element type of the result.
-
 Keyword `order` specifies the filter direction, `FORWARD_FILTER` by default.
 
-For example, applying a median filter of the 2-dimensional image `img` in a sliding `5×5`
-window can be done by:
+## Remarks
+
+* The function `f` is never called with an empty vector of values. Keyword `null` may be
+  used to specify the value of the result where the neighborhood is empty. By default,
+  `null = zero(T)` with `T` the element type of the result.
+
+* The vector of values passed to `f` may be modified by `f` if needed (for example for
+  faster sorting of the values).
+
+## Examples
+
+With argument `f` set to `minimum` or `maximum`, `localmap` respectively yields the
+*erosion* and the *dilation* of the input array. However [`erode`](@ref) and
+[`dilate`](@ref) methods are faster until `localmap` is specialized for these functions.
+
+Applying a *median filter* of the 2-dimensional image `img` in a sliding `5×5` window can
+be done by:
 
 ``` julia
 using Statistics
-med = localmap(median!, img, 5; eltype=float(Base.eltype(A)), null=NaN)
+med = localmap(median!, img, 5; eltype=float(eltype(img)), null=NaN)
 ```
-
-As another example, with argument `f` set to `minimum` or `maximum` respectively yield the
-erosion and the dilation of the input array. However [`erode`](@ref) and [`dilate`](@) are
-much faster.
 
 """
 function localmap(f::Function, A::AbstractArray{T,N}, B::Window{N};
