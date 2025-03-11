@@ -1,16 +1,3 @@
-#
-# bilateral.jl --
-#
-# Implements the bilateral filter.
-#
-#-----------------------------------------------------------------------------------------
-#
-# This file is part of the `LocalFilters.jl` package licensed under the MIT "Expat"
-# License.
-#
-# Copyright (c) 2018-2025, Éric Thiébaut.
-#
-
 module BilateralFilter
 
 using ..LocalFilters

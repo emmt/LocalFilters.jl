@@ -1,16 +1,3 @@
-#
-# morphology.jl --
-#
-# Implementation of non-linear morphological filters.
-#
-#-----------------------------------------------------------------------------------------
-#
-# This file is part of the `LocalFilters.jl` package licensed under the MIT "Expat"
-# License.
-#
-# Copyright (c) 2017-2025, Éric Thiébaut.
-#
-
 """
     erode(A, B=3; order=FORWARD_FILTER, slow=false) -> Amin
 

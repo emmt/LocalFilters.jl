@@ -1,16 +1,3 @@
-#
-# linear.jl --
-#
-# Implementation of linear local filters.
-#
-#-----------------------------------------------------------------------------------------
-#
-# This file is part of the `LocalFilters.jl` package licensed under the MIT "Expat"
-# License.
-#
-# Copyright (c) 2017-2025, Éric Thiébaut.
-#
-
 """
     localmean(A, B=3; null=zero(T), order=FORWARD_FILTER)
 

@@ -1,16 +1,3 @@
-#
-# generic.jl --
-#
-# Generic methods for local filters.
-#
-#-----------------------------------------------------------------------------------------
-#
-# This file is part of the `LocalFilters.jl` package licensed under the MIT "Expat"
-# License.
-#
-# Copyright (C) 2017-2025, Éric Thiébaut.
-#
-
 """
     localfilter(A, B, initial, update, final=identity; eltype=eltype(A), kwds...) -> dst
 

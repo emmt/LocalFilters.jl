@@ -1,17 +1,3 @@
-#
-# separable.jl --
-#
-# Implementation of efficient separable filters by means of the van Herk-Gil-Werman
-# algorithm.
-#
-#-----------------------------------------------------------------------------------------
-#
-# This file is part of the `LocalFilters.jl` package licensed under the MIT "Expat"
-# License.
-#
-# Copyright (c) 2018-2025, Éric Thiébaut.
-#
-
 module Separable
 
 using ..LocalFilters

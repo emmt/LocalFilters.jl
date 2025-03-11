@@ -1,17 +1,3 @@
-#
-# NaiveLocalFilters.jl -
-#
-# Naive (non-optimized) implementation of local filters. This module provides reference
-# implementations of methods for checking results and benchmarking.
-#
-#------------------------------------------------------------------------------
-#
-# This file is part of the `LocalFilters.jl` package licensed under the MIT "Expat"
-# License.
-#
-# Copyright (c) 2017-2025, Éric Thiébaut.
-#
-
 module NaiveLocalFilters
 
 using LocalFilters

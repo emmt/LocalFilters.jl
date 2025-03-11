@@ -1,16 +1,3 @@
-#
-# utils.jl --
-#
-# Useful methods for local filters.
-#
-#-----------------------------------------------------------------------------------------
-#
-# This file is part of the `LocalFilters.jl` package licensed under the MIT "Expat"
-# License.
-#
-# Copyright (c) 2017-2025, Éric Thiébaut.
-#
-
 """
     I = LocalFilters.Indices(A::AbstractArray...)
 

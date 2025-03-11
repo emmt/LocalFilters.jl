@@ -1,16 +1,3 @@
-#
-# types.jl --
-#
-# Type definitions for local filters.
-#
-#-----------------------------------------------------------------------------------------
-#
-# This file is part of the `LocalFilters.jl` package licensed under the MIT "Expat"
-# License.
-#
-# Copyright (c) 2017-2025, Éric Thiébaut.
-#
-
 """
     LocalFilters.Axis
 
