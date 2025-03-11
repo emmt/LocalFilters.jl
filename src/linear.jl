@@ -61,7 +61,7 @@ end
 function localmean!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N}, B::Box{N};
                     null = zero(eltype(dst)),
                     order::FilterOrdering = FORWARD_FILTER) where {N}
-    null = nearest(eltype(dst), null)
+    null = as(eltype(dst), null)
     indices = Indices(dst, A, B)
     T_num = typeof_sum(eltype(A))
     @inbounds for i in indices(dst)
