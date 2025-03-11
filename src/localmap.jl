@@ -1,11 +1,11 @@
 """
-    localmap(f, A, B=3; eltype=eltype(A), null=zero(eltype), order=FORWARD_FILTER)
+    localmap(f, [T=eltype(A),] A, B=3; null=zero(T), order=FORWARD_FILTER)
 
 for each position in `A`, applies the function `f` to the values of `A` extracted from the
 neighborhood defined by `B`.
 
-Keyword `eltype` may be used to specify the the element type `T` of the result.
-By default, it is the same as that of `A`.
+Optional argument `T` is to specify the element type of the result; by default, `T` is the
+element type of `A`.
 
 Keyword `order` specifies the filter direction, `FORWARD_FILTER` by default.
 
@@ -33,9 +33,12 @@ med = localmap(median!, img, 5; eltype=float(eltype(img)), null=NaN)
 ```
 
 """
-function localmap(f::Function, A::AbstractArray{T,N}, B::Window{N};
-                  eltype::Type=T, kwds...) where {T,N}
-    return localmap!(f, similar(A, eltype), A, B; kwds...)
+localmap(f::Function, A::AbstractArray{<:Any,N}, B::Window{N}; kwds...) where {N} =
+    localmap(f, eltype(A), A, B; kwds...)
+
+function localmap(f::Function, ::Type{T}, A::AbstractArray{<:Any,N}, B::Window{N};
+                  eltype::Type{T} = eltype(A), kwds...) where {T,N}
+    return localmap!(f, similar(A, T), A, B; kwds...)
 end
 
 """

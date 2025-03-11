@@ -1,5 +1,5 @@
 """
-    localmean(A, B=3; null=zero(T), order=FORWARD_FILTER)
+    localmean([T,] A, B=3; null=zero(T), order=FORWARD_FILTER)
 
 yields the local mean of `A` in a neighborhood defined by `B`. The result is an array
 similar to `A`. If `B` is not specified, the neighborhood is a hyper-rectangular sliding
@@ -8,9 +8,10 @@ or as an array of booleans of same number of dimensions as `A`. If `B` is a sing
 integer (as it is by default), the neighborhood is assumed to be a hyper-rectangular
 sliding window of size `B` in every dimension.
 
+Optional argument `T` is to specify the element type of the result.
+
 Keyword `null` may be used to specify the value of the result where the sum of the weights
-in a local neighborhood is zero. By default, `null = zero(T)` with `T` the element type of
-the result which may be specified with keyword `eltype`.
+in a local neighborhood is zero. By default, `null = zero(T)`.
 
 Keyword `order` specifies the filter direction, `FORWARD_FILTER` by default.
 
@@ -20,10 +21,11 @@ See also [`localmean!`](@ref) and [`localfilter!`](@ref).
 localmean(A::AbstractArray{<:Any,N}, B::Kernel{N} = 3; kwds...) where {N} =
     localmean(A, kernel(Dims{N}, B); kwds...)
 
-function localmean(A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N};
-                   eltype::Type = typeof_mean(eltype(A), eltype(B)), kwds...) where {N}
-    return localmean!(similar(A, eltype), A, B; kwds...)
-end
+localmean(A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N}; kwds...) where {N} =
+    localmean(typeof_mean(eltype(A), eltype(B)), A, B; kwds...)
+
+localmean(::Type{T}, A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N}; kwds...) where {T,N} =
+    localmean!(similar(A, T), A, B; kwds...)
 
 """
     localmean!(dst, A, B=3; null=zero(eltype(dst)), order=FORWARD_FILTER) -> dst
@@ -164,11 +166,11 @@ See also [`convolve`](@ref) and [`localfilter!`](@ref).
 
 """ convolve!
 
-# Provide destination.
-function sumprod(A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N};
-                 eltype::Type = typeof_sumprod(eltype(A), eltype(B)), kwds...) where {N}
-    return sumprod!(similar(A, eltype), A, B; kwds...)
-end
+sumprod(A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N}; kwds...) where {N} =
+    sumprod(typeof_sumprod(eltype(A), eltype(B)), A, B; kwds...)
+
+sumprod(::Type{T}, A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N}; kwds...) where {T,N} =
+    sumprod!(similar(A, T), A, B; kwds...)
 
 # Local sum inside a simple sliding window.
 function sumprod!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N}, B::Box{N};

@@ -92,12 +92,13 @@ end
 end
 
 """
-    localfilter(A, dims, op, rngs; kwds...) -> dst
+    localfilter([T=eltype(A),] A, dims, op, rngs; kwds...) -> dst
 
 yields the result of applying van Herk-Gil-Werman algorithm to filter array `A` along
-dimension(s) `dims` with (associative) binary operation `op` and contiguous structuring
-element(s) defined by the interval(s) `rngs`. The optional argument `T` allows to specify
-another type of element than `eltype(A)` for the result.
+dimension(s) `dims` with associative binary operator `op` and contiguous structuring
+element(s) defined by the interval(s) `rngs`.
+
+Optional argument `T` is to specify the element type of the result.
 
 Argument `dims` specifies along which dimension(s) of `A` the filter is to be applied, it
 can be a single integer, a tuple of integers, or a colon `:` to apply the operation to all
@@ -156,10 +157,6 @@ The *local average* of the two-dimensional array `A` on a centered moving window
 See [`localfilter!`](@ref) for an in-place version of the method.
 
 """ localfilter
-#localfilter(A::AbstractArray, dims::Dimensions, op::Function, rngs::Ranges; kwds...) =
-#    localfilter(eltype(A), A, dims, op, rngs; kwds...)
-#localfilter(::Type{T}, A::AbstractArray, dims::Dimensions, op::Function, rngs::Ranges; kwds...) where {T} =
-#    localfilter!(similar(A, T), A, dims, op, rngs; kwds...)
 
 """
     localfilter!([dst = A,] A, dims, op, rngs ; kwds...)
