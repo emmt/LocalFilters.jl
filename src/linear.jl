@@ -23,7 +23,7 @@ sliding window of size `B` in every dimension.
 
 Keyword `null` may be used to specify the value of the result where the sum of the weights
 in a local neighborhood is zero. By default, `null = zero(T)` with `T` the element type of
-the result.
+the result which may be specified with keyword `eltype`.
 
 Keyword `order` specifies the filter direction, `FORWARD_FILTER` by default.
 
@@ -33,9 +33,9 @@ See also [`localmean!`](@ref) and [`localfilter!`](@ref).
 localmean(A::AbstractArray{<:Any,N}, B::Kernel{N} = 3; kwds...) where {N} =
     localmean(A, kernel(Dims{N}, B); kwds...)
 
-function localmean(A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N}; kwds...) where {N}
-    T = typeof_mean(eltype(A), eltype(B))
-    return localmean!(similar(A, T), A, B; kwds...)
+function localmean(A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N};
+                   eltype::Type = typeof_mean(eltype(A), eltype(B)), kwds...) where {N}
+    return localmean!(similar(A, eltype), A, B; kwds...)
 end
 
 """
@@ -178,10 +178,9 @@ See also [`convolve`](@ref) and [`localfilter!`](@ref).
 """ convolve!
 
 # Provide destination.
-function sumprod(A::AbstractArray{<:Any,N},
-                 B::AbstractArray{<:Any,N}; kwds...) where {N}
-    T = typeof_sumprod(eltype(A), eltype(B))
-    return sumprod!(similar(A, T), A, B; kwds...)
+function sumprod(A::AbstractArray{<:Any,N}, B::AbstractArray{<:Any,N};
+                 eltype::Type = typeof_sumprod(eltype(A), eltype(B)), kwds...) where {N}
+    return sumprod!(similar(A, eltype), A, B; kwds...)
 end
 
 # Local sum inside a simple sliding window.
@@ -219,10 +218,10 @@ for (f, order) in ((:correlate, :FORWARD_FILTER),
                    (:convolve,  :REVERSE_FILTER))
     f! = Symbol(f,"!")
     @eval begin
-        $f(A::AbstractArray{<:Any,N}, B::Kernel{N}) where {N} =
-            sumprod(A, kernel(Dims{N}, B); order = $order)
-        $f!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N}, B::Kernel{N}) where {N} =
-            sumprod!(dst, A, kernel(Dims{N}, B); order = $order)
+        $f(A::AbstractArray{<:Any,N}, B::Kernel{N}; kwds...) where {N} =
+            sumprod(A, kernel(Dims{N}, B); order = $order, kwds...)
+        $f!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N}, B::Kernel{N}; kwds...) where {N} =
+            sumprod!(dst, A, kernel(Dims{N}, B); order = $order, kwds...)
     end
 end
 

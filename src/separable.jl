@@ -106,7 +106,7 @@ end
 end
 
 """
-    localfilter([T=eltype(A),] A, dims, op, rngs; kwds...) -> dst
+    localfilter(A, dims, op, rngs; kwds...) -> dst
 
 yields the result of applying van Herk-Gil-Werman algorithm to filter array `A` along
 dimension(s) `dims` with (associative) binary operation `op` and contiguous structuring

@@ -63,7 +63,7 @@ Base.convert(::Type{T}, f::T) where {T<:GaussianWindow} = f
 Base.convert(::Type{GaussianWindow{T}}, f) where {T} = GaussianWindow{T}(f)
 
 """
-    bilateralfilter([T=float(eltype(A)),] A, F, G...=3; order = FORWARD_FILTER)
+    bilateralfilter(A, F, G...=3; eltype=float(eltype(A)), order = FORWARD_FILTER)
 
 yields the result of applying the bilateral filter on array `A`.
 
@@ -90,20 +90,16 @@ in coordinates. There are several possibilities:
   a window `win` specifying the extension of the neighborhood. If `w` is not specified, a
   default window of size `±3σ` is assumed.
 
-Optional argument `T` can be used to force the element type of the result. This argument
-is needed if the element type of `A` is not a real.
+Keyword `eltype` can be used to specify the element type of the result. This is needed if
+the default is unsuitable.
 
 See [`bilateralfilter!`](@ref) for an in-place version of this function and see
 [Wikipedia](https://en.wikipedia.org/wiki/Bilateral_filter) for a description of the
 bilateral filter.
 
 """
-bilateralfilter(A::AbstractArray{<:Real}, args...) =
-    # Provide type for computations and result.
-    bilateralfilter(float(eltype(A)), A, args...)
-
-bilateralfilter(T::Type, A::AbstractArray, args...) =
-    bilateralfilter!(similar(A, T), A, args...)
+bilateralfilter(A::AbstractArray, args...; eltype::Type = float(eltype(A)), kwds...) =
+    bilateralfilter!(similar(A, eltype), A, args...; kwds...)
 
 """
     bilateralfilter!(dst, A, F, G...; order = FORWARD_FILTER) -> dst
