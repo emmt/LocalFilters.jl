@@ -1099,11 +1099,38 @@ end
                 @test A == Aref # check that A is left unchanged
                 @test B == Bref # check result
             end
-            #@test samevalues(B, localreduce(min, A,[1,2], (k1:k1,k2:k2)))
-            #@test samevalues(B, localreduce(min, A,(2,1), (k2:k2,k1:k1)))
-            #@test samevalues(B, localreduce!(min, copyto!(C,A),:, (k1:k1,k2:k2)))
-            #@test samevalues(B, localreduce!(min, copyto!(C,A),(1,2), (k1:k1,k2:k2)))
-            #@test samevalues(B, localreduce!(min, copyto!(C,A),[2,1], (k2:k2,k1:k1)))
+        end
+        @testset "... $name" for (name, func, func!, op) in (("erosion", erode, erode!, min),
+                                                             ("dilation", dilate, dilate!, max))
+            C = similar(A)
+            B1 = @inferred func(A, (-2:2, 0:0); slow=true)
+            @test B1 == @inferred func(A, 1, -2:2)
+            @test C === @inferred func!(copyto!(C, A), 1, -2:2)
+            @test B1 == C
+            @test C === @inferred func!(C, A, 1, -2:2)
+            @test B1 == C
+            @test B1 == @inferred localreduce(op, A, 1, -2:2)
+            B2 = @inferred func(A, (0:0, -3:3); slow=true)
+            @test B2 == @inferred func(A, 2, -3:3)
+            @test C === @inferred func!(copyto!(C, A), 2, -3:3)
+            @test B2 == C
+            @test C === @inferred func!(C, A, 2, -3:3)
+            @test B2 == C
+            @test B2 == @inferred localreduce(op, A, 2, -3:3)
+            B3 = @inferred func(A, (-2:2, -3:3); slow=true)
+            @test B3 == @inferred func(A, :, (-2:2, -3:3))
+            @test B3 == @inferred func!(C, A, :, (-2:2, -3:3))
+            @test B3 == @inferred localreduce(op, A, :, (-2:2, -3:3))
+            @test B3 == @inferred localreduce(op, A, (1,2), (-2:2, -3:3))
+            @test B3 == @inferred localreduce(op, A, (2,1), (-3:3, -2:2))
+            @test B3 == @inferred localreduce(op, B1, 2, -3:3)
+            @test B3 == @inferred localreduce(op, B2, 1, -2:2)
+            @test B3 == @inferred localreduce(op, B2, 1, (-2:2,))
+            B4 = @inferred func(A, (-2:2, -2:2); slow=true)
+            @test B4 == @inferred localreduce(op, A, :, -2:2)
+            @test B4 == @inferred localreduce(op, A, :, 5)
+            @test B4 == @inferred localreduce(op, A, (1,2), -2:2)
+            @test B4 == @inferred localreduce(op, A, 1:2, 5)
         end
     end
 
