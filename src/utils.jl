@@ -70,28 +70,30 @@ check_axes(::Type{Bool}, A::AbstractArray) = true
     kernel([Dims{N},] args...)
 
 yields an `N`-dimensional abstract array built from `args...` and which can be used as a
-kernel in local filtering operations. The kernel is also called a *neighborhood* when its
-element type is `Bool`.
+kernel in local filtering operations. The kernel is called a *neighborhood*, a *sliding
+window*, or a *structuring element* when its element are of type `Bool` and indicate
+whether a cell is to be considered. A *box* is a kernel whose elements are all `true`, it
+corresponds to an hyper-rectangular neighborhood whose sides are aligned with the
+Cartesian axes.
 
 * If `args...` is composed of `N` integers and/or ranges or if it is an `N`-tuple of
-  integers and/or ranges, a uniformly true abstract array is returned whose axes are
-  specified by `args...`. Each integer argument is converted in a centered unit range of
-  this length (see [`LocalFilters.kernel_range`](@ref)).
+  integers and/or ranges, a *box* is returned whose axes are specified by `args...`. Each
+  integer argument is converted in a centered unit range of this length (see
+  [`LocalFilters.kernel_range`](@ref)).
 
 * If `Dims{N}` is provided and `args...` is a single integer or range, it is interpreted
   as being the same for all dimensions of an `N`-dimensional kernel. For example,
-  `kernel(Dims{3},5)` yields a 3-dimensional uniformly true array with index range `-2:2`
-  in every dimension.
+  `kernel(Dims{3},5)` yields a 3-dimensional *box* with index range `-2:2` in every
+  dimension.
 
 * If `args...` is two Cartesian indices or a 2-tuple of Cartesian indices, say `start` and
-  `stop`, a uniformly true abstract array is returned whose first and last indices are
-  `start` and `stop`.
+  `stop`, a *box* is returned whose first and last indices are `start` and `stop`.
 
-* If `args...` is a Cartesian range, say `R::CartesianIndices{N}`, a uniformly true
-  abstract array is returned whose axes are given by `R`.
+* If `args...` is a Cartesian range, say `R::CartesianIndices{N}`, a *box* array is
+  returned whose axes are given by `R`.
 
-* If `args...` is an abstract array of any other type than an instance of
-  `CartesianIndices`, it is returned unchanged.
+* If `args...` is an abstract array of any other type than `CartesianIndices`, it is
+  returned unchanged.
 
 Optional leading argument `Dims{N}` can be specified to assert the number of dimensions of
 the result or to provide the number of dimensions when it cannot be inferred from the
@@ -330,9 +332,6 @@ as in `fftshift` are used).
 This *public* method is purposely not exported because it could introduce some confusions.
 For example `OffsetArrays.centered` is similar but has a slightly different semantic.
 
-Argument `A` can also be an index range (linear or Cartesian), in which case a centered
-index range of same size is returned.
-
 See also [`LocalFilters.kernel_range`](@ref), [`LocalFilters.centered_offset`](@ref).
 
 """ centered
@@ -370,8 +369,8 @@ is_morpho_math_box(R::CartesianIndices) =
 """
     LocalFilters.box(args...) -> B::Box
 
-yields an hyper-rectangular box for mathematical morphology operations with the same axes
-or indices as its argument(s).
+yields an hyper-rectangular sliding window for local filtering or mathematical morphology
+operations with the same axes or indices as its argument(s).
 
 See also [`LocalFilters.kernel`](@ref) and [`LocalFilters.strel`](@ref).
 
@@ -426,7 +425,7 @@ value of type `eltype(A)`. This method propagates the current in-bounds settings
 
 yields a mask approximating a `N`-dimensional ball of radius `r`. The result is
 `N`-dimensional array of Boolean's with all dimensions odd and equal and whose values are
-`true` inside the ball (that for distance to the center `≤ r`) and `false` otherwise. The
+`true` inside the ball (where distance to the center `≤ r`) and `false` otherwise. The
 mask may be used to specify the neighborhood, the kernel, or the structuring element in
 local filtering operations.
 

@@ -54,6 +54,8 @@ bilateralfilter!
 ```@docs
 localfilter
 localfilter!
+localmap
+localmap!
 ```
 
 ## Constants

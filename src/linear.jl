@@ -103,21 +103,21 @@ end
 yields the discrete correlation of the array `A` by the kernel defined by `B`. The result
 `dst` is an array similar to `A`.
 
-Using `Sup(A)` to denote the set of valid indices for array `A` and assuming `B` is an
+Using `Idx(A)` to denote the set of valid indices for array `A` and assuming `B` is an
 array of numerical values, the discrete convolution of `A` by `B` writes:
 
     dst = similar(A, T)
-    for i ∈ Sup(A)
+    for i ∈ Idx(dst)
         v = zero(T)
-        @inbounds for j ∈ Sup(A) ∩ (Sup(B) - i)
+        @inbounds for j ∈ Idx(A) ∩ (i + Idx(B))
             v += A[j]*B[j-i]
         end
         dst[i] = v
     end
 
 with `T` the type of the sum of the products of the elements of `A` and `B`, and where
-`Sup(A) ∩ (i - Sup(A))` denotes the subset of indices `k` such that `k ∈ Sup(B)` and `i -
-k ∈ Sup(A)` and thus for which `B[k]` and `A[i-k]` are valid.
+`Idx(A) ∩ (i + Idx(B))` denotes the subset of indices `j` such that `j ∈ Idx(A)` and `j -
+i ∈ Idx(B)` and thus for which `A[j]` and `B[j-i]` are valid.
 
 See also [`correlate!`](@ref) and [`convolve`](@ref).
 
@@ -138,20 +138,21 @@ See also [`correlate`](@ref) and [`localfilter!`](@ref).
 yields the discrete convolution of array `A` by the kernel defined by `B`. The result
 `dst` is an array similar to `A`.
 
-Using `Sup(A)` to denote the set of valid indices for array `A` and assuming `B` is an
+Using `Idx(A)` to denote the set of valid indices for array `A` and assuming `B` is an
 array of values, the discrete convolution of `A` by `B` writes:
 
-    for i ∈ Sup(A)
+    dst = similar(A, T)
+    for i ∈ Idx(dst)
         v = zero(T)
-        @inbounds for j ∈ Sup(B) ∩ (i - Sup(A))
-            v += A[i-j]*B[j]
+        @inbounds for j ∈ Idx(A) ∩ (i - Idx(B))
+            v += A[j]*B[i-j]
         end
         dst[i] = v
     end
 
 with `T` the type of the sum of the products of the elements of `A` and `B`, and where
-`Sup(B) ∩ (i - Sup(A))` denotes the subset of indices `k` such that `k ∈ Sup(B)` and `i -
-k ∈ Sup(A)` and thus for which `B[k]` and `A[i-k]` are valid.
+`Idx(A) ∩ (i - Idx(B))` denotes the subset of indices `j` such that `j ∈ Idx(A)` and `i -
+j ∈ Idx(B)` and thus for which `A[j]` and `B[i-j]` are valid.
 
 See also [`convolve!`](@ref) and [`localfilter!`](@ref).
 

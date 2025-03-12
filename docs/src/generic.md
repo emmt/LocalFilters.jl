@@ -1,13 +1,12 @@
 # Generic local filters
 
 Most filters provided by the `LocalFilters` package are implemented by the generic
-[`localfilter!`](@ref) method.
+in-place method [`localfilter!`](@ref) or its out-of-place version [`localfilter](@ref).
 
 
 ## The `localfilter!` method
 
-A local filtering operation can be performed by calling the
-[`localfilter!`](@ref) method:
+A local filtering operation can be performed by calling the [`localfilter!`](@ref) method:
 
 ```julia
 localfilter!(dst, A, B, initial, update, final)
@@ -16,9 +15,11 @@ localfilter!(dst, A, B, initial, update, final)
 where `dst` is the destination, `A` is the source, `B` defines the neighborhood, `initial`
 is a function or the initial value of the state variable, `update` is a function to update
 the state variable for each entry of the neighborhood, and `final` is a function to yield
-the local result of the filter given the final value of the state variable. The purposes
-of these parameters are explained by the following pseudo-code implementing the local
-filtering:
+the local result of the filter given the final value of the state variable. The
+[`localfilter!`](@ref) method returns the destination `dst`.
+
+The purpose of arguments `initial`, `update`, and `final` is explained by the following
+pseudo-code implementing the local filtering:
 
 ```julia
 @inbounds for i ∈ indices(dst)
@@ -33,7 +34,7 @@ end
 where `indices(A)` denotes the set of indices of `A` while `indices(B) + i` denotes the
 set of indices `j` such that `j - i ∈ indices(B)`. In other words, `j ∈ indices(A) ∩
 (indices(B) + i)` means all indices `j` such that `j ∈ indices(A)` and `j - i ∈
-indices(B)`, hence `A[j]` and `B[j-i]` are both in-bounds. In `LocalFilters`, indices `i`
+indices(B)`, hence `A[j]` and `B[j-i]` are both in-bounds. In `localfilter!`, indices `i`
 and `j` are Cartesian indices for multi-dimensional arrays, thus `indices(A)` is the
 analogous of `CartesianIndices(A)` in Julia in that case. For vectors, indices `i` and `j`
 are linear indices.
@@ -44,9 +45,10 @@ deal with the state variable `v`:
 
 - `initial` may be a function, in which case the state variable is initially given by `v =
   initial(A[i])`; otherwise, `initial` is assumed to be the initial value of the state
-  variable. If `initial` is a function, then `dst` and `A` must have the same axes.
+  variable. As a consequence, if `initial` is a function, `dst` and `A` must have the same
+  axes.
 
-- `update(v, a, b)` yields the updated state variable `v` given `v`, `a = A[j]`, and `b =
+- `update(v, a, b)` yields the updated state variable `v` with `a = A[j]` and `b =
   B[j-i]`.
 
 - `final(v)` yields the result of the filter given the state variable `v` at the end of
@@ -73,26 +75,53 @@ orderings yield the same result but `FORWARD_FILTER` is generally faster which i
 is used by default.
 
 
-## Examples
+## The `localfilter` method
 
-Implementing a local minimum filter (that is, an *erosion*) with `localfilter!` is as
-simple as:
+The [`localfilter`](@ref) method is similar to [`localfilter!`](@ref) except that it allocates
+the destination:
 
 ```julia
-dst = localfilter!(similar(A), A, B,
-                   #= initial =# typemax(eltype(A)),
-                   #= update  =# (v,a,b) -> min(v,a))
+localfilter(A, B, initial, update, final)
+```
+
+is the same as:
+
+```julia
+localfilter!(similar(A), A, B, initial, update, final)
+```
+
+The element type `T` of the destination can however be specified as the first argument:
+
+```julia
+localfilter(T, A, B, initial, update, final)
+```
+
+which is the same as:
+
+```julia
+localfilter!(similar(A, T), A, B, initial, update, final)
+```
+
+
+## Examples
+
+Implementing a local minimum filter (that is, an *erosion*) with [`localfilter`](@ref) is
+as simple as:
+
+```julia
+res = localfilter(A, B,
+                  #= initial =# typemax(eltype(A)),
+                  #= update  =# (v,a,b) -> min(v,a))
 ```
 
 This is typically how *[Basic morphological operations](@ref)* are implemented in
-`LocalFilters`. Note that [`localfilter!`](@ref) returns the destination. Also note that
-`B` is only used to define the neighborhood, it is usually called a *structuring element*
-in this context.
+`LocalFilters`. Here `B` is only used to define the neighborhood, it is usually called a
+*structuring element* in this context.
 
 As another example, implementing a convolution of `A` by `B` writes:
 
 ```julia
-dst = localfilter!(similar(A), A, B,
+res = localfilter(similar(A), A, B,
                    #= initial =# zero(eltype(A)),
                    #= update  =# (v,a,b) -> v + a*b; order = REVERSE_FILTER)
 ```
