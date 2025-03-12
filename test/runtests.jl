@@ -1038,10 +1038,10 @@ end
                 j = clamp(i + k, 1, n)
                 Bref[i] = A[j]
             end
-            B = @inferred localfilter(A, 1, min, k:k)
+            B = @inferred localreduce(min, A, 1, k:k)
             @test A == Aref # check that A is left unchanged
             @test B == Bref # check result
-            @test B === @inferred localfilter!(copyto!(B, A), 1, min, k:k)
+            @test B === @inferred localreduce!(min, copyto!(B, A), 1, k:k)
             @test B == Bref # check result
         end
         A = rand(Float64, 12, 13)
@@ -1056,54 +1056,54 @@ end
                     Bref[i1,i2] = A[j1,j2]
                 end
             end
-            B = @inferred localfilter(A, :, min, (k1:k1, k2:k2))
+            B = @inferred localreduce(min, A, :, (k1:k1, k2:k2))
             @test A == Aref # check that A is left unchanged
             @test B == Bref # check result
-            @test B === @inferred localfilter!(copyto!(B, A), :, min, (k1:k1, k2:k2))
+            @test B === @inferred localreduce!(min, copyto!(B, A), :, (k1:k1, k2:k2))
             @test B == Bref # check result
-            B = @inferred localfilter(A, [1,2], min, (k1:k1, k2:k2))
+            B = @inferred localreduce(min, A, [1,2], (k1:k1, k2:k2))
             @test A == Aref # check that A is left unchanged
             @test B == Bref # check result
-            @test B === @inferred localfilter!(copyto!(B, A), [1,2], min, (k1:k1, k2:k2))
+            @test B === @inferred localreduce!(min, copyto!(B, A), [1,2], (k1:k1, k2:k2))
             @test B == Bref # check result
-            B = @inferred localfilter(A, (2,1), min, [k2:k2, k1:k1])
+            B = @inferred localreduce(min, A, (2,1), [k2:k2, k1:k1])
             @test A == Aref # check that A is left unchanged
             @test B == Bref # check result
-            @test B === @inferred localfilter!(copyto!(B, A), (2,1), min, (k2:k2, k1:k1))
+            @test B === @inferred localreduce!(min, copyto!(B, A), (2,1), (k2:k2, k1:k1))
             @test B == Bref # check result
-            B = @inferred localfilter(A, [1,2], min, (k1:k1, k2:k2))
+            B = @inferred localreduce(min, A, [1,2], (k1:k1, k2:k2))
             @test A == Aref # check that A is left unchanged
             @test B == Bref # check result
-            B = @inferred localfilter(A, (2,1), min, [k2:k2, k1:k1])
+            B = @inferred localreduce(min, A, (2,1), [k2:k2, k1:k1])
             @test A == Aref # check that A is left unchanged
             @test B == Bref # check result
             if iszero(k2)
-                B = @inferred localfilter(A, 1, min, k1:k1)
+                B = @inferred localreduce(min, A, 1, k1:k1)
                 @test A == Aref # check that A is left unchanged
                 @test B == Bref # check result
-                B = @inferred localfilter(A, [1], min, (k1:k1,))
+                B = @inferred localreduce(min, A, [1], (k1:k1,))
                 @test A == Aref # check that A is left unchanged
                 @test B == Bref # check result
-                B = @inferred localfilter(A, (1,), min, [k1:k1])
+                B = @inferred localreduce(min, A, (1,), [k1:k1])
                 @test A == Aref # check that A is left unchanged
                 @test B == Bref # check result
             end
             if iszero(k1)
-                B = @inferred localfilter(A, 2, min, k2:k2)
+                B = @inferred localreduce(min, A, 2, k2:k2)
                 @test A == Aref # check that A is left unchanged
                 @test B == Bref # check result
-                B = @inferred localfilter(A, [2], min, (k2:k2,))
+                B = @inferred localreduce(min, A, [2], (k2:k2,))
                 @test A == Aref # check that A is left unchanged
                 @test B == Bref # check result
-                B = @inferred localfilter(A, (2,), min, [k2:k2])
+                B = @inferred localreduce(min, A, (2,), [k2:k2])
                 @test A == Aref # check that A is left unchanged
                 @test B == Bref # check result
             end
-            #@test samevalues(B, localfilter(A,[1,2],min,(k1:k1,k2:k2)))
-            #@test samevalues(B, localfilter(A,(2,1),min,(k2:k2,k1:k1)))
-            #@test samevalues(B, localfilter!(copyto!(C,A),:,min,(k1:k1,k2:k2)))
-            #@test samevalues(B, localfilter!(copyto!(C,A),(1,2),min,(k1:k1,k2:k2)))
-            #@test samevalues(B, localfilter!(copyto!(C,A),[2,1],min,(k2:k2,k1:k1)))
+            #@test samevalues(B, localreduce(min, A,[1,2], (k1:k1,k2:k2)))
+            #@test samevalues(B, localreduce(min, A,(2,1), (k2:k2,k1:k1)))
+            #@test samevalues(B, localreduce!(min, copyto!(C,A),:, (k1:k1,k2:k2)))
+            #@test samevalues(B, localreduce!(min, copyto!(C,A),(1,2), (k1:k1,k2:k2)))
+            #@test samevalues(B, localreduce!(min, copyto!(C,A),[2,1], (k2:k2,k1:k1)))
         end
     end
 

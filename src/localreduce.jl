@@ -1,25 +1,3 @@
-module Separable
-
-using ..LocalFilters
-
-using ..LocalFilters:
-    FilterOrdering,
-    ForwardFilterOrdering,
-    ReverseFilterOrdering,
-    BoundaryConditions,
-    FlatBoundaries,
-    Axis,
-    kernel_range,
-    reverse, reverse!
-
-import ..LocalFilters:
-    dilate!,
-    dilate,
-    erode!,
-    erode,
-    localfilter!,
-    localfilter
-
 # Union of for possible types to specify the dimension(s) of interest.
 const Dimensions = Union{Colon, Integer, Tuple{Vararg{Integer}},
                          AbstractVector{<:Integer}}
@@ -92,7 +70,7 @@ end
 end
 
 """
-    localfilter([T=eltype(A),] A, dims, op, rngs; kwds...) -> dst
+    localreduce(op, [T=eltype(A),] A, dims, rngs; kwds...) -> dst
 
 yields the result of applying van Herk-Gil-Werman algorithm to filter array `A` along
 dimension(s) `dims` with associative binary operator `op` and contiguous structuring
@@ -114,9 +92,9 @@ Keyword `order` specifies the filter direction, `FORWARD_FILTER` by default.
 Keyword `work` may be used to provide a workspace array of type `Vector{T}` which is
 automatically resized as needed.
 
-Assuming a mono-dimensional array `A`, the single filtering pass:
+Assuming a mono-dimensional array `A`, the single reduction pass:
 
-    dst = localfilter(A, :, op, rng)
+    dst = localreduce(op, A, :, rng)
 
 amounts to computing (assuming forward ordering):
 
@@ -134,94 +112,97 @@ Flat boundary conditions are assumed for `A[i+k]` in the above formula.
 The *morphological erosion* (local minimum) of the array `A` on a centered structuring
 element of width 7 in every dimension can be obtained by:
 
-    localfilter(A, :, min, -3:3)
+    localreduce(min, A, :, -3:3)
 
 Index interval `0:0` may be specified to do nothing along the corresponding dimension. For
 instance, assuming `A` is a three-dimensional array:
 
-    localfilter(A, :, max, (-3:3, 0:0, -4:4))
+    localreduce(max, A, :, (-3:3, 0:0, -4:4))
 
 yields the *morphological dilation* (*i.e.* local maximum) of `A` in a centered local
 neighborhood of size `7×1×9` (nothing is done along the second dimension). The same result
 may be obtained with:
 
-    localfilter(A, (1,3), max, (-3:3, -4:4))
+    localreduce(max, A, (1,3), (-3:3, -4:4))
 
 where the second dimension is omitted from the list of dimensions.
 
 The *local average* of the two-dimensional array `A` on a centered moving window of size
 11×11 can be computed as:
 
-    localfilter(A, :, +, (-5:5, -5:5)) ./ 11
+    localreduce(+, A, :, (-5:5, -5:5)) ./ 11
 
-See [`localfilter!`](@ref) for an in-place version of the method.
-
-""" localfilter
+See [`localreduce!`](@ref) for an in-place version of the method.
 
 """
-    localfilter!([dst = A,] A, dims, op, rngs ; kwds...)
+localreduce(op, A::AbstractArray, dims::Dimensions, rngs::Ranges; kwds...) =
+    localreduce(op, eltype(A), A, dims, rngs; kwds...)
+
+localreduce(op, ::Type{T}, A::AbstractArray, dims::Dimensions, rngs::Ranges; kwds...) where {T} =
+    localreduce!(op, similar(A, T), A, dims, rngs; kwds...)
+
+"""
+    localreduce!(op, [dst = A,] A, dims, rngs; kwds...)
 
 overwrites the contents of `dst` with the result of applying van Herk-Gil-Werman algorithm
-to filter array `A` along dimension(s) `dims` with (associative) binary operation `op` and
-contiguous structuring element(s) defined by the interval(s) `rngs`. Except if a single
-dimension of interest is specified by `dims`, the destination `dst` must have the same
-indices as the source `A` (that is, `axes(dst) == axes(A)`). Operation may be done
+to locally reduce array `A` along dimension(s) `dims` with associative binary operator
+`op` and contiguous structuring element(s) defined by the interval(s) `rngs`. Except if a
+single dimension of interest is specified by `dims`, the destination `dst` must have the
+same indices as the source `A` (that is, `axes(dst) == axes(A)`). Operation may be done
 in-place and `dst` and `A` can be the same; this is the default behavior if `dst` is not
 specified.
 
-See [`localfilter`](@ref) for a full description of the method and for accepted keywords.
+See [`localreduce`](@ref) for a full description of the method and for accepted keywords.
 
 The in-place *morphological erosion* (local minimum) of the array `A` on a centered
 structuring element of width 7 in every dimension can be obtained by:
 
-    localfilter!(A, :, min, -3:3)
+    localreduce!(min, A, :, -3:3)
 
 """
-localfilter!(A::AbstractArray, dims::Dimensions, op::Function, rngs::Ranges; kwds...) =
-   localfilter!(A, A, dims, op, rngs; kwds...)
+localreduce!(op, A::AbstractArray, dims::Dimensions, rngs::Ranges; kwds...) =
+    localreduce!(op, A, A, dims, rngs; kwds...)
 
-function localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N},
-                      dims::Dimensions, op::Function, rngs::Ranges;
+function localreduce!(op, dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N},
+                      dims::Dimensions, rngs::Ranges;
                       work::Vector{T} = Vector{T}(undef, workspace_length(A, dims, rngs)),
                       order::FilterOrdering = FORWARD_FILTER) where {T,N}
-    _localfilter!(dst, A, dims, op, order, rngs, work)
+    _reduce!(op, dst, A, dims, order, rngs, work)
     return dst
 end
 
 # Wrapper methods when destination, ordering, and workspace are specified.
 #
-# The filter is applied along all chosen dimensions. To reduce page memory faults, the
+# The reduction is applied along all chosen dimensions. To avoid page memory faults, the
 # operation is performed out-of-place (unless dst and A are the same) for the first chosen
 # dimension and the operation is performed in-place for the other chosen dimensions.
 #
-# Apply filter along all dimensions (`dims` is a colon).
-function _localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, ::Colon,
-                       op::Function, ord::FilterOrdering, rngs::Ranges,
-                       wrk::Vector{T}) where {T,N}
+# Reduce along all dimensions (`dims` is a colon).
+function _reduce!(op, dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, ::Colon,
+                  ord::FilterOrdering, rngs::Ranges, wrk::Vector{T}) where {T,N}
     if rngs isa Union{Integer,AbstractRange{<:Integer}}
         rng = kernel_range(ord, rngs) # optimization: convert once
         if N ≥ 1
-            _localfilter!(dst, A, 1, op, rng, wrk)
+            _reduce!(op, dst, A, 1, rng, wrk)
             for dim in 2:N
-                _localfilter!(dst, dst, dim, op, rng, wrk)
+                _reduce!(op, dst, dst, dim, rng, wrk)
             end
         end
     else
         length(rngs) == N || throw(DimensionMismatch(
             "there must be as many intervals as dimensions"))
         if N ≥ 1
-            _localfilter!(dst, A, 1, op, kernel_range(ord, first(rngs)), wrk)
+            _reduce!(op, dst, A, 1, kernel_range(ord, first(rngs)), wrk)
             for (dim, rng) in enumerate(rngs)
-                dim > 1 && _localfilter!(dst, dst, dim, op, kernel_range(ord, rng), wrk)
+                dim > 1 && _reduce!(op, dst, dst, dim, kernel_range(ord, rng), wrk)
             end
         end
     end
 end
 #
-# Apply filter along a single given dimension (`dims` is an integer).
-function _localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dim::Integer,
-                       op::Function, ord::FilterOrdering, rngs::Ranges,
-                       wrk::Vector{T}) where {T,N}
+# Reduce along a single given dimension (`dims` is an integer).
+function _reduce!(op, dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dim::Integer,
+                  ord::FilterOrdering, rngs::Ranges, wrk::Vector{T}) where {T,N}
     if rngs isa Union{Integer,AbstractRange{<:Integer}}
         rng = kernel_range(ord, rngs)
     else
@@ -229,20 +210,19 @@ function _localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dim::
             "there must be as many intervals as dimensions to filter"))
         rng = kernel_range(ord, first(rngs))
     end
-    _localfilter!(dst, A, dim, op, rng, wrk)
+    _reduce!(op, dst, A, dim, rng, wrk)
 end
 #
-# Apply filter along multiple given dimensions (`dims` is a list of integers).
-function _localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dims::Dimensions,
-                       op::Function, ord::FilterOrdering, rngs::Ranges,
-                       wrk::Vector{T}) where {T,N}
+# Reduce along multiple given dimensions (`dims` is a list of integers).
+function _reduce!(op, dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dims::Dimensions,
+                  ord::FilterOrdering, rngs::Ranges, wrk::Vector{T}) where {T,N}
     i, j = firstindex(dims), lastindex(dims)
     if rngs isa Union{Integer,AbstractRange{<:Integer}}
         if i ≤ j
             rng = kernel_range(ord, rngs) # optimization: convert once
-            _localfilter!(dst, A, @inbounds(dims[i]), op, rng, wrk)
+            _reduce!(op, dst, A, @inbounds(dims[i]), rng, wrk)
             for k in i+1:j
-                _localfilter!(dst, dst, @inbounds(dims[k]), op, rng, wrk)
+                _reduce!(op, dst, dst, @inbounds(dims[k]), rng, wrk)
             end
         end
     else
@@ -250,27 +230,26 @@ function _localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dims:
             "there must be as many intervals as dimensions to filter"))
         if i ≤ j
             off = firstindex(rngs) - i
-            _localfilter!(dst, A, @inbounds(dims[i]), op, kernel_range(ord, @inbounds(rngs[off+i])), wrk)
+            _reduce!(op, dst, A, @inbounds(dims[i]), kernel_range(ord, @inbounds(rngs[off+i])), wrk)
             for k in i+1:j
-                _localfilter!(dst, dst, @inbounds(dims[k]), op, kernel_range(ord, @inbounds(rngs[off+k])), wrk)
+                _reduce!(op, dst, dst, @inbounds(dims[k]), kernel_range(ord, @inbounds(rngs[off+k])), wrk)
             end
         end
     end
 end
 
 # This is the most basic version which is called by other versions.
-function _localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dim::Integer,
-                       op::Function, rng::AbstractUnitRange{Int}, wrk::Vector{T}) where {T,N}
+function _reduce!(op, dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, dim::Integer,
+                  rng::AbstractUnitRange{Int}, wrk::Vector{T}) where {T,N}
     1 ≤ dim ≤ N || throw(ArgumentError("out of bounds dimension"))
     isempty(rng) && throw(ArgumentError("invalid filter size"))
-    _localfilter!(dst, A, Val{Int(dim)}(), op, rng, wrk)
+    _reduce!(op, dst, A, Val{Int(dim)}(), rng, wrk)
 end
 
 # This version is to break the type instability related to the variable dimension of
 # interest.
-function _localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N},
-                       ::Val{D} #= dimension of interest =#, op::Function,
-                       K::AbstractUnitRange{Int}, wrk::Vector{T}) where {T,N,D}
+function _reduce!(op, dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N}, ::Val{D},
+                  K::AbstractUnitRange{Int}, wrk::Vector{T}) where {T,N,D}
     src_inds = axes(A)
     dst_inds = axes(dst)
     for d in 1:D-1
@@ -296,7 +275,7 @@ function _localfilter!(dst::AbstractArray{T,N}, A::AbstractArray{<:Any,N},
         _shiftarray!(dst, I1, I, I2, A, B, first(K))
     else
         # Apply van Herk-Gil-Werman algorithm.
-        _localfilter!(dst, I1, I, I2, A, B, op, K, wrk)
+        _reduce!(op, dst, I1, I, I2, A, B, K, wrk)
     end
 end
 
@@ -322,15 +301,14 @@ function _shiftarray!(dst::AbstractArray{<:Any,N},
     nothing
 end
 
-function _localfilter!(dst::AbstractArray{T,N},
-                       I1, # range of leading indices
-                       I::AbstractUnitRange{Int}, # index range in dst
-                       I2, # range of trailing indices
-                       src::AbstractArray{<:Any,N},
-                       B::BoundaryConditions, # boundary conditions in src
-                       op::Function,
-                       K::AbstractUnitRange{Int},
-                       R::Vector{T}) where {T,N}
+function _reduce!(op, dst::AbstractArray{T,N},
+                  I1, # range of leading indices
+                  I::AbstractUnitRange{Int}, # index range in dst
+                  I2, # range of trailing indices
+                  src::AbstractArray{<:Any,N},
+                  B::BoundaryConditions, # boundary conditions in src
+                  K::AbstractUnitRange{Int},
+                  R::Vector{T}) where {T,N}
     # The code assumes that the workspace R has 1-based indices, all other arrays may have
     # any indices.
     @assert firstindex(R) == 1
@@ -433,51 +411,15 @@ for (f, op) in ((:erode, :min), (:dilate, :max))
     f! = Symbol(f, "!")
     @eval begin
 
-        function $f(A::AbstractArray{T,N},
-                    dims::Dimensions,
-                    rngs::Ranges,
-                    args...) where {T,N}
-            return $f(A, dims, FORWARD_FILTER, rngs, args...)
-        end
+        $f(A::AbstractArray, dims::Dimensions, rngs::Ranges; kwds...) =
+            localreduce($op, A, dims, rngs; kwds...)
 
-        function $f!(A::AbstractArray{T,N},
-                     dims::Dimensions,
-                     rngs::Ranges,
-                     args...) where {T,N}
-            return $f!(A, dims, FORWARD_FILTER, rngs, args...)
-        end
+        $f!(A::AbstractArray, dims::Dimensions, rngs::Ranges, kwds...) =
+            localreduce!($op, A, dims, rngs; kwds...)
 
-        function $f!(dst::AbstractArray{T,N},
-                     A::AbstractArray{T,N},
-                     dims::Dimensions,
-                     rngs::Ranges,
-                     args...) where {T,N}
-            return $f!(dst, A, dims, FORWARD_FILTER, rngs, args...)
-        end
-
-        function $f(A::AbstractArray{T,N},
-                    dims::Dimensions,
-                    ord::FilterOrdering,
-                    rngs::Ranges,
-                    args...) where {T,N}
-            return localfilter(T, A, dims, $op, ord, rngs, args...)
-        end
-
-        function $f!(A::AbstractArray{T,N},
-                     dims::Dimensions,
-                     ord::FilterOrdering,
-                     rngs::Ranges,
-                     args...) where {T,N}
-            return localfilter!(A, dims, $op, ord, rngs, args...)
-        end
-
-        function $f!(dst::AbstractArray{T,N},
-                     A::AbstractArray{T,N},
-                     dims::Dimensions,
-                     ord::FilterOrdering,
-                     rngs::Ranges,
-                     args...) where {T,N}
-            return localfilter!(dst, A, dims, $op, ord, rngs, args...)
+        function $f!(dst::AbstractArray{<:Any,N}, A::AbstractArray{<:Any,N},
+                     dims::Dimensions, rngs::Ranges, kwds...) where {N}
+            return localreduce!($op, dst, A, dims, rngs; kwds...)
         end
 
     end
@@ -543,5 +485,3 @@ function workspace_length(A::AbstractArray, dims::Dimensions, rngs::Ranges)
     end
     return result
 end
-
-end # module

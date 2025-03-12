@@ -22,6 +22,10 @@
 * Morphological methods have a `slow` keyword (`false` by default) to force not using the
   the van Herk-Gil-Werman algorithm.
 
+* Methods to locally reduce along given dimensions with an associative operator and using
+  the the van Herk-Gil-Werman algorithm have been renamed `localreduce` and
+  `localreduce!`. Calling `localfilter` and `localfilter!` for that purpose is deprecated.
+
 * `localmean` and `localmean!` accept a `null` keyword to specify the value of the result
   when the sum of weights in a neighborhood is zero.
 

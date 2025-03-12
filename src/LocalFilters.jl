@@ -31,7 +31,8 @@ export
 
     # Generic filters.
     localfilter, localfilter!,
-    localmap, localmap!
+    localmap, localmap!,
+    localreduce, localreduce!
 
 using OffsetArrays, StructuredArrays, EasyRanges, TypeUtils
 using EasyRanges: ranges
@@ -40,16 +41,24 @@ using Base: @propagate_inbounds, tail, OneTo
 function bilateralfilter end
 function bilateralfilter! end
 
-@deprecate ForwardFilter FORWARD_FILTER true
-@deprecate ReverseFilter REVERSE_FILTER true
-
 include("types.jl")
 include("utils.jl")
 include("generic.jl")
 include("localmap.jl")
+include("localreduce.jl")
 include("linear.jl")
 include("morphology.jl")
 include("bilateral.jl")
-include("separable.jl")
+
+@deprecate ForwardFilter FORWARD_FILTER false
+@deprecate ReverseFilter REVERSE_FILTER false
+@deprecate(localfilter(A::AbstractArray, dims::Dimensions, op::Function, rngs::Ranges; kwds...),
+           localreduce(op, A, dims, rngs; kwds...), false)
+@deprecate(localfilter(T::Type, A::AbstractArray, dims::Dimensions, op::Function, rngs::Ranges; kwds...),
+           localreduce(op, T, A, dims, rngs; kwds...), false)
+@deprecate(localfilter!(A::AbstractArray, dims::Dimensions, op::Function, rngs::Ranges; kwds...),
+           localreduce!(op, A, dims, rngs; kwds...), false)
+@deprecate(localfilter!(dst::AbstractArray, A::AbstractArray, dims::Dimensions, op::Function, rngs::Ranges; kwds...),
+           localreduce!(op, dst, A, dims, rngs; kwds...), false)
 
 end

@@ -100,7 +100,7 @@ for (f, op) in ((:erode, :min), (:dilate, :max))
                      B::AbstractArray{<:Any,N}; slow::Bool = false, kwds...) where {N}
             if !slow && is_morpho_math_box(B)
                 # Use fast separable filter.
-                localfilter!(dst, A, :, $op, axes(B); kwds...)
+                localreduce!($op, dst, A, :, axes(B); kwds...)
             else
                 # Use slow filter.
                 $slow_f!(dst, A, B; kwds...)
@@ -113,7 +113,7 @@ for (f, op) in ((:erode, :min), (:dilate, :max))
             _B = kernel(Dims{N}, B)
             is_morpho_math_box(_B) || throw(ArgumentError(
                 "for in-place operation kernel must be a simple box"))
-            return localfilter!(A, A, :, $op, axes(_B); kwds...)
+            return localreduce!($op, A, A, :, axes(_B); kwds...)
         end
     end
 end

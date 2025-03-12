@@ -56,6 +56,8 @@ localfilter
 localfilter!
 localmap
 localmap!
+localreduce
+localreduce!
 ```
 
 ## Constants
