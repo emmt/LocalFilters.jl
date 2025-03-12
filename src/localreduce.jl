@@ -72,20 +72,21 @@ end
 """
     localreduce(op, [T=eltype(A),] A, dims, rngs; kwds...) -> dst
 
-yields the result of applying van Herk-Gil-Werman algorithm to filter array `A` along
-dimension(s) `dims` with associative binary operator `op` and contiguous structuring
-element(s) defined by the interval(s) `rngs`.
+yields the local reduction by the associative binary operator `op` of the values of `A`
+into contiguous hyper-rectangular neighborhoods defined by the interval(s) `rngs` along
+dimension(s) `dims` of `A`. The algorithm of van Herk-Gil-Werman is used to compute the
+reduction.
 
 Optional argument `T` is to specify the element type of the result.
 
-Argument `dims` specifies along which dimension(s) of `A` the filter is to be applied, it
-can be a single integer, a tuple of integers, or a colon `:` to apply the operation to all
-dimensions. Dimensions are processed in the order given by `dims` (the same dimension may
-appear several times) and there must be a matching interval in `rngs` to specify the
-structuring element (except that, if `rngs` is a single interval, it is used for every
-dimension in `dims`). An interval is either an integer or an integer valued unit range in
-the form `kmin:kmax`. An interval specified as a single integer yields an approximately
-centered range of this length.
+Argument `dims` specifies along which dimension(s) of `A` the local reduction is to be
+applied, it can be a single integer, a tuple of integers, or a colon `:` to apply the
+operation to all dimensions. Dimensions are processed in the order given by `dims` (the
+same dimension may appear several times) and there must be a matching interval in `rngs`
+to specify the structuring element (except that, if `rngs` is a single interval, it is
+used for every dimension in `dims`). An interval is either an integer or an integer valued
+unit range in the form `kmin:kmax`. An interval specified as a single integer is treated
+as an approximately centered range of this length.
 
 Keyword `order` specifies the filter direction, `FORWARD_FILTER` by default.
 
@@ -114,6 +115,10 @@ element of width 7 in every dimension can be obtained by:
 
     localreduce(min, A, :, -3:3)
 
+or equivalently by:
+
+    localreduce(min, A, :, 7)
+
 Index interval `0:0` may be specified to do nothing along the corresponding dimension. For
 instance, assuming `A` is a three-dimensional array:
 
@@ -127,10 +132,10 @@ may be obtained with:
 
 where the second dimension is omitted from the list of dimensions.
 
-The *local average* of the two-dimensional array `A` on a centered moving window of size
+The *local average* of the two-dimensional array `A` on a centered sliding window of size
 11×11 can be computed as:
 
-    localreduce(+, A, :, (-5:5, -5:5)) ./ 11
+    localreduce(+, A, :, (-5:5, -5:5)) ./ 11^2
 
 See [`localreduce!`](@ref) for an in-place version of the method.
 
@@ -144,13 +149,13 @@ localreduce(op, ::Type{T}, A::AbstractArray, dims::Dimensions, rngs::Ranges; kwd
 """
     localreduce!(op, [dst = A,] A, dims, rngs; kwds...)
 
-overwrites the contents of `dst` with the result of applying van Herk-Gil-Werman algorithm
-to locally reduce array `A` along dimension(s) `dims` with associative binary operator
-`op` and contiguous structuring element(s) defined by the interval(s) `rngs`. Except if a
-single dimension of interest is specified by `dims`, the destination `dst` must have the
-same indices as the source `A` (that is, `axes(dst) == axes(A)`). Operation may be done
-in-place and `dst` and `A` can be the same; this is the default behavior if `dst` is not
-specified.
+overwrites the contents of `dst` with the local reduction by the associative binary
+operator `op` of the values of `A` into contiguous hyper-rectangular neighborhoods defined
+by the interval(s) `rngs` along dimension(s) `dims` of `A`. Except if a single dimension
+of interest is specified by `dims`, the destination `dst` must have the same indices as
+the source `A` (that is, `axes(dst) == axes(A)`). Operation may be done in-place and `dst`
+and `A` can be the same; this is the default behavior if `dst` is not specified. The
+algorithm of van Herk-Gil-Werman is used to compute the reduction.
 
 See [`localreduce`](@ref) for a full description of the method and for accepted keywords.
 
