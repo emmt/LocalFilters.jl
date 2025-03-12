@@ -67,9 +67,6 @@
 * Filter ordering is always specified by the keyword `order` and is `FORWARD_FILTER` by
   default.
 
-* In most out-of-place methods, keyword `eltype` may be used to specify the type of the
-  elements of the result.
-
 
 ## Version 2.0.0
 
