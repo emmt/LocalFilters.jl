@@ -6,6 +6,10 @@
   applying the function `f` to the values of `A` taken in a neighborhood defined by `B`
   around each position in `A` for `localmap` or in `dst` for `localmap!`.
 
+* Methods to locally reduce along given dimensions with an associative operator and using
+  thevan Herk-Gil-Werman algorithm have been renamed `localreduce` and
+  `localreduce!`. Calling `localfilter` and `localfilter!` for that purpose is deprecated.
+
 * `LocalFilters.ball(DimS{N}, r)` now yields a *centered* `N`-dimensional ball where
   values are set according to whether the distance to the center is `≤ r`. Compared to the
   previous versions, add `1//2` to `r` to get a similar shape. The algorithm is faster and
@@ -21,10 +25,6 @@
 
 * Morphological methods have a `slow` keyword (`false` by default) to force not using the
   the van Herk-Gil-Werman algorithm.
-
-* Methods to locally reduce along given dimensions with an associative operator and using
-  the the van Herk-Gil-Werman algorithm have been renamed `localreduce` and
-  `localreduce!`. Calling `localfilter` and `localfilter!` for that purpose is deprecated.
 
 * `localmean` and `localmean!` accept a `null` keyword to specify the value of the result
   when the sum of weights in a neighborhood is zero.

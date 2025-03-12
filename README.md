@@ -17,12 +17,15 @@ exhaustive documentation. This page summarizes the principles and the features o
 
 * [Available filters](#available-filters) lists ready to use filters.
 
-* [Neighborhoods](#neighborhoods) describes the concept of *neighborhoods*, also known as
-  *sliding windows* in image processing or *structuring element* in mathematical
-  morphology. Neighborhoods are built by the `kernel` function.
+* [Kernels and neighborhoods](#kernels-and-neighborhoods) describes the concept of
+  *kernels* and *neighborhoods* which define which (and how) values are involved in a
+  local filter.
 
 * [Build your own filters](#build-your-own-filters) explains how to implement custom local
   filters.
+
+* [Local mapping and reduction](#local-mapping-and-reduction) describes methods for
+  computing local mappings and reductions.
 
 * [Installation](#installation) gives instructions to install the package.
 
@@ -98,6 +101,18 @@ filter](https://en.wikipedia.org/wiki/Bilateral_filter):
   Gaussian kernels with standard deviations `σr` and `σs`.
 
 
+## Kernels and neighborhoods
+
+*Neighborhoods* define which array elements around the element of interest are involved in
+the result of the local filter. Neighborhoods can be represented by arrays of Booleans,
+they are also known as *sliding windows* in image processing or as *structuring element*
+in mathematical morphology. Neighborhoods whose elements are uniformly true are equivalent
+to hyper-rectangular sliding wondows whose axes are aligned with the Cartesian axes. A
+kernel is similar to a neighborhood but its elements have values which represent the
+coefficients or the weights of the filter. Kernels and neighborhoods are built by the
+`kernel` function.
+
+
 ## Build your own filters
 
 In `LocalFilters`, a local filtering operation, say `dst = filter(A, B)` with `A` the
@@ -171,6 +186,19 @@ variety of linear and non-linear local filters:
 
   As in the above example, there are no needs to specify the `final` method here. Note the
   use of a bitwise `&` instead of a `&&` in the `update` method to avoid branching.
+
+
+## Local mapping and reduction
+
+Method `localmap(f,A,B)` yields the result of applying the function `f` to the vector of
+values of `A` in neighborhoods defined by `B`. Method `localmap!(f,dst,A,B)` is the
+in-place version of `localmap(f,A,B)`.
+
+Method `localreduce(op,A,dims,rngs)` applies the van Herk-Gil-Werman algorithm to compute
+the reduction by the associative binary operator `op` of the values of `A` into contiguous
+hyper-rectangular neighborhoods defined by the interval(s) `rngs` along dimension(s)
+`dims` of `A`. Method `localreduce!(op,dst,A,dims,rngs)` is the in-place version of
+`localreduce(op,A,dims,rngs)`.
 
 
 ## Installation
