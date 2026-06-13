@@ -1,5 +1,12 @@
 # New features and user visible changes in branch 2.0
 
+## Unreleased
+
+### Fixed
+
+- Bump compatibility for `TypeUtils` version 2.
+
+
 ## Version 2.1.0
 
 * New methods `localmap(f, A, B)` and `localmap!(f, dst, A, B)` yield the result of
