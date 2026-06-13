@@ -14,7 +14,7 @@
   around each position in `A` for `localmap` or in `dst` for `localmap!`.
 
 * Methods to locally reduce along given dimensions with an associative operator and using
-  thevan Herk-Gil-Werman algorithm have been renamed `localreduce` and
+  the van Herk-Gil-Werman algorithm have been renamed `localreduce` and
   `localreduce!`. Calling `localfilter` and `localfilter!` for that purpose is deprecated.
 
 * `LocalFilters.ball(DimS{N}, r)` now yields a *centered* `N`-dimensional ball where
