@@ -1,6 +1,6 @@
 # New features and user visible changes in branch 2.0
 
-## Unreleased
+## Version 2.1.1 (2026-06-13)
 
 ### Fixed
 
